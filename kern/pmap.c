@@ -8,6 +8,7 @@
 
 #include <kern/pmap.h>
 #include <kern/kclock.h>
+#include <kern/env.h>
 
 /* These variables are set by i386_detect_memory() */
 size_t npages;                  /* Amount of physical memory (in pages) */
@@ -130,9 +131,8 @@ void mem_init(void)
      * table at virtual address UVPT.
      * (For now, you don't have understand the greater purpose of the following
      * line.)
+     * Permissions: kernel R, user R.
      */
-
-    /* Permissions: kernel R, user R */
     kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
 
     /*********************************************************************
@@ -142,6 +142,11 @@ void mem_init(void)
      * 'npages' is the number of physical pages in memory.  Your code goes here.
      */
 
+
+    /*********************************************************************
+     * Make 'envs' point to an array of size 'NENV' of 'struct env'.
+     * LAB 3: Your code here.
+     */
 
     /*********************************************************************
      * Now that we've allocated the initial kernel data structures, we set
@@ -156,7 +161,8 @@ void mem_init(void)
     check_page();
 
     /*********************************************************************
-     * Now we set up virtual memory */
+     * Now we set up virtual memory.
+     *********************************************************************/
 
     /*********************************************************************
      * Map 'pages' read-only by the user at linear address UPAGES
@@ -165,6 +171,24 @@ void mem_init(void)
      *      (ie. perm = PTE_U | PTE_P)
      *    - pages itself -- kernel RW, user NONE
      * Your code goes here:
+     */
+
+    /* This is set up already by the identity mapping below. */
+    /*
+    boot_map_region(kern_pgdir, (uintptr_t)pages,
+            ROUNDUP(sizeof(struct page_info) * npages), PADDR(pages), PTE_W);
+    */
+    boot_map_region(kern_pgdir, UPAGES,
+            ROUNDUP(sizeof(struct page_info) * npages, PGSIZE),
+            PADDR(pages), PTE_U);
+
+    /*********************************************************************
+     * Map the 'envs' array read-only by the user at linear address UENVS
+     * (ie. perm = PTE_U | PTE_P).
+     * Permissions:
+     *    - the new image at UENVS  -- kernel R, user R
+     *    - envs itself -- kernel RW, user NONE
+     * LAB 3: Your code here.
      */
 
     /*********************************************************************
@@ -418,6 +442,49 @@ void tlb_invalidate(pde_t *pgdir, void *va)
     invlpg(va);
 }
 
+static uintptr_t user_mem_check_addr;
+
+/*
+ * Check that an environment is allowed to access the range of memory
+ * [va, va+len) with permissions 'perm | PTE_P'.
+ * Normally 'perm' will contain PTE_U at least, but this is not required.
+ * 'va' and 'len' need not be page-aligned; you must test every page that
+ * contains any of that range.  You will test either 'len/PGSIZE',
+ * 'len/PGSIZE + 1', or 'len/PGSIZE + 2' pages.
+ *
+ * A user program can access a virtual address if (1) the address is below
+ * ULIM, and (2) the page table gives it permission.  These are exactly
+ * the tests you should implement here.
+ *
+ * If there is an error, set the 'user_mem_check_addr' variable to the first
+ * erroneous virtual address.
+ *
+ * Returns 0 if the user program can access this range of addresses,
+ * and -E_FAULT otherwise.
+ */
+int user_mem_check(struct env *env, const void *va, size_t len, int perm)
+{
+    /* LAB 3: Your code here. */
+
+    return 0;
+}
+
+/*
+ * Checks that environment 'env' is allowed to access the range
+ * of memory [va, va+len) with permissions 'perm | PTE_U | PTE_P'.
+ * If it can, then the function simply returns.
+ * If it cannot, 'env' is destroyed and, if env is the current
+ * environment, this function will not return.
+ */
+void user_mem_assert(struct env *env, const void *va, size_t len, int perm)
+{
+    if (user_mem_check(env, va, len, perm | PTE_U) < 0) {
+        cprintf("[%08x] user_mem_check assertion failure for "
+            "va %08x\n", env->env_id, user_mem_check_addr);
+        env_destroy(env);   /* may not return */
+    }
+}
+
 
 /***************************************************************
  * Checking functions.
@@ -577,6 +644,10 @@ static void check_kern_pgdir(void)
     for (i = 0; i < n; i += PGSIZE)
         assert(check_va2pa(pgdir, UPAGES + i) == PADDR(pages) + i);
 
+    /* check envs array (new test for lab 3) */
+    n = ROUNDUP(NENV*sizeof(struct env), PGSIZE);
+    for (i = 0; i < n; i += PGSIZE)
+        assert(check_va2pa(pgdir, UENVS + i) == PADDR(envs) + i);
 
     /* check phys mem */
     for (i = 0; i < npages * PGSIZE; i += PGSIZE)
@@ -593,6 +664,7 @@ static void check_kern_pgdir(void)
         case PDX(UVPT):
         case PDX(KSTACKTOP-1):
         case PDX(UPAGES):
+        case PDX(UENVS):
             assert(pgdir[i] & PTE_P);
             break;
         default:
