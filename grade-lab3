@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+
+from gradelib import *
+
+r = Runner(save("jos.out"),
+           stop_breakpoint("readline"))
+
+@test(10)
+def test_divzero():
+    r.user_test("divzero")
+    r.match('Incoming TRAP frame at 0xefffff..',
+            'TRAP frame at 0xf.......',
+            '  trap 0x00000000 Divide error',
+            '  eip  0x008.....',
+            '  ss   0x----0023',
+            '.00001000. free env 00001000',
+            no=['1/0 is ........!'])
+
+run_tests()

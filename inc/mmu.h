@@ -44,10 +44,10 @@
 #define PGADDR(d, t, o) ((void*) ((d) << PDXSHIFT | (t) << PTXSHIFT | (o)))
 
 /* Page directory and page table constants. */
-#define NPDENTRIES  1024        /* page directory entries per page directory */
-#define NPTENTRIES  1024        /* page table entries per page table */
+#define NPDENTRIES  1024    /* page directory entries per page directory */
+#define NPTENTRIES  1024    /* page table entries per page table */
 
-#define PGSIZE      4096        /* bytes mapped by a page */
+#define PGSIZE      4096    /* bytes mapped by a page */
 #define PGSHIFT     12      /* log2(PGSIZE) */
 
 #define PTSIZE      (PGSIZE*NPTENTRIES) /* bytes mapped by a page directory entry */
@@ -151,7 +151,7 @@
 #include <inc/types.h>
 
 /* Segment Descriptors */
-struct Segdesc {
+struct segdesc {
     unsigned sd_lim_15_0 : 16;  /* Low bits of segment limit */
     unsigned sd_base_15_0 : 16; /* Low bits of segment base address */
     unsigned sd_base_23_16 : 8; /* Middle bits of segment base address */
@@ -167,15 +167,15 @@ struct Segdesc {
     unsigned sd_base_31_24 : 8; /* High bits of segment base address */
 };
 /* Null segment */
-#define SEG_NULL    (struct Segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+#define SEG_NULL    (struct segdesc){ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 /* Segment that is loadable but faults when used */
-#define SEG_FAULT   (struct Segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
+#define SEG_FAULT   (struct segdesc){ 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0 }
 /* Normal segment */
-#define SEG(type, base, lim, dpl) (struct Segdesc)          \
+#define SEG(type, base, lim, dpl) (struct segdesc)          \
 { ((lim) >> 12) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,   \
     type, 1, dpl, 1, (unsigned) (lim) >> 28, 0, 0, 1, 1,        \
     (unsigned) (base) >> 24 }
-#define SEG16(type, base, lim, dpl) (struct Segdesc)            \
+#define SEG16(type, base, lim, dpl) (struct segdesc)            \
 { (lim) & 0xffff, (base) & 0xffff, ((base) >> 16) & 0xff,       \
     type, 1, dpl, 1, (unsigned) (lim) >> 16, 0, 0, 1, 0,        \
     (unsigned) (base) >> 24 }
@@ -214,7 +214,7 @@ struct Segdesc {
 #ifndef __ASSEMBLER__
 
 /* Task state segment format (as described by the Pentium architecture book) */
-struct task_state {
+struct taskstate {
     uint32_t ts_link;   /* Old ts selector */
     uintptr_t ts_esp0;  /* Stack pointers and segment selectors */
     uint16_t ts_ss0;    /*   after an increase in privilege level */
@@ -255,7 +255,7 @@ struct task_state {
 };
 
 /* Gate descriptors for interrupts and traps */
-struct gate_desc {
+struct gatedesc {
     unsigned gd_off_15_0 : 16;   /* low 16 bits of offset in segment */
     unsigned gd_sel : 16;        /* segment selector */
     unsigned gd_args : 5;        /* # args, 0 for interrupt/trap gates */
@@ -284,7 +284,7 @@ struct gate_desc {
  *    this interrupt/trap gate explicitly using an int instruction.
  */
 #define SETGATE(gate, istrap, sel, off, dpl)                                   \
-do {                                                                              \
+do {                                                                           \
     (gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;                            \
     (gate).gd_sel = (sel);                                                     \
     (gate).gd_args = 0;                                                        \
@@ -298,7 +298,7 @@ do {                                                                            
 
 /* Set up a call gate descriptor. */
 #define SETCALLGATE(gate, sel, off, dpl)                                       \
-do {                                                                              \
+do {                                                                           \
     (gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;                            \
     (gate).gd_sel = (sel);                                                     \
     (gate).gd_args = 0;                                                        \
@@ -311,7 +311,7 @@ do {                                                                            
 } while 0
 
 /* Pseudo-descriptors used for LGDT, LLDT and LIDT instructions. */
-struct pseudo_desc {
+struct pseudodesc {
     uint16_t pd_lim;        /* Limit */
     uint32_t pd_base;       /* Base address */
 } __attribute__ ((packed));
