@@ -18,6 +18,7 @@
 #include <inc/env.h>
 #include <inc/memlayout.h>
 #include <inc/syscall.h>
+#include <inc/trap.h>
 
 #define USED(x)     (void)(x)
 
@@ -43,6 +44,12 @@ envid_t sys_getenvid(void);
 int sys_env_destroy(envid_t);
 void *sys_vma_create(size_t);
 int sys_vma_destroy(void *va);
+void    sys_yield(void);
+int     sys_wait(envid_t);
+envid_t sys_fork(void);
+
+/* fork.c */
+envid_t fork(void);
 
 /* File open modes */
 #define O_RDONLY    0x0000      /* open for reading only */
