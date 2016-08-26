@@ -10,6 +10,7 @@
 #include <kern/trap.h>
 #include <kern/syscall.h>
 #include <kern/console.h>
+#include <kern/sched.h>
 
 /*
  * Print a string to the system console.
@@ -78,6 +79,27 @@ static int sys_env_destroy(envid_t envid)
         cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
     env_destroy(e);
     return 0;
+}
+
+/*
+ * Deschedule current environment and pick a different one to run.
+ */
+static void sys_yield(void)
+{
+    sched_yield();
+}
+
+static int sys_wait(envid_t envid)
+{
+    /* LAB 5: Your code here */
+    return -1;
+}
+
+static int sys_fork(void)
+{
+    /* fork() that follows COW semantics */
+    /* LAB 5: Your code here */
+    return -1;
 }
 
 /* Dispatches to the correct kernel function, passing the arguments. */
