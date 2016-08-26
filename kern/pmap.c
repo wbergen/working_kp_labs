@@ -437,9 +437,45 @@ void page_remove(pde_t *pgdir, void *va)
  */
 void tlb_invalidate(pde_t *pgdir, void *va)
 {
-    /* Flush the entry only if we're modifying the current address space.
-     * For now, there is only one address space, so always invalidate. */
-    invlpg(va);
+    /* Flush the entry only if we're modifying the current address space. */
+    if (!curenv || curenv->env_pgdir == pgdir)
+        invlpg(va);
+}
+
+/*
+ * Reserve size bytes in the MMIO region and map [pa,pa+size) at this
+ * location.  Return the base of the reserved region.  size does *not*
+ * have to be multiple of PGSIZE.
+ */
+void *mmio_map_region(physaddr_t pa, size_t size)
+{
+    /*
+     * Where to start the next region.  Initially, this is the
+     * beginning of the MMIO region.  Because this is static, its
+     * value will be preserved between calls to mmio_map_region
+     * (just like nextfree in boot_alloc).
+     */
+    static uintptr_t base = MMIOBASE;
+
+    /*
+     * Reserve size bytes of virtual memory starting at base and map physical
+     * pages [pa,pa+size) to virtual addresses [base,base+size).  Since this is
+     * device memory and not regular DRAM, you'll have to tell the CPU that it
+     * isn't safe to cache access to this memory.  Luckily, the page tables
+     * provide bits for this purpose; simply create the mapping with
+     * PTE_PCD|PTE_PWT (cache-disable and write-through) in addition to PTE_W.
+     * (If you're interested in more details on this, see section 10.5 of IA32
+     * volume 3A.)
+     *
+     * Be sure to round size up to a multiple of PGSIZE and to handle if this
+     * reservation would overflow MMIOLIM (it's okay to simply panic if this
+     * happens).
+     *
+     * Hint: The staff solution uses boot_map_region.
+     *
+     * LAB 5: Your code here:
+     */
+    panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;
@@ -665,6 +701,7 @@ static void check_kern_pgdir(void)
         case PDX(KSTACKTOP-1):
         case PDX(UPAGES):
         case PDX(UENVS):
+        case PDX(MMIOBASE):
             assert(pgdir[i] & PTE_P);
             break;
         default:
@@ -706,6 +743,7 @@ static void check_page(void)
     struct page_info *fl;
     pte_t *ptep, *ptep1;
     void *va;
+    uintptr_t mm1, mm2;
     int i;
     extern pde_t entry_pgdir[];
 
@@ -849,6 +887,29 @@ static void check_page(void)
     page_free(pp0);
     page_free(pp1);
     page_free(pp2);
+
+    /* test mmio_map_region */
+    mm1 = (uintptr_t) mmio_map_region(0, 4097);
+    mm2 = (uintptr_t) mmio_map_region(0, 4096);
+    /* check that they're in the right region */
+    assert(mm1 >= MMIOBASE && mm1 + 8096 < MMIOLIM);
+    assert(mm2 >= MMIOBASE && mm2 + 8096 < MMIOLIM);
+    /* check that they're page-aligned */
+    assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
+    /* check that they don't overlap */
+    assert(mm1 + 8096 <= mm2);
+    /* check page mappings */
+    assert(check_va2pa(kern_pgdir, mm1) == 0);
+    assert(check_va2pa(kern_pgdir, mm1+PGSIZE) == PGSIZE);
+    assert(check_va2pa(kern_pgdir, mm2) == 0);
+    assert(check_va2pa(kern_pgdir, mm2+PGSIZE) == ~0);
+    /* check permissions */
+    assert(*pgdir_walk(kern_pgdir, (void*) mm1, 0) & (PTE_W|PTE_PWT|PTE_PCD));
+    assert(!(*pgdir_walk(kern_pgdir, (void*) mm1, 0) & PTE_U));
+    /* clear the mappings */
+    *pgdir_walk(kern_pgdir, (void*) mm1, 0) = 0;
+    *pgdir_walk(kern_pgdir, (void*) mm1 + PGSIZE, 0) = 0;
+    *pgdir_walk(kern_pgdir, (void*) mm2, 0) = 0;
 
     cprintf("check_page() succeeded!\n");
 }
