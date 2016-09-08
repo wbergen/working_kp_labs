@@ -6,7 +6,7 @@
 #	http://aegis.sourceforge.net/auug97.pdf
 #
 OBJDIR := obj
-L1_COMMIT := "`git rev-list --max-parents=0 HEAD`"
+COMMIT := ""
 
 # Run 'make V=1' to turn on verbose commands, or 'make V=0' to turn them off.
 ifeq ($(V),1)
@@ -204,15 +204,50 @@ grade:
 	./grade-lab$(LAB) $(GRADEFLAGS)
 
 handin: handin-check
-	@echo "Hand in: Creating your solution-patch for L${LAB} using:"; \
-	echo "    'git format-patch ${L1_COMMIT} --stdout > ${PATCH_PREFIX}.lab${LAB}.patch' "; \
-	if ! git format-patch ${L1_COMMIT} --stdout > ${PATCH_PREFIX}.lab${LAB}.patch; then \
+ifeq (${COMMIT}, "")
+		@git --no-pager log -3 --pretty=oneline; 
+		@echo "You did not specify a commit hash.";
+		@echo "Please set COMMIT variable in the command line:";
+		@echo "> make handin COMMIT=<your commit-hash>";
+		@false; 
+endif
+	@if git tag -l | grep "${TAG_LAB_SOLN}" >/dev/null; then \
+		if ! git tag -d ${TAG_LAB_SOLN}; then \
+			echo ;\
+			echo "Tag: ${TAG_LAB_SOLN} exists already. Failed removing it."; \
+			false; \
+		fi; \
+	fi; 
+	@echo "git tag ${TAG_LAB_SOLN} -m 'Solution for : Lab${LAB}' ${COMMIT} "; 
+	@if ! git tag ${TAG_LAB_SOLN} -m 'Solution for : Lab${LAB}' ${COMMIT}; then \
         	echo ; \
-		echo "Hand-in patch creation failed."; \
-		echo "As an alternative, please run 'make tarball'"; \
-		echo "and submit lab$(LAB)-handin.tar.gz.  Thanks!"; \
+		echo "*** Hand-in: Tagging your solution failed. Please retry."; \
 		false; \
-	fi; \
+	fi; 
+	@echo "Your commit was tagged successfully: [ ${COMMIT} : ${TAG_LAB_SOLN} ]"; 
+
+handin-bonus: handin-check
+ifeq (${COMMIT}, "")
+		@git --no-pager log -3 --pretty=oneline; 
+		@echo "You did not specify a commit hash for BONUS.";
+		@echo "Please set COMMIT variable in the command line:";
+		@echo "> make handin COMMIT=<your commit-hash>";
+		@false; 
+endif
+	@if git tag -l | grep "${TAG_LAB_BONUS}" >/dev/null; then \
+		if ! git tag -d ${TAG_LAB_BONUS}; then \
+			echo ;\
+			echo "Tag: ${TAG_LAB_BONUS} exists already. Failed to remove it."; \
+			false; \
+		fi; \
+	fi;
+	@echo "git tag ${TAG_LAB_BONUS} -m 'Solution for BONUS of : Lab${LAB}' ${COMMIT} "; 
+	@if ! git tag ${TAG_LAB_BONUS} -m 'Solution for BONUS of : Lab${LAB}' ${COMMIT}; then \
+                echo ; \
+                echo "*** Hand-in BONUS: Tagging your solution failed. Please retry."; \
+                false; \
+        fi; 
+	@echo "Bonus commit tagged successfully: [ ${COMMIT} : ${TAG_LAB_BONUS} ]"; 
 
 handin-check:
 	@if test "$$(git symbolic-ref HEAD)" != refs/heads/lab$(LAB); then \
