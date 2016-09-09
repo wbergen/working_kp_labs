@@ -268,7 +268,9 @@ handin-check:
 	fi
 
 tarball: handin-check
-	git archive --format=tar HEAD | gzip > ${PATCH_PREFIX}.lab$(LAB)-handin.tar.gz
+	git archive --format=tar HEAD > ${PATCH_PREFIX}.lab$(LAB)-handin.tar
+	tar -r --file=${PATCH_PREFIX}.lab$(LAB)-handin.tar ./.git
+	gzip ${PATCH_PREFIX}.lab$(LAB)-handin.tar
 
 apply-check: ${PATCH_PREFIX}.lab${LAB}.patch
 	@if ! git apply --check ${PATCH_PREFIX}.lab${LAB}.patch; then \
