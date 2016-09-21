@@ -464,7 +464,7 @@ static uintptr_t user_mem_check_addr;
  */
 int user_mem_check(struct env *env, const void *va, size_t len, int perm)
 {
-    /* LAB 3: Your code here. */
+    /* LAB 4: Your code here. */
 
     return 0;
 }
