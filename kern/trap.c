@@ -7,6 +7,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/env.h>
+#include <kern/syscall.h>
 
 static struct taskstate ts;
 
@@ -184,4 +185,26 @@ void trap(struct trapframe *tf)
     /* Return to the current environment, which should be running. */
     assert(curenv && curenv->env_status == ENV_RUNNING);
     env_run(curenv);
+}
+
+
+void page_fault_handler(struct trapframe *tf)
+{
+    uint32_t fault_va;
+
+    /* Read processor's CR2 register to find the faulting address */
+    fault_va = rcr2();
+
+    /* Handle kernel-mode page faults. */
+
+    /* LAB 4: Your code here. */
+
+    /* We've already handled kernel-mode exceptions, so if we get here, the page
+     * fault happened in user mode. */
+
+    /* Destroy the environment that caused the fault. */
+    cprintf("[%08x] user fault va %08x ip %08x\n",
+        curenv->env_id, fault_va, tf->tf_eip);
+    print_trapframe(tf);
+    env_destroy(curenv);
 }

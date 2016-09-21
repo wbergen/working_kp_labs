@@ -59,3 +59,12 @@ envid_t sys_getenvid(void)
      return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
 }
 
+void *sys_vma_create(size_t size)
+{
+     return (void *)syscall(SYS_vma_create, 0, size, 0, 0, 0, 0);
+}
+
+int sys_vma_destroy(void *va)
+{
+    return syscall(SYS_vma_destroy, 0, (uint32_t)va, 0, 0, 0, 0);
+}

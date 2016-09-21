@@ -17,6 +17,7 @@ void trap_init(void);
 void trap_init_percpu(void);
 void print_regs(struct pushregs *regs);
 void print_trapframe(struct trapframe *tf);
+void page_fault_handler(struct trapframe *);
 void backtrace(struct trapframe *);
 
 #endif /* JOS_KERN_TRAP_H */
