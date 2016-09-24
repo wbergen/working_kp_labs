@@ -133,14 +133,14 @@ def test_evilhello():
 @test(5)
 def test_vmatest():
     r.user_test("vmatest")
-    r.match(' foo_ro = 0x400000, foo_rw = 0x401000',
+    r.match(' foo_ro = 0x400000,  foo_rw = 0x401000',
             '\*foo_ro = ., \*foo_rw = .',
-            '\*foo_rw = 0xcafebabe',
-            '.00001000. user fault va 00401000 ip 008.....',
+            '\*foo_rw = cafebabe',
+            '.00001000. user fault va 00400000 ip 008.....',
             'Incoming TRAP frame at 0xefffffbc',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
-            '  err  0x00000006.*',
+            '  err  0x00000007.*',
             '.00001000. free env 0000100')
 
 end_part("B")
