@@ -141,11 +141,13 @@ include kern/Makefrag
 include lib/Makefrag
 include user/Makefrag
 
+CPUS ?= 1
 
 QEMUOPTS = -hda $(OBJDIR)/kern/kernel.img -serial mon:stdio -gdb tcp::$(GDBPORT)
 QEMUOPTS += $(shell if $(QEMU) -nographic -help | grep -q '^-D '; then echo '-D qemu.log'; fi)
 QEMUOPTS += -d cpu_reset -D /dev/stdout
 IMAGES = $(OBJDIR)/kern/kernel.img
+QEMUOPTS += -smp $(CPUS)
 QEMUOPTS += $(QEMUEXTRA)
 
 .gdbrc: .gdbrc.tmpl
