@@ -151,8 +151,8 @@ def test_cowfork():
 @test(5)
 def test_mcorefork():
     r.user_test("mcorefork")
-    r.match('[........] Running on cpu: 0')
-    r.match('[........] Running on cpu: 1')
+    r.match('\[........\] Running on cpu: 0')
+    r.match('\[........\] Running on cpu: 1')
 
 end_part("B")
 
