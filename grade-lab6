@@ -8,7 +8,7 @@ r = Runner(save("jos.out"),
 @test(10)
 def test_divzero():
     r.user_test("divzero")
-    r.match('Incoming TRAP frame at 0xefffff..',
+    r.match('Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x00000000 Divide error',
             '  eip  0x008.....',
@@ -20,7 +20,7 @@ def test_divzero():
 def test_softint():
     r.user_test("softint")
     r.match('Welcome to the JOS kernel monitor!',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000d General Protection',
             '  eip  0x008.....',
@@ -30,7 +30,7 @@ def test_softint():
 @test(10)
 def test_badsegment():
     r.user_test("badsegment")
-    r.match('Incoming TRAP frame at 0xefffffbc',
+    r.match('Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000d General Protection',
             '  err  0x00000028',
@@ -44,7 +44,7 @@ end_part("A")
 def test_faultread():
     r.user_test("faultread")
     r.match('.00001000. user fault va 00000000 ip 008.....',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
             '  err  0x00000004.*',
@@ -55,7 +55,7 @@ def test_faultread():
 def test_faultreadkernel():
     r.user_test("faultreadkernel")
     r.match('.00001000. user fault va f0100000 ip 008.....',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
             '  err  0x00000005.*',
@@ -66,7 +66,7 @@ def test_faultreadkernel():
 def test_faultwrite():
     r.user_test("faultwrite")
     r.match('.00001000. user fault va 00000000 ip 008.....',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
             '  err  0x00000006.*',
@@ -76,7 +76,7 @@ def test_faultwrite():
 def test_faultwritekernel():
     r.user_test("faultwritekernel")
     r.match('.00001000. user fault va f0100000 ip 008.....',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
             '  err  0x00000007.*',
@@ -86,7 +86,7 @@ def test_faultwritekernel():
 def test_breakpoint():
     r.user_test("breakpoint")
     r.match('Welcome to the JOS kernel monitor!',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x00000003 Breakpoint',
             '  eip  0x008.....',
@@ -108,8 +108,7 @@ def test_hello():
             'hello, world',
             'i am environment 00001000',
             '.00001000. exiting gracefully',
-            '.00001000. free env 00001000',
-            'Destroyed the only environment - nothing more to do!')
+            '.00001000. free env 00001000')
 
 @test(5)
 def test_buggyhello():
@@ -137,7 +136,7 @@ def test_vmatest():
             '\*foo_ro = ., \*foo_rw = .',
             '\*foo_rw = cafebabe',
             '.00001000. user fault va 00400000 ip 008.....',
-            'Incoming TRAP frame at 0xefffffbc',
+            'Incoming TRAP frame at 0xeff.....',
             'TRAP frame at 0xf.......',
             '  trap 0x0000000e Page Fault',
             '  err  0x00000007.*',
