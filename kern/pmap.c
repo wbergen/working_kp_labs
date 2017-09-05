@@ -263,9 +263,16 @@ void page_init(void)
     struct page_info * pg0;
 
     for (i = 0; i < npages; i++) {
+        if(i == 0){
+            pages[i].pp_ref = 0;
+            pages[i].pp_link = 0;
+            page_free_list = &pages[i];
+        }
+        /*
         pages[i].pp_ref = 0;
         pages[i].pp_link = page_free_list;
         page_free_list = &pages[i];
+        */
     }
     /* DEBUG
     pg0 = page_free_list;
