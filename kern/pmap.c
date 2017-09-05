@@ -203,14 +203,16 @@ void mem_init(void)
 
     }
 
-    /* DEBUG */
+    /* DEBUG 
     pg0 = pages;
-    for(int i=0; i<npages; i++){   
+    for(int i=0; i<npages; i++){
         cprintf("pp: %x pp_link: %x pp_ref: %d \n",pg0, pg0->pp_link, pg0->pp_ref );
         pg0 = pg0->pp_link;
     }
 
-    panic("mem_init: This function is not finished\n");
+    cprintf("kva pages: %x, real: %x \n", page2kva(&pages[npages - 1]), &pages[npages - 1]  );
+    */
+    //panic("mem_init: This function is not finished\n");
 
     /*********************************************************************
      * Now that we've allocated the initial kernel data structures, we set
@@ -258,11 +260,22 @@ void page_init(void)
      * NB: DO NOT actually touch the physical memory corresponding to free
      *     pages! */
     size_t i;
+    struct page_info * pg0;
+
     for (i = 0; i < npages; i++) {
         pages[i].pp_ref = 0;
         pages[i].pp_link = page_free_list;
         page_free_list = &pages[i];
     }
+    /* DEBUG
+    pg0 = page_free_list;
+    for(int i=0; i<npages; i++){   
+        cprintf("pp: %x pp_link: %x pp_ref: %d \n",pg0, pg0->pp_link, pg0->pp_ref );
+        pg0 = pg0->pp_link;
+    }
+    cprintf("kva page_free_list: %x, real: %x \n", page2kva(page_free_list), page_free_list );
+    */
+    panic("page_init: This function is not finished\n");
 }
 
 /*
