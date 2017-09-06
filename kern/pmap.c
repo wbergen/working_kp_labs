@@ -88,10 +88,7 @@ static void *boot_alloc(uint32_t n)
      *
      * LAB 1: Your code here.
      */
-    // Out of Memory check
-    if((unsigned int)nextfree > npages * PGSIZE + KERNBASE){
-        panic("BOOT ALLOCATOR: OUT OF MEMORY BITCH\n")
-    }
+
     // CASE: n == 0:
     if (n == 0){
         return nextfree;
@@ -107,6 +104,10 @@ static void *boot_alloc(uint32_t n)
         result = nextfree;
         nextfree += PGSIZE * pages_to_alloc;
 
+        // Out of Memory check
+        if((unsigned int)nextfree > npages * PGSIZE + KERNBASE){
+            panic("BOOT ALLOCATOR: OUT OF MEMORY BITCH\n")
+        }
         return result;
     }
     // CASE else:
