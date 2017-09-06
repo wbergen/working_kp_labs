@@ -108,6 +108,7 @@ static void *boot_alloc(uint32_t n)
         if((unsigned int)nextfree > npages * PGSIZE + KERNBASE){
             panic("BOOT ALLOCATOR: OUT OF MEMORY BITCH\n")
         }
+        
         return result;
     }
     // CASE else:
