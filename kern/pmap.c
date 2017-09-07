@@ -313,8 +313,9 @@ struct page_info *page_alloc(int alloc_flags)
         int count = 0;
         int first_hp;
         struct page_info * pp = page_free_list;
-        struct page_info * pp_old, *pp_ret;
+        struct page_info * pp_old, *pp_ret, * pp_sup;
 
+        //look for available nc huge pages
         while(pp || count != KB){
             count++;
             pp_old = pp;
@@ -326,7 +327,14 @@ struct page_info *page_alloc(int alloc_flags)
             page_free_list = pp;
             pp_old->pp_link = NULL;
 
-            pp_ret->page_flags |= ALLOC_HUGE_NC & ALLOC;
+            // Set the ALLOC flag
+            pp_sup = pp_ret;
+            while(pp_sup){
+                pp_sup->page_flags |= ALLOC;
+                pp_sup = pp_sup->pp_link;
+            }
+            // Set the ALLOC_HUGE_NC flag
+            pp_ret->page_flags |= ALLOC_HUGE_NC;
             return pp_ret;
         } 
         /*HUGE PAGE NOT AVAILABLE*/
@@ -412,6 +420,13 @@ void page_free(struct page_info *pp)
         //ALLOC_HUGE_NC flag reset
         pp->page_flags = pp->page_flags ^ ALLOC_HUGE_NC;
 
+        //ALLOC flag reset
+        pp_sup = pp; 
+        while(pp_sup){
+            pp_sup->page_flags = pp_sup->page_flags ^ ALLOC;
+            pp_sup = pp_sup->pp_link;
+        }
+        //Meging huge page list with free page list
         pp_old->pp_link = page_free_list;
         page_free_list = pp;
         return;
