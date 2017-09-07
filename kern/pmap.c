@@ -173,7 +173,8 @@ int is_allocated_init(struct page_info *pp){
     return 0;
 }
 /*
-    This function remove an element from the had of the page free list 
+    This function removes an element from the had of the page free list 
+    It doesn't modify any flags
 */
 struct page_info * remove_head_pfl(){
 
@@ -185,7 +186,32 @@ struct page_info * remove_head_pfl(){
     return pp;
 }
 /*
-    This function add an element from the had of the page free list
+    This function removes an precise element from the page free list
+    It doesn't modify any flags
+*/
+void remove_element_pfl(struct page_info * pp){
+
+    struct page_info * pp_c = page_free_list;
+    struct page_info * pp_old;
+
+    if(page_free_list == pp){
+        page_free_list = pp->pp_link;
+        pp->pp_link = NULL;
+        return; 
+    }
+    while(pp_c){
+        if(pp_c == pp){
+            pp_old->pp_link = pp_c->pp_link;
+            pp->pp_link = NULL;
+            return;
+        }
+        pp_old = pp_c;
+        pp_c = pp_c->pp_link;
+    }
+}
+/*
+    This function adds an element from the had of the page free list
+    It doesn't modify any flags
 */
 void add_head_pfl(struct page_info * pp){
 
@@ -276,8 +302,9 @@ struct page_info *page_alloc(int alloc_flags)
 {
     struct page_info * pg0;
 
+    // Out of pages
     if( !page_free_list ){
-        return 0;
+        return NULL;
     }
 
     //Huge page non consecutive support     /*  STILL TO TEST */
@@ -288,28 +315,56 @@ struct page_info *page_alloc(int alloc_flags)
         struct page_info * pp = page_free_list;
         struct page_info * pp_old, *pp_ret;
 
-        while(pp || count != 1024){
+        while(pp || count != KB){
             count++;
             pp_old = pp;
             pp = pp->pp_link;
         }
-         if(count == 1024){
+         if(count == KB){
             /* GIVE HUGE PAGE*/
             pp_ret = page_free_list;
             page_free_list = pp;
             pp_old->pp_link = NULL;
 
-            pp_ret->page_flags |= ALLOC_HUGE_NC;
+            pp_ret->page_flags |= ALLOC_HUGE_NC & ALLOC;
             return pp_ret;
         } 
         /*HUGE PAGE NOT AVAILABLE*/
         return NULL;
     }
-    //Huge page consecutive support
-  /*  if(alloc_flags & ALLOC_HUGE){
 
-    }*/
+    //Huge page consecutive support
+    if(alloc_flags & ALLOC_HUGE){
+
+        int count = 0;
+        int hp_idx = 0;
+        int i;
+        // Checks if there are 1024 consecutive free pages
+        for(i = 0; (i < npages) && (count != KB); i++){
+            if(pages[i].pp_link){
+                count++;
+            }else{
+                hp_idx = i + 1;
+                count = 0;
+            }
+        }
+        if(count == KB){
+
+            pages[hp_idx].page_flags |= ALLOC_HUGE;
+
+            for(i = hp_idx; i < (hp_idx + KB); i++){
+                pages[i].page_flags |= ALLOC;
+                remove_element_pfl(&pages[i]);
+            }
+            return &pages[hp_idx];
+        }else{
+            return NULL;
+        }
+    }
+
+    // Single page allocation
     pg0 = remove_head_pfl();
+    // Set the Alloc flag
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
@@ -328,7 +383,7 @@ struct page_info *page_alloc(int alloc_flags)
  * Return a page to the free list.
  * (This function should only be called when pp->pp_ref reaches 0.)
  */
-void page_free(struct page_info *pp) //, int free_flags
+void page_free(struct page_info *pp)
 {
     /* Fill this function in
      * Hint: You may want to panic if pp->pp_ref is nonzero or
@@ -338,10 +393,10 @@ void page_free(struct page_info *pp) //, int free_flags
 
     //Panic in case of pp_ref is not 0 or if pp_link is not NULL
     if(pp->pp_ref){
-        panic(" page_free error, the page is still referenced\n");
+        panic(" page_free: THE PAGE TO FREE IS STILL REFERENCED\n");
     }
     if(pp->pp_link && (pp->page_flags & ALLOC_HUGE_NC)){
-        panic(" page_free error, the page is still linked to a free element \n");
+        panic(" page_free: THE PAGE TO FREE IS LINKED TO A FREE ELEMENT\n");
     }
     /*  Not consecutive Huge Page free */
     if(pp->page_flags & ALLOC_HUGE_NC){
@@ -351,7 +406,7 @@ void page_free(struct page_info *pp) //, int free_flags
             pp_old = pp_sup;
             pp_sup = pp_sup->pp_link;
         }
-        if(count != 1024){
+        if(count != KB){
             panic("page_free: THIS IS NOT A HUGE PAGE!\n");
         }
         //ALLOC_HUGE_NC flag reset
@@ -359,16 +414,44 @@ void page_free(struct page_info *pp) //, int free_flags
 
         pp_old->pp_link = page_free_list;
         page_free_list = pp;
+        return;
     }
-    /* Huge page free*/
-  /*  if(pp->page_flags & ALLOC_HUGE){
 
-    }*/
+    /* Huge page free */
+    if(pp->page_flags & ALLOC_HUGE){
+        int i;
+        uint32_t idx = PGNUM(page2pa(pp));
+
+        //Check for errors
+        for(i = idx; i < (idx + KB); i++){
+            if(!(pages[i].page_flags & ALLOC)){
+                panic("page_free huge: PAGE TO FREE NOT MARKED ALLOC \n");
+            }
+            if(pages[i].pp_ref){
+                panic(" page_free huge: THE PAGE TO FREE IS STILL REFERENCED\n");
+            }
+            if(pages[i].pp_link){
+                panic(" page_free huge: THE PAGE TO FREE IS LINKED TO A FREE ELEMENT\n");
+            }
+        }
+        //Reset the ALLOC_HUGE flag
+        pages[idx].page_flags = pages[idx].page_flags ^ ALLOC_HUGE;
+        //Reset the ALLOC flags and add the page to the page_free_list
+        for(i = idx; i < (idx + KB); i++){
+            //cprintf("b flags %x\n", pp->page_flags);
+            pages[i].page_flags = pages[i].page_flags ^ ALLOC;
+            //cprintf("a flags %x\n", pp->page_flags);
+            add_head_pfl(&pages[i]);
+        }
+        return;
+    }
+
     // ALLOC flag reset
     if(pp->page_flags & ALLOC){
+        //cprintf("b flags %x", pp->page_flags);
         pp->page_flags = pp->page_flags ^ ALLOC;
     }else{
-        panic("page free: PAGE TO FREE MARKED AS NOT ALLOC");
+        panic("page free: PAGE TO FREE MARKED AS NOT ALLOC\n");
     }
     
     add_head_pfl(pp);

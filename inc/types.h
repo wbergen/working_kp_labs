@@ -41,6 +41,8 @@ typedef int32_t ssize_t;
 /* off_t is used for file offsets and lengths. */
 typedef int32_t off_t;
 
+#define KB 1024
+
 /* Efficient min and max operations */
 #define MIN(_a, _b)                                                            \
 ({                                                                             \
@@ -73,3 +75,4 @@ typedef int32_t off_t;
 #define offsetof(type, member)  ((size_t) (&((type*)0)->member))
 
 #endif /* !JOS_INC_TYPES_H */
+
