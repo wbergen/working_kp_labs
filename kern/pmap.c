@@ -16,7 +16,6 @@ static size_t npages_basemem;   /* Amount of base memory (in pages) */
 struct page_info *pages;                 /* Physical page state array */
 static struct page_info *page_free_list; /* Free list of physical pages */
 
-
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/
@@ -106,9 +105,9 @@ static void *boot_alloc(uint32_t n)
 
         // Out of Memory check
         if((unsigned int)nextfree > npages * PGSIZE + KERNBASE){
-            panic("BOOT ALLOCATOR: OUT OF MEMORY BITCH\n")
+            panic("BOOT ALLOCATOR: OUT OF MEMORY BITCH\n");
         }
-        
+
         return result;
     }
     // CASE else:
@@ -133,7 +132,7 @@ void mem_init(void)
     /* Find out how much memory the machine has (npages & npages_basemem). */
     i386_detect_memory();
 
-    cprintf("detected %u\n", npages);
+    cprintf("Page Detected %u\n", npages);
 
     /*********************************************************************
      * Allocate an array of npages 'struct page_info's and store it in 'pages'.
@@ -141,8 +140,6 @@ void mem_init(void)
      * physical page, there is a corresponding struct page_info in this array.
      * 'npages' is the number of physical pages in memory.  Your code goes here.
      */
-
-   
 
     // Allocate enough memory to contain the pages list
     pages = boot_alloc((npages)*sizeof(struct page_info));
@@ -162,7 +159,6 @@ void mem_init(void)
 
 int is_allocated_init(struct page_info *pp){
     physaddr_t page_a;
-
     page_a = page2pa(pp);
 
     if(page_a < npages_basemem * PGSIZE){
@@ -232,20 +228,21 @@ void page_init(void)
 
     // Page 0 not in use, it won't be added to the free list
     // XXX still initialize it?
+   
     pages[0].pp_ref = 0;
     pages[0].pp_link = NULL;
-
+    
     for (i = 1; i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;
         pages[i].pp_link = NULL;
-
+        pages[i].page_flags = 0;
         if( !is_allocated_init(&pages[i])){
             add_head_pfl(&pages[i]);
+           
         }
     }
-
     
     /* DEBUG
     for(int i=0; i<npages; i++){ 
@@ -283,11 +280,44 @@ struct page_info *page_alloc(int alloc_flags)
         return 0;
     }
 
-    pg0 = remove_head_pfl();
+    //Huge page non consecutive support     /*  STILL TO TEST */
+    if(alloc_flags & ALLOC_HUGE_NC){
 
-    if(alloc_flags & ALLOC_ZERO){
-        memset( (void *)page2pa(pg0) ,'\0', PGSIZE );
+        int count = 0;
+        int first_hp;
+        struct page_info * pp = page_free_list;
+        struct page_info * pp_old, *pp_ret;
+
+        while(pp || count != 1024){
+            count++;
+            pp_old = pp;
+            pp = pp->pp_link;
+        }
+         if(count == 1024){
+            /* GIVE HUGE PAGE*/
+            pp_ret = page_free_list;
+            page_free_list = pp;
+            pp_old->pp_link = NULL;
+
+            pp_ret->page_flags |= ALLOC_HUGE_NC;
+            return pp_ret;
+        } 
+        /*HUGE PAGE NOT AVAILABLE*/
+        return NULL;
     }
+    //Huge page consecutive support
+  /*  if(alloc_flags & ALLOC_HUGE){
+
+    }*/
+    pg0 = remove_head_pfl();
+    pg0->page_flags |= ALLOC;
+
+    // ALLOC_ZERO support
+    if(alloc_flags & ALLOC_ZERO){
+        memset( page2kva(pg0) ,'\0', PGSIZE );
+    }
+
+    // ALLOC_PREMAPPED support
     if(alloc_flags & ALLOC_PREMAPPED){
         /*  XXX TO BE DONE  */
     }
@@ -298,17 +328,49 @@ struct page_info *page_alloc(int alloc_flags)
  * Return a page to the free list.
  * (This function should only be called when pp->pp_ref reaches 0.)
  */
-void page_free(struct page_info *pp)
+void page_free(struct page_info *pp) //, int free_flags
 {
     /* Fill this function in
      * Hint: You may want to panic if pp->pp_ref is nonzero or
      * pp->pp_link is not NULL. */
+    struct page_info * pp_sup, * pp_old;
+    int count = 0;
+
+    //Panic in case of pp_ref is not 0 or if pp_link is not NULL
     if(pp->pp_ref){
         panic(" page_free error, the page is still referenced\n");
     }
-    if(pp->pp_link){
+    if(pp->pp_link && (pp->page_flags & ALLOC_HUGE_NC)){
         panic(" page_free error, the page is still linked to a free element \n");
     }
+    /*  Not consecutive Huge Page free */
+    if(pp->page_flags & ALLOC_HUGE_NC){
+        pp_sup = pp;
+        while(pp_sup){
+            count++;
+            pp_old = pp_sup;
+            pp_sup = pp_sup->pp_link;
+        }
+        if(count != 1024){
+            panic("page_free: THIS IS NOT A HUGE PAGE!\n");
+        }
+        //ALLOC_HUGE_NC flag reset
+        pp->page_flags = pp->page_flags ^ ALLOC_HUGE_NC;
+
+        pp_old->pp_link = page_free_list;
+        page_free_list = pp;
+    }
+    /* Huge page free*/
+  /*  if(pp->page_flags & ALLOC_HUGE){
+
+    }*/
+    // ALLOC flag reset
+    if(pp->page_flags & ALLOC){
+        pp->page_flags = pp->page_flags ^ ALLOC;
+    }else{
+        panic("page free: PAGE TO FREE MARKED AS NOT ALLOC");
+    }
+    
     add_head_pfl(pp);
 }
 
