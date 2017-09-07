@@ -132,8 +132,6 @@ void mem_init(void)
     /* Find out how much memory the machine has (npages & npages_basemem). */
     i386_detect_memory();
 
-    cprintf("Page Detected %u\n", npages);
-
     /*********************************************************************
      * Allocate an array of npages 'struct page_info's and store it in 'pages'.
      * The kernel uses this array to keep track of physical pages: for each
@@ -153,7 +151,7 @@ void mem_init(void)
     page_init();
     check_page_free_list(1);
     check_page_alloc();
-    panic("mem_init: This function is not finished\n");
+
     /* ... lab 2 will set up page tables here ... */
 }
 
@@ -172,6 +170,7 @@ int is_allocated_init(struct page_info *pp){
     }
     return 0;
 }
+
 /*
     This function removes an element from the had of the page free list 
     It doesn't modify any flags
@@ -185,6 +184,7 @@ struct page_info * remove_head_pfl(){
 
     return pp;
 }
+
 /*
     This function removes an precise element from the page free list
     It doesn't modify any flags
@@ -209,6 +209,7 @@ void remove_element_pfl(struct page_info * pp){
         pp_c = pp_c->pp_link;
     }
 }
+
 /*
     This function adds an element from the had of the page free list
     It doesn't modify any flags
@@ -219,6 +220,7 @@ void add_head_pfl(struct page_info * pp){
     page_free_list = pp;
 
 }
+
 /***************************************************************
  * Tracking of physical pages.
  * The 'pages' array has one 'struct page_info' entry per physical page.
@@ -252,12 +254,11 @@ void page_init(void)
      *     pages! */
     size_t i;
 
-    // Page 0 not in use, it won't be added to the free list
-    // XXX still initialize it?
-   
+    // Page 0 not in use, it won't be added to the free list   
     pages[0].pp_ref = 0;
     pages[0].pp_link = NULL;
-    
+    pages[0].page_flags = 0;
+
     for (i = 1; i < npages; i++) {
 
         //initialize the page_info fields
@@ -269,13 +270,6 @@ void page_init(void)
            
         }
     }
-    
-    /* DEBUG
-    for(int i=0; i<npages; i++){ 
-        cprintf("page number %d i:%d/%d\n", KADDR(page2pa(&pages[i])),i,npages);
-    }
-    */
-   
 }
 
 /*
@@ -449,13 +443,13 @@ void page_free(struct page_info *pp)
                 panic(" page_free huge: THE PAGE TO FREE IS LINKED TO A FREE ELEMENT\n");
             }
         }
+
         //Reset the ALLOC_HUGE flag
         pages[idx].page_flags = pages[idx].page_flags ^ ALLOC_HUGE;
+
         //Reset the ALLOC flags and add the page to the page_free_list
         for(i = idx; i < (idx + KB); i++){
-            //cprintf("b flags %x\n", pp->page_flags);
             pages[i].page_flags = pages[i].page_flags ^ ALLOC;
-            //cprintf("a flags %x\n", pp->page_flags);
             add_head_pfl(&pages[i]);
         }
         return;
@@ -463,7 +457,6 @@ void page_free(struct page_info *pp)
 
     // ALLOC flag reset
     if(pp->page_flags & ALLOC){
-        //cprintf("b flags %x", pp->page_flags);
         pp->page_flags = pp->page_flags ^ ALLOC;
     }else{
         panic("page free: PAGE TO FREE MARKED AS NOT ALLOC\n");
