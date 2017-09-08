@@ -267,7 +267,8 @@ void page_init(void)
         pages[i].page_flags = 0;
         if( !is_allocated_init(&pages[i])){
             add_head_pfl(&pages[i]);
-           
+        }else{
+            pages[i].page_flags |= ALLOC;
         }
     }
 }
@@ -327,6 +328,12 @@ struct page_info *page_alloc(int alloc_flags)
                 if((pp_sup->page_flags & ALLOC) || (pp_sup->page_flags & ALLOC_HUGE) || (pp_sup->page_flags & ALLOC_HUGE_NC)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                }
+                if(alloc_flags & POISON_AFTER_FREE){
+                    if(pp_sup->page_flags & POISON_AFTER_FREE){
+                        panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
+                    }
+                    pp_sup->page_flags |= POISON_AFTER_FREE;
+                }
                 pp_sup->page_flags |= ALLOC;
                 pp_sup = pp_sup->pp_link;
             }
@@ -341,25 +348,46 @@ struct page_info *page_alloc(int alloc_flags)
     //Huge page consecutive support
     if(alloc_flags & ALLOC_HUGE){
 
-        int count = 0;
-        int hp_idx = 0;
-        int i;
-        // Checks if there are 1024 consecutive free pages
-        for(i = 0; (i < npages) && (count != KB); i++){
-            if(pages[i].pp_link){
-                count++;
-            }else{
-                hp_idx = i + 1;
-                count = 0;
+        int count = 0; // Free consecutive pages count
+        int hp_idx = 0; // to keep track of a valid Huge Page candidate
+        int i,j; // j = 4MB iterator i = page iterator
+
+        // Checks if there are 1024 consecutive and aligned free pages
+        for(j=0; j<(npages/KB); j++){
+            hp_idx = j*KB;
+            for(i = 0; i < KB; i++){
+                if(!(pages[i+hp_idx].page_flags & ALLOC)){
+                    count++;
+                }else{
+                    count = 0;
+                    break;
+                }
             }
+            if(count == KB){
+                break;
+            }
+            
         }
+
         if(count == KB){
+            if(alloc_flags & POISON_AFTER_FREE){
+                if(pages[hp_idx].page_flags & POISON_AFTER_FREE){
+                    panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
+                }
+                pages[hp_idx].page_flags |= POISON_AFTER_FREE;
+            }
             if(pages[hp_idx].page_flags & ALLOC_HUGE){
                 panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
             }
             pages[hp_idx].page_flags |= ALLOC_HUGE;
 
             for(i = hp_idx; i < (hp_idx + KB); i++){
+                if(alloc_flags & POISON_AFTER_FREE){
+                    if(pages[i].page_flags & POISON_AFTER_FREE){
+                        panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
+                    }
+                    pages[i].page_flags |= POISON_AFTER_FREE;
+                }
                 if((i != hp_idx) && (pages[i].page_flags & ALLOC_HUGE)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                 }
@@ -381,6 +409,12 @@ struct page_info *page_alloc(int alloc_flags)
     if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE) || (pg0->page_flags & ALLOC_HUGE_NC)){
         panic("page_alloc: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
     }
+    if(alloc_flags & POISON_AFTER_FREE){
+        if(pg0->page_flags & POISON_AFTER_FREE){
+            panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
+        }
+        pg0->page_flags |= POISON_AFTER_FREE;
+    }
     // Set the Alloc flag
     pg0->page_flags |= ALLOC;
 
@@ -396,6 +430,9 @@ struct page_info *page_alloc(int alloc_flags)
     return pg0;
 }
 
+void poison_page(struct page_info * pp){
+    memset(page2kva(pp), 1, PGSIZE);
+}
 /*
  * Return a page to the free list.
  * (This function should only be called when pp->pp_ref reaches 0.)
@@ -426,12 +463,20 @@ void page_free(struct page_info *pp)
         if(count != KB){
             panic("page_free: THIS IS NOT A HUGE PAGE!\n");
         }
+
         //ALLOC_HUGE_NC flag reset
         pp->page_flags = pp->page_flags ^ ALLOC_HUGE_NC;
 
         //ALLOC flag reset
         pp_sup = pp; 
         while(pp_sup){
+            if(!(pp_sup->page_flags & ALLOC)){
+                panic("page free: THE ALLOC FLAG IS NOT SET\n");
+            }
+            if(pp_sup->page_flags & POISON_AFTER_FREE){
+                poison_page(pp_sup);
+                pp_sup->page_flags = pp_sup->page_flags ^ POISON_AFTER_FREE;
+            }
             pp_sup->page_flags = pp_sup->page_flags ^ ALLOC;
             pp_sup = pp_sup->pp_link;
         }
@@ -464,6 +509,10 @@ void page_free(struct page_info *pp)
 
         //Reset the ALLOC flags and add the page to the page_free_list
         for(i = idx; i < (idx + KB); i++){
+            if(pages[i].page_flags & POISON_AFTER_FREE){
+                poison_page(&pages[i]);
+                pages[i].page_flags = pages[i].page_flags ^ POISON_AFTER_FREE;
+            }
             pages[i].page_flags = pages[i].page_flags ^ ALLOC;
             add_head_pfl(&pages[i]);
         }
@@ -471,6 +520,10 @@ void page_free(struct page_info *pp)
     }
 
     // ALLOC flag reset
+    if(pp->page_flags & POISON_AFTER_FREE){
+        poison_page(pp);
+        pp->page_flags = pp->page_flags ^ POISON_AFTER_FREE;
+    }
     if(pp->page_flags & ALLOC){
         pp->page_flags = pp->page_flags ^ ALLOC;
     }else{
