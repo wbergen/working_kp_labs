@@ -354,7 +354,9 @@ struct page_info *page_alloc(int alloc_flags)
             }
         }
         if(count == KB){
-
+            if(pages[hp_idx].page_flags & ALLOC_HUGE){
+                panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+            }
             pages[hp_idx].page_flags |= ALLOC_HUGE;
 
             for(i = hp_idx; i < (hp_idx + KB); i++){
