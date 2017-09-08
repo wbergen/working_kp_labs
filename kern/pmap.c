@@ -324,6 +324,9 @@ struct page_info *page_alloc(int alloc_flags)
             // Set the ALLOC flag
             pp_sup = pp_ret;
             while(pp_sup){
+                if((pp_sup->page_flags & ALLOC) || (pp_sup->page_flags & ALLOC_HUGE) || (pp_sup->page_flags & ALLOC_HUGE_NC)){
+                    panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+               }
                 pp_sup->page_flags |= ALLOC;
                 pp_sup = pp_sup->pp_link;
             }
@@ -355,6 +358,12 @@ struct page_info *page_alloc(int alloc_flags)
             pages[hp_idx].page_flags |= ALLOC_HUGE;
 
             for(i = hp_idx; i < (hp_idx + KB); i++){
+                if((i != hp_idx) && (pages[i].page_flags & ALLOC_HUGE)){
+                    panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+                }
+                if((pages[i].page_flags & ALLOC) || (pages[i].page_flags & ALLOC_HUGE_NC)){
+                    panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+               }
                 pages[i].page_flags |= ALLOC;
                 remove_element_pfl(&pages[i]);
             }
@@ -366,6 +375,10 @@ struct page_info *page_alloc(int alloc_flags)
 
     // Single page allocation
     pg0 = remove_head_pfl();
+
+    if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE) || (pg0->page_flags & ALLOC_HUGE_NC)){
+        panic("page_alloc: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+    }
     // Set the Alloc flag
     pg0->page_flags |= ALLOC;
 
