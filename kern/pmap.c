@@ -840,8 +840,47 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
  */
 int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 {
-    /* Fill this function in */
+
     panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
+    panic_if_null("pgdir_walk: PAGE_INFO IS NULL\n", (void *)pp);
+
+    // Check and set the pa's flags:
+    if (perm & PTE_P){
+        panic("page_insert: PTE_P already set in perms!\n");
+    }
+
+    pte_t * pte;
+    int re_ins_flag;
+    /*XXX Some bug to fix in the page walk!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+    // Find the PTE (allocate huge or normal in case it's not)
+    if(perm & PTE_PS){
+        pte = pgdir_walk(pgdir, va, CREATE_HUGE);
+    }else{
+        pte = pgdir_walk(pgdir, va, CREATE_NORMAL);
+    }
+    // No memory return
+
+    if(!pte){
+        return -E_NO_MEM;
+    }
+
+    // Check for re insertion of the same page
+    re_ins_flag = PTE_ADDR(*pte) !=  page2pa(pp);
+
+    // If the page is present, remove it
+    if((*pte & PTE_P) && re_ins_flag ){
+        page_remove(pgdir, va);
+    }
+
+    // Increment the ref count
+    if(re_ins_flag){
+        pp->pp_ref++;
+    }
+
+    // Insert the page with the perm flags and PTE_P
+    *pte = page2pa(pp) | perm | PTE_P;
+
+    // Success
     return 0;
 }
 
@@ -875,7 +914,7 @@ struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
     if (!pte){
         return NULL;
     } else {
-        return pa2page(PTE_ADDR(pte));
+        return pa2page(PTE_ADDR(*pte));
     }
 }
 
