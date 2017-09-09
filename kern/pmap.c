@@ -897,9 +897,32 @@ struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
  */
 void page_remove(pde_t *pgdir, void *va)
 {
+    panic_if_null("page_remove: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
 
-    /* Fill this function in */
-    panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
+    pte_t *pte;
+    struct page_info * pp = page_lookup(pgdir, va, 0);
+
+    if(!pp){
+        return;
+    }
+    if(pp->pp_ref <= 0){
+        panic("page_remove: PAGE REF COUNT ALREADY 0\n");
+    }
+    // decrement the ref count
+    pp->pp_ref--;
+
+    // if ref count is 0 free the page
+    if(pp->pp_ref == 0)
+        page_free(pp);
+
+    // set to zero the pte value
+    pte = pgdir_walk(pgdir, va, 0);
+    if(pte){
+        *pte = 0;
+    }
+
+    // invalidate the tlb entry
+    tlb_invalidate(pgdir, va);
 }
 
 /*
