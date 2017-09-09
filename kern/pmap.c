@@ -767,6 +767,48 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
 static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
     /* Fill this function in */
+
+    panic_if_null("boot_map_region: pgdir is NULL!", pgdir);
+
+    /*
+    - size is a multiple of page size.  so basically we wanna map size/PGSIZE pages
+     the same as above.
+    - each round:
+        - create single mapping like above:
+        - increment va and pa by 1 PGSIZE
+        - decrement pages_to_map
+    */
+
+    // Ensure size is actually a multiple of PGSIZE
+    if (size % PGSIZE != 0){
+        panic("boot_map_region: size is not a multiple of PGSIZE!\n");
+    }
+
+    // Number of pages to map:
+    int pages_to_map = size/PGSIZE;
+
+    // Map Pages:
+    while (pages_to_map){
+        
+        // Get a new page:
+        pte_t * pte = pgdir_walk(pgdir, (void *)va, CREATE_NORMAL);
+
+        // Check and set the pa's flags:
+        if (perm & PTE_P){
+            panic("boot_map_region: PTE_P already set in perms!\n");
+        }
+
+        pa |= perm | PTE_P;
+
+        // Set va -> pa:
+        *pte = pa;
+
+        // Inc va, pa and dec. size:
+        va += PGSIZE;
+        pa += PGSIZE;
+        pages_to_map --;
+    }
+
 }
 
 /*
