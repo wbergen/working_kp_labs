@@ -865,9 +865,12 @@ struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
     pte_t * pte = pgdir_walk(pgdir, va, 0);
 
     // TODO: pte_store part of this func!!!
-    // if (!pte_store) {
-    //     return NULL;
-    // }
+    // ERROR CHECKING: ensure present isn't set, etc
+
+    // if pte_store not 0, set pte's value:
+    if (pte_store){
+        *pte_store = pte;
+    }
 
     if (!pte){
         return NULL;
