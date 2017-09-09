@@ -841,6 +841,7 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
 int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 {
     /* Fill this function in */
+    panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
     return 0;
 }
 
@@ -895,6 +896,7 @@ void page_remove(pde_t *pgdir, void *va)
 {
 
     /* Fill this function in */
+    panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
 }
 
 /*
@@ -905,6 +907,7 @@ void tlb_invalidate(pde_t *pgdir, void *va)
 {
     /* Flush the entry only if we're modifying the current address space.
      * For now, there is only one address space, so always invalidate. */
+    panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
     invlpg(va);
 }
 
