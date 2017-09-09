@@ -75,4 +75,3 @@ typedef int32_t off_t;
 #define offsetof(type, member)  ((size_t) (&((type*)0)->member))
 
 #endif /* !JOS_INC_TYPES_H */
-
