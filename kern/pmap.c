@@ -428,7 +428,7 @@ struct page_info *page_alloc(int alloc_flags)
                     }
                     pp_sup->page_flags |= POISON_AFTER_FREE;
                 }
-                if(alloc_flags & ALLOC_ZERO0){
+                if(alloc_flags & ALLOC_ZERO){
                     memset( page2kva(pp_sup) ,'\0', PGSIZE );
                 }
                 pp_sup->page_flags |= ALLOC;
@@ -491,7 +491,7 @@ struct page_info *page_alloc(int alloc_flags)
                 if((pages[i].page_flags & ALLOC) || (pages[i].page_flags & ALLOC_HUGE_NC)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                }
-               if(alloc_flags & ALLOC_ZERO0){
+               if(alloc_flags & ALLOC_ZERO){
                     memset( page2kva(&pages[i]) ,'\0', PGSIZE );
                }
                 pages[i].page_flags |= ALLOC;
@@ -646,6 +646,11 @@ void page_decref(struct page_info* pp)
         page_free(pp);
 }
 
+void panic_if_null(char * message, void* ptr){
+    if(!ptr){
+        panic(message);
+    }
+}
 /*
  * Given 'pgdir', a pointer to a page directory, pgdir_walk returns
  * a pointer to the page table entry (PTE) for linear address 'va'.
@@ -680,9 +685,7 @@ void page_decref(struct page_info* pp)
  */
 pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
     // Panic if the pagetable directory is null
-    if(!pgdir){
-        panic("pgdir_walk: PAGE TABLE DIRECTORY NULL\n");
-    }
+    panic_if_null("pgdir_walk: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
 
     // Page table directory entry index
     int ptd_idx = PDX(va);
@@ -733,7 +736,6 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
 
             // Increment the reference count
             pg->pp_ref += 1;
-
 
             ptd_entry = pgdir[ptd_idx];
 
@@ -834,6 +836,7 @@ struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
  */
 void page_remove(pde_t *pgdir, void *va)
 {
+
     /* Fill this function in */
 }
 
