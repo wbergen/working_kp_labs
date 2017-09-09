@@ -897,13 +897,13 @@ void page_remove(pde_t *pgdir, void *va)
     panic_if_null("page_remove: PAGE TABLE DIRECTORY NULL\n", (void *)pgdir);
 
     pte_t *pte;
-    page_info * pp = page_lookup(pgdir, va, 0);
+    struct page_info * pp = page_lookup(pgdir, va, 0);
 
     if(!pp){
-        return NULL;
+        return;
     }
-    if(pp->ref <= 0){
-        panic("page_remove: PAGE REF COUNT ALREADY 0\n")
+    if(pp->pp_ref <= 0){
+        panic("page_remove: PAGE REF COUNT ALREADY 0\n");
     }
     // decrement the ref count
     pp->pp_ref--;
