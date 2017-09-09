@@ -428,6 +428,9 @@ struct page_info *page_alloc(int alloc_flags)
                     }
                     pp_sup->page_flags |= POISON_AFTER_FREE;
                 }
+                if(alloc_flags & ALLOC_ZERO0){
+                    memset( page2kva(pp_sup) ,'\0', PGSIZE );
+                }
                 pp_sup->page_flags |= ALLOC;
                 pp_sup = pp_sup->pp_link;
             }
@@ -487,6 +490,9 @@ struct page_info *page_alloc(int alloc_flags)
                 }
                 if((pages[i].page_flags & ALLOC) || (pages[i].page_flags & ALLOC_HUGE_NC)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
+               }
+               if(alloc_flags & ALLOC_ZERO0){
+                    memset( page2kva(&pages[i]) ,'\0', PGSIZE );
                }
                 pages[i].page_flags |= ALLOC;
                 remove_element_pfl(&pages[i]);
@@ -691,17 +697,33 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
     // Page table Directory entry
     pde_t ptd_entry = pgdir[ptd_idx];
 
+    // Create a huge page
 
     if(!(ptd_entry & PTE_P)){
         // If create is 0 return null
         if(create == 0){
             return NULL;
         }
+        if(create & CREATE_HUGE){
+
+            // Allocate the huge page 
+            pg = page_alloc(ALLOC_ZERO | ALLOC_HUGE);
+
+            //If the allocation fails return NULL
+            if(!pg){
+                return NULL;
+            }
+            // Set the page in pgdir with present, write and user flags set
+            pgdir[ptd_idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U | PTE_PS;
+
+            ptd_entry = pgdir[ptd_idx];
+
+        }
         // If CREATE_NORMAL is set first allocate a page for the PT and then set it whithin the PTD entry
         if(create & CREATE_NORMAL){
-            // allocate the page with ALLOC_ZERO to initialize it and POISON_AFTER_FREE
-            pg = page_alloc(ALLOC_ZERO | POISON_AFTER_FREE);
-            //If the allocation fails return NULL
+            // Allocate the page with ALLOC_ZERO to initialize it and POISON_AFTER_FREE
+            pg = page_alloc( ALLOC_ZERO | POISON_AFTER_FREE );
+            // If the allocation fails return NULL
             if(!pg){
                 return NULL;
             }
@@ -717,9 +739,15 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
 
         }
     }
+    // If it's a huge page return the entry from PTD otherwise look up the PTE 
+    if(ptd_entry & PTE_PS){
+        //return the pointer to the huge page
+        return &pgdir[ptd_idx];
+    }else{
         // Find the K virtual address of the pte_entry
         pte = KADDR(PTE_ADDR(ptd_entry));
         return &pte[pte_idx];
+    }
 
 }
 
