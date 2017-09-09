@@ -141,9 +141,6 @@ void mem_init(void)
     /* Find out how much memory the machine has (npages & npages_basemem). */
     i386_detect_memory();
 
-    /* Remove this line when you're ready to test this function. */
-    //panic("mem_init: This function is not finished\n");
-
     /*********************************************************************
      * create initial page directory.
      */
@@ -675,10 +672,55 @@ void page_decref(struct page_info* pp)
  * Hint 3: look at inc/mmu.h for useful macros that manipulate page
  * table and page directory entries.
  */
-pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create)
-{
-    /* Fill this function in */
-    return NULL;
+pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
+    // Panic if the pagetable directory is null
+    if(!pgdir){
+        panic("pgdir_walk: PAGE TABLE DIRECTORY NULL\n");
+    }
+
+    // Page table directory entry index
+    int ptd_idx = PDX(va);
+    int pte_idx = PTX(va);
+
+    // Page to allocate in case the pte is not present
+    struct page_info * pg;
+
+    // Page table entry to return and page table to adress
+    pte_t * pte;
+
+    // Page table Directory entry
+    pde_t ptd_entry = pgdir[ptd_idx];
+
+
+    if(!(ptd_entry & PTE_P)){
+        // If create is 0 return null
+        if(create == 0){
+            return NULL;
+        }
+        // If CREATE_NORMAL is set first allocate a page for the PT and then set it whithin the PTD entry
+        if(create & CREATE_NORMAL){
+            // allocate the page with ALLOC_ZERO to initialize it and POISON_AFTER_FREE
+            pg = page_alloc(ALLOC_ZERO | POISON_AFTER_FREE);
+            //If the allocation fails return NULL
+            if(!pg){
+                return NULL;
+            }
+
+            // Set the page in pgdir with present, write and user flags set
+            pgdir[ptd_idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U;
+
+            // Increment the reference count
+            pg->pp_ref += 1;
+
+
+            ptd_entry = pgdir[ptd_idx];
+
+        }
+    }
+        // Find the K virtual address of the pte_entry
+        pte = KADDR(PTE_ADDR(ptd_entry));
+        return &pte[pte_idx];
+
 }
 
 /*
