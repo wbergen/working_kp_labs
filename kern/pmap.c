@@ -768,11 +768,11 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
 {
     /* Fill this function in */
 
-    panic_if_null("boot_map_region: pgdir is NULL!", pgdir);
+    panic_if_null("boot_map_region: pgdir is NULL!\n", pgdir);
 
     /*
-    - size is a multiple of page size.  so basically we wanna map size/PGSIZE pages
-     the same as above.
+    - size is a multiple of page size.  so basically we wanna map
+     size/PGSIZE pages.
     - each round:
         - create single mapping like above:
         - increment va and pa by 1 PGSIZE
@@ -859,8 +859,23 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
     /* Fill this function in */
-    return NULL;
+    panic_if_null("page_lookup: pgdir is NULL!\n", pgdir);
+
+    // Get the pt entry of the va:
+    pte_t * pte = pgdir_walk(pgdir, va, 0);
+
+    // TODO: pte_store part of this func!!!
+    // if (!pte_store) {
+    //     return NULL;
+    // }
+
+    if (!pte){
+        return NULL;
+    } else {
+        return pa2page(PTE_ADDR(pte));
+    }
 }
+
 
 /*
  * Unmaps the physical page at virtual address 'va'.
