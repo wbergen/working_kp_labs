@@ -787,9 +787,10 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
     // Number of pages to map:
     int pages_to_map = size/PGSIZE;
 
+
     // Map Pages:
-    while (pages_to_map){
-        
+    for (int i = 0; i < pages_to_map; ++i)
+    {
         // Get a new page:
         pte_t * pte = pgdir_walk(pgdir, (void *)va, CREATE_NORMAL);
 
@@ -806,8 +807,8 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
         // Inc va, pa and dec. size:
         va += PGSIZE;
         pa += PGSIZE;
-        pages_to_map --;
     }
+
 
 }
 
