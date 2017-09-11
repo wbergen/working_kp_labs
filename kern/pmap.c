@@ -197,7 +197,7 @@ void mem_init(void)
     //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
     // cprintf("UPAGES: %u, PTSIZE: %u\n", UPAGES, PTSIZE);
     // I think correct:
-    // boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P);
+    boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U );
 
 /*********************************************************************
      * Use the physical memory that 'bootstack' refers to as the kernel
@@ -211,19 +211,13 @@ void mem_init(void)
      *     Permissions: kernel RW, user NONE
      * Your code goes here:
      */
-    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
 
     // [KSTACKTOP-KSTKSIZE, KSTACKTOP)
-    // size_t stack_size = KSTACKTOP - (KSTACKTOP-PTSIZE);
+
     // cprintf("stack_size: %u\n", stack_size);
     // I think correct (BUT) maybe it should be all done in one, not two calls...
-    // boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, stack_size, PADDR(bootstack), PTE_P | PTE_W);
-
-    // [KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE)
-    // stack_size = (KSTACKTOP-PTSIZE) - (KSTACKTOP-KSTKSIZE);
-    // I think correct:
-    // boot_map_region(kern_pgdir, KSTACKTOP-PTSIZE, stack_size, PADDR(bootstack), PTE_P | PTE_W);
-
+    boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
     /* Note: Dont map anything between KSTACKTOP - PTSIZE and KSTACKTOP - KTSIZE
      * leaving this as guard region.
@@ -241,9 +235,9 @@ void mem_init(void)
 
     // t should be one 2^32-KERNBASE
     // Should be correct...
-    // uint32_t t = 0 - KERNBASE;
+    uint32_t t = 0 - KERNBASE;
     // cprintf("t: %u == 4294967296. ROUNDUP: %u\n", t, ROUNDUP(t, PGSIZE));
-    // boot_map_region(kern_pgdir, KERNBASE, t, 0, PTE_W);
+    boot_map_region(kern_pgdir, KERNBASE, t, 0, PTE_W);
 
     /* Enable Page Size Extensions for huge page support */
     lcr4(rcr4() | CR4_PSE);
@@ -338,7 +332,7 @@ void remove_element_pfl(struct page_info * pp){
 struct page_info * remove_element_4MB_pfl(){
 
     struct page_info * pp = page_free_list;
-    struct page_info * pp_old;
+    struct page_info * pp_old = NULL;
 
     if(page2pa(page_free_list) < 0x400000){
         page_free_list = pp->pp_link;
@@ -758,16 +752,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
         }
         if(create & CREATE_HUGE){
 
-            // Allocate the huge page 
-
-            pg = page_alloc(ALLOC_ZERO | ALLOC_HUGE);
-
-            //If the allocation fails return NULL
-            if(!pg){
-                return NULL;
-            }
-            // Set the page in pgdir with present, write and user flags set
-            pgdir[ptd_idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U | PTE_PS;
+            pgdir[ptd_idx] = 0;
 
             ptd_entry = pgdir[ptd_idx];
 
@@ -1485,11 +1470,9 @@ static void check_page_hugepages(void)
     assert(php0->pp_ref == 1);
     memset(page2kva(php0), 1, PGSIZE);
     assert(*(uint32_t *)(1024*PGSIZE) == 0x01010101U);
-
     /* Access the second 4K-page within the huge page */
     memset(page2kva(php0+1), 2, PGSIZE);
     assert(*(uint32_t *)(1025*PGSIZE) == 0x02020202U);
-
     /* Writing to the last 4K-page within the huge page works? */
     *(uint32_t *)(2*1024*PGSIZE - 42) = 0x42424242U;
     assert(*(uint32_t *)(2*1024*PGSIZE - 42) == 0x42424242U);
@@ -1499,7 +1482,7 @@ static void check_page_hugepages(void)
     memset(page2kva(php0+1022), 0x38, PGSIZE);
     assert(*(uint32_t *)((1024+1021)*PGSIZE) == 0x37373737U);
     assert(*(uint32_t *)((1024+1022)*PGSIZE) == 0x38383838U);
-
+    cprintf("3\n");
     /* Check pgdir_walk for the page and the PSE bit */
     pte_t *p_pte1, *p_pte2;
     p_pte1 = pgdir_walk(kern_pgdir, (void*)(1024*PGSIZE), 0);
@@ -1508,12 +1491,10 @@ static void check_page_hugepages(void)
     p_pte2 = pgdir_walk(kern_pgdir, (void*)(1025*PGSIZE), 0);
     assert(NULL != p_pte2);
     assert(p_pte1 == p_pte2);
-
     /* check page_remove() on the huge page */
     page_remove(kern_pgdir, (void*) (1024*PGSIZE));
     assert(php0->pp_ref == 0);
     assert((php0+1022)->pp_ref == 0);
-
     /* check CREATE_HUGE flag */
     p_pte1 = pgdir_walk(kern_pgdir, (void*)(1024*PGSIZE), CREATE_HUGE);
     assert(NULL != p_pte1);
