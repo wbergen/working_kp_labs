@@ -414,6 +414,32 @@ void page_init(void)
     }
 }
 
+int find_huge_page(){
+        int count = 0; // Free consecutive pages count
+        int hp_idx = 0; // to keep track of a valid Huge Page candidate
+        int i,j; // j = 4MB iterator i = page iterator
+
+        // Checks if there are 1024 consecutive and aligned free pages
+        for(j=0; j<(npages/KB); j++){
+            hp_idx = j*KB;
+            for(i = 0; i < KB; i++){
+                if(!(pages[i+hp_idx].page_flags & ALLOC)){
+                    count++;
+                }else{
+                    count = 0;
+                    break;
+                }
+            }
+            if(count == KB){
+                break;
+            }         
+        }
+        if(count == KB){
+            return hp_idx;
+        }else{
+            return -1;
+        }
+}
 /*
  * Allocates a physical page.  
  * If (alloc_flags & ALLOC_ZERO), fills the entire
@@ -442,75 +468,18 @@ struct page_info *page_alloc(int alloc_flags)
     if( !page_free_list ){
         return NULL;
     }
-    //Huge page non consecutive support     /*  STILL TO TEST */
-    if(alloc_flags & ALLOC_HUGE_NC){
 
-        int count = 0;
-        int first_hp;
-        struct page_info * pp = page_free_list;
-        struct page_info * pp_old, *pp_ret, * pp_sup;
-
-        //look for available nc huge pages
-        while(pp || count != KB){
-            count++;
-            pp_old = pp;
-            pp = pp->pp_link;
-        }
-         if(count == KB){
-            /* GIVE HUGE PAGE*/
-            pp_ret = page_free_list;
-            page_free_list = pp;
-            pp_old->pp_link = NULL;
-
-            // Set the ALLOC flag
-            pp_sup = pp_ret;
-            while(pp_sup){
-                if((pp_sup->page_flags & ALLOC) || (pp_sup->page_flags & ALLOC_HUGE) || (pp_sup->page_flags & ALLOC_HUGE_NC)){
-                    panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
-               }
-                if(alloc_flags & POISON_AFTER_FREE){
-                    if(pp_sup->page_flags & POISON_AFTER_FREE){
-                        panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
-                    }
-                    pp_sup->page_flags |= POISON_AFTER_FREE;
-                }
-                if((alloc_flags & ALLOC_ZERO)){
-                    memset( page2kva(pp_sup) ,'\0', PGSIZE );
-                }
-                pp_sup->page_flags |= ALLOC;
-                pp_sup = pp_sup->pp_link;
-            }
-            // Set the ALLOC_HUGE_NC flag
-            pp_ret->page_flags |= ALLOC_HUGE_NC;
-            return pp_ret;
-        } 
-        /*HUGE PAGE NOT AVAILABLE*/
-        return NULL;
-    }
     //Huge page consecutive support
     if(alloc_flags & ALLOC_HUGE){
 
-        int count = 0; // Free consecutive pages count
-        int hp_idx = 0; // to keep track of a valid Huge Page candidate
-        int i,j; // j = 4MB iterator i = page iterator
+        int hp_idx = 0;
+        int i;
 
-        // Checks if there are 1024 consecutive and aligned free pages
-        for(j=0; j<(npages/KB); j++){
-            hp_idx = j*KB;
-            for(i = 0; i < KB; i++){
-                if(!(pages[i+hp_idx].page_flags & ALLOC)){
-                    count++;
-                }else{
-                    count = 0;
-                    break;
-                }
-            }
-            if(count == KB){
-                break;
-            }
-            
-        }
-        if(count == KB){
+
+        hp_idx = find_huge_page();
+        cprintf("hp_idx: %d, %x \n", hp_idx, page2kva(&pages[hp_idx]));
+        if( hp_idx != -1 ){
+
             if(alloc_flags & POISON_AFTER_FREE){
                 if(pages[hp_idx].page_flags & POISON_AFTER_FREE){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
@@ -532,7 +501,7 @@ struct page_info *page_alloc(int alloc_flags)
                 if((i != hp_idx) && (pages[i].page_flags & ALLOC_HUGE)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                 }
-                if((pages[i].page_flags & ALLOC) || (pages[i].page_flags & ALLOC_HUGE_NC)){
+                if((pages[i].page_flags & ALLOC)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                }
                 if((alloc_flags & ALLOC_ZERO)){
@@ -554,7 +523,7 @@ struct page_info *page_alloc(int alloc_flags)
     }
     
 
-    if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE) || (pg0->page_flags & ALLOC_HUGE_NC)){
+    if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE)){
         panic("page_alloc: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
     }
     if(alloc_flags & POISON_AFTER_FREE){
@@ -596,41 +565,8 @@ void page_free(struct page_info *pp)
     if(pp->pp_ref){
         panic(" page_free: THE PAGE TO FREE IS STILL REFERENCED\n");
     }
-    if(pp->pp_link && (pp->page_flags & ALLOC_HUGE_NC)){
+    if(pp->pp_link){
         panic(" page_free: THE PAGE TO FREE IS LINKED TO A FREE ELEMENT\n");
-    }
-    /*  Not consecutive Huge Page free */
-    if(pp->page_flags & ALLOC_HUGE_NC){
-        pp_sup = pp;
-        while(pp_sup){
-            count++;
-            pp_old = pp_sup;
-            pp_sup = pp_sup->pp_link;
-        }
-        if(count != KB){
-            panic("page_free: THIS IS NOT A HUGE PAGE!\n");
-        }
-
-        //ALLOC_HUGE_NC flag reset
-        pp->page_flags = pp->page_flags ^ ALLOC_HUGE_NC;
-
-        //ALLOC flag reset
-        pp_sup = pp; 
-        while(pp_sup){
-            if(!(pp_sup->page_flags & ALLOC)){
-                panic("page free: THE ALLOC FLAG IS NOT SET\n");
-            }
-            if(pp_sup->page_flags & POISON_AFTER_FREE){
-                poison_page(pp_sup);
-                pp_sup->page_flags = pp_sup->page_flags ^ POISON_AFTER_FREE;
-            }
-            pp_sup->page_flags = pp_sup->page_flags ^ ALLOC;
-            pp_sup = pp_sup->pp_link;
-        }
-        //Meging huge page list with free page list
-        pp_old->pp_link = page_free_list;
-        page_free_list = pp;
-        return;
     }
 
     /* Huge page free */
@@ -751,7 +687,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
             return NULL;
         }
         if(create & CREATE_HUGE){
-
+            
             pgdir[ptd_idx] = 0;
 
             ptd_entry = pgdir[ptd_idx];
@@ -775,7 +711,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
         }
     }
     // If it's a huge page return the entry from PTD otherwise look up the PTE 
-    if(ptd_entry & PTE_PS){
+    if((create & CREATE_HUGE) || (ptd_entry & PTE_PS)){
         //return the pointer to the huge page
         return &pgdir[ptd_idx];
     }else{
@@ -888,6 +824,7 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
     
     // Find the PTE (allocate huge or normal in case it's not)
     if(perm & PTE_PS){
+        cprintf("huge\n");
         pte = pgdir_walk(pgdir, va, CREATE_HUGE);
     }else{
         pte = pgdir_walk(pgdir, va, CREATE_NORMAL);
@@ -897,20 +834,21 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
     if(!pte){
         return -E_NO_MEM;
     }
-
+        cprintf("huge1 \n");    
     // Check for re insertion of the same page
     re_ins_flag = (PTE_ADDR(*pte) !=  page2pa(pp));
 
     // If the page is present, remove it
     if((*pte & PTE_P) && re_ins_flag ){
+        cprintf("huge 2\n");
         page_remove(pgdir, va);
     }
- 
+        cprintf("huge 3\n"); 
     // Increment the ref count
     if(re_ins_flag){
         pp->pp_ref++;
     }
-
+        cprintf("huge 4\n");
     // Insert the page with the perm flags and PTE_P
     *pte = page2pa(pp) | perm | PTE_P;
 
@@ -1482,7 +1420,7 @@ static void check_page_hugepages(void)
     memset(page2kva(php0+1022), 0x38, PGSIZE);
     assert(*(uint32_t *)((1024+1021)*PGSIZE) == 0x37373737U);
     assert(*(uint32_t *)((1024+1022)*PGSIZE) == 0x38383838U);
-    cprintf("3\n");
+
     /* Check pgdir_walk for the page and the PSE bit */
     pte_t *p_pte1, *p_pte2;
     p_pte1 = pgdir_walk(kern_pgdir, (void*)(1024*PGSIZE), 0);

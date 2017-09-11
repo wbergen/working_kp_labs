@@ -47,7 +47,6 @@ enum {
     ALLOC_ZERO = 1<<0,
     ALLOC_HUGE = 1<<1,
     ALLOC_PREMAPPED = 1<<2,
-    ALLOC_HUGE_NC = 1<<3,
     ALLOC = 1<<4,
     POISON_AFTER_FREE = 1<<5,
 };
