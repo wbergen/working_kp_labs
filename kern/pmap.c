@@ -9,6 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 
+
 /* These variables are set by i386_detect_memory() */
 pde_t *kern_pgdir;              /* Kernel's initial page directory */
 size_t npages;                  /* Amount of physical memory (in pages) */
@@ -181,10 +182,10 @@ void mem_init(void)
 
     check_page();
 
-    /*********************************************************************
+/*********************************************************************
      * Now we set up virtual memory */
 
-    /*********************************************************************
+/*********************************************************************
      * Map 'pages' read-only by the user at linear address UPAGES
      * Permissions:
      *    - the new image at UPAGES -- kernel R, user R
@@ -193,7 +194,12 @@ void mem_init(void)
      * Your code goes here:
      */
 
-    /*********************************************************************
+    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+    // cprintf("UPAGES: %u, PTSIZE: %u\n", UPAGES, PTSIZE);
+    // I think correct:
+    // boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U | PTE_P);
+
+/*********************************************************************
      * Use the physical memory that 'bootstack' refers to as the kernel
      * stack.  The kernel stack grows down from virtual address KSTACKTOP.
      * We consider the entire range from [KSTACKTOP-PTSIZE, KSTACKTOP)
@@ -205,12 +211,25 @@ void mem_init(void)
      *     Permissions: kernel RW, user NONE
      * Your code goes here:
      */
+    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+
+    // [KSTACKTOP-KSTKSIZE, KSTACKTOP)
+    // size_t stack_size = KSTACKTOP - (KSTACKTOP-PTSIZE);
+    // cprintf("stack_size: %u\n", stack_size);
+    // I think correct (BUT) maybe it should be all done in one, not two calls...
+    // boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, stack_size, PADDR(bootstack), PTE_P | PTE_W);
+
+    // [KSTACKTOP-PTSIZE, KSTACKTOP-KSTKSIZE)
+    // stack_size = (KSTACKTOP-PTSIZE) - (KSTACKTOP-KSTKSIZE);
+    // I think correct:
+    // boot_map_region(kern_pgdir, KSTACKTOP-PTSIZE, stack_size, PADDR(bootstack), PTE_P | PTE_W);
+
 
     /* Note: Dont map anything between KSTACKTOP - PTSIZE and KSTACKTOP - KTSIZE
      * leaving this as guard region.
      */
 
-    /*********************************************************************
+/*********************************************************************
      * Map all of physical memory at KERNBASE.
      * Ie.  the VA range [KERNBASE, 2^32) should map to
      *      the PA range [0, 2^32 - KERNBASE)
@@ -219,6 +238,12 @@ void mem_init(void)
      * Permissions: kernel RW, user NONE
      * Your code goes here:
      */
+
+    // t should be one 2^32-KERNBASE
+    // Should be correct...
+    // uint32_t t = 0 - KERNBASE;
+    // cprintf("t: %u == 4294967296. ROUNDUP: %u\n", t, ROUNDUP(t, PGSIZE));
+    // boot_map_region(kern_pgdir, KERNBASE, t, 0, PTE_W);
 
     /* Enable Page Size Extensions for huge page support */
     lcr4(rcr4() | CR4_PSE);
@@ -548,8 +573,21 @@ struct page_info *page_alloc(int alloc_flags)
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
+<<<<<<< HEAD
     if((alloc_flags & ALLOC_ZERO) ){
         memset( page2kva(pg0) ,'\0', PGSIZE );          
+=======
+    if(alloc_flags & ALLOC_ZERO){
+        cprintf("trying to zero (kva) %x, (pa) %x\n", page2kva(pg0), page2pa(pg0));
+        memset( page2kva(pg0) ,'\0', PGSIZE );
+    }
+
+    // ALLOC_PREMAPPED support
+    if(alloc_flags & ALLOC_PREMAPPED){
+        cprintf("PREMAPPED: %x\n", page2kva(pg0));
+        /*  XXX TO BE DONE  */
+        // return page2pa(pg0);
+>>>>>>> bb3cdbf0c3179974c4b950aabb1b4ec29fe088cc
     }
     return pg0;
 }
@@ -809,9 +847,10 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
     // Number of pages to map:
     int pages_to_map = size/PGSIZE;
 
+
     // Map Pages:
-    while (pages_to_map){
-        
+    for (int i = 0; i < pages_to_map; ++i)
+    {
         // Get a new page:
         pte_t * pte = pgdir_walk(pgdir, (void *)va, CREATE_NORMAL);
 
@@ -828,8 +867,8 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
         // Inc va, pa and dec. size:
         va += PGSIZE;
         pa += PGSIZE;
-        pages_to_map --;
     }
+
 
 }
 
