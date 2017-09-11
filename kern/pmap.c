@@ -573,21 +573,9 @@ struct page_info *page_alloc(int alloc_flags)
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
-<<<<<<< HEAD
+
     if((alloc_flags & ALLOC_ZERO) ){
         memset( page2kva(pg0) ,'\0', PGSIZE );          
-=======
-    if(alloc_flags & ALLOC_ZERO){
-        cprintf("trying to zero (kva) %x, (pa) %x\n", page2kva(pg0), page2pa(pg0));
-        memset( page2kva(pg0) ,'\0', PGSIZE );
-    }
-
-    // ALLOC_PREMAPPED support
-    if(alloc_flags & ALLOC_PREMAPPED){
-        cprintf("PREMAPPED: %x\n", page2kva(pg0));
-        /*  XXX TO BE DONE  */
-        // return page2pa(pg0);
->>>>>>> bb3cdbf0c3179974c4b950aabb1b4ec29fe088cc
     }
     return pg0;
 }
