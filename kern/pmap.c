@@ -12,11 +12,13 @@
 /* These variables are set by i386_detect_memory() */
 pde_t *kern_pgdir;              /* Kernel's initial page directory */
 size_t npages;                  /* Amount of physical memory (in pages) */
+size_t PREMAPPED_FLAG;
 static size_t npages_basemem;   /* Amount of base memory (in pages) */
 
 /* These variables are set in mem_init() */
 struct page_info *pages;                 /* Physical page state array */
 static struct page_info *page_free_list; /* Free list of physical pages */
+
 
 
 /***************************************************************
@@ -140,7 +142,7 @@ void mem_init(void)
 
     /* Find out how much memory the machine has (npages & npages_basemem). */
     i386_detect_memory();
-
+    PREMAPPED_FLAG = 1;
     /*********************************************************************
      * create initial page directory.
      */
@@ -241,7 +243,7 @@ void mem_init(void)
     cr0 |= CR0_PE|CR0_PG|CR0_AM|CR0_WP|CR0_NE|CR0_MP;
     cr0 &= ~(CR0_TS|CR0_EM);
     lcr0(cr0);
-
+    PREMAPPED_FLAG = 0;
     /* Some more checks, only possible after kern_pgdir is installed. */
     check_page_installed_pgdir();
 
@@ -302,6 +304,32 @@ void remove_element_pfl(struct page_info * pp){
         pp_old = pp_c;
         pp_c = pp_c->pp_link;
     }
+}
+
+/*
+    Returns a page with a PA in the first 4MB
+    To use when only the first 4 MB of PA are mapped
+*/
+struct page_info * remove_element_4MB_pfl(){
+
+    struct page_info * pp = page_free_list;
+    struct page_info * pp_old;
+
+    if(page2pa(page_free_list) < 0x400000){
+        page_free_list = pp->pp_link;
+        pp->pp_link = NULL;
+        return pp; 
+    }
+    while(pp){
+        if(page2pa(pp) < 0x400000){
+            pp_old->pp_link = pp->pp_link;
+            pp->pp_link = NULL;
+            return pp;
+        }
+        pp_old = pp;
+        pp = pp->pp_link;
+    }
+    return NULL;
 }
 
 /*
@@ -395,7 +423,6 @@ struct page_info *page_alloc(int alloc_flags)
     if( !page_free_list ){
         return NULL;
     }
-
     //Huge page non consecutive support     /*  STILL TO TEST */
     if(alloc_flags & ALLOC_HUGE_NC){
 
@@ -428,7 +455,7 @@ struct page_info *page_alloc(int alloc_flags)
                     }
                     pp_sup->page_flags |= POISON_AFTER_FREE;
                 }
-                if(alloc_flags & ALLOC_ZERO){
+                if((alloc_flags & ALLOC_ZERO)){
                     memset( page2kva(pp_sup) ,'\0', PGSIZE );
                 }
                 pp_sup->page_flags |= ALLOC;
@@ -441,7 +468,6 @@ struct page_info *page_alloc(int alloc_flags)
         /*HUGE PAGE NOT AVAILABLE*/
         return NULL;
     }
-
     //Huge page consecutive support
     if(alloc_flags & ALLOC_HUGE){
 
@@ -465,7 +491,6 @@ struct page_info *page_alloc(int alloc_flags)
             }
             
         }
-
         if(count == KB){
             if(alloc_flags & POISON_AFTER_FREE){
                 if(pages[hp_idx].page_flags & POISON_AFTER_FREE){
@@ -491,7 +516,7 @@ struct page_info *page_alloc(int alloc_flags)
                 if((pages[i].page_flags & ALLOC) || (pages[i].page_flags & ALLOC_HUGE_NC)){
                     panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
                }
-               if(alloc_flags & ALLOC_ZERO){
+                if((alloc_flags & ALLOC_ZERO)){
                     memset( page2kva(&pages[i]) ,'\0', PGSIZE );
                }
                 pages[i].page_flags |= ALLOC;
@@ -502,9 +527,13 @@ struct page_info *page_alloc(int alloc_flags)
             return NULL;
         }
     }
-
     // Single page allocation
-    pg0 = remove_head_pfl();
+    if(PREMAPPED_FLAG){
+        pg0 = remove_element_4MB_pfl();
+    }else{
+        pg0 = remove_head_pfl();
+    }
+    
 
     if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE) || (pg0->page_flags & ALLOC_HUGE_NC)){
         panic("page_alloc: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
@@ -519,13 +548,8 @@ struct page_info *page_alloc(int alloc_flags)
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
-    if(alloc_flags & ALLOC_ZERO){
-        memset( page2kva(pg0) ,'\0', PGSIZE );
-    }
-
-    // ALLOC_PREMAPPED support
-    if(alloc_flags & ALLOC_PREMAPPED){
-        /*  XXX TO BE DONE  */
+    if((alloc_flags & ALLOC_ZERO) ){
+        memset( page2kva(pg0) ,'\0', PGSIZE );          
     }
     return pg0;
 }
@@ -701,7 +725,6 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
     pde_t ptd_entry = pgdir[ptd_idx];
 
     // Create a huge page
-
     if(!(ptd_entry & PTE_P)){
         // If create is 0 return null
         if(create == 0){
@@ -710,6 +733,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
         if(create & CREATE_HUGE){
 
             // Allocate the huge page 
+
             pg = page_alloc(ALLOC_ZERO | ALLOC_HUGE);
 
             //If the allocation fails return NULL
@@ -725,15 +749,13 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
         // If CREATE_NORMAL is set first allocate a page for the PT and then set it whithin the PTD entry
         if(create & CREATE_NORMAL){
             // Allocate the page with ALLOC_ZERO to initialize it and POISON_AFTER_FREE
-            pg = page_alloc( ALLOC_ZERO | POISON_AFTER_FREE );
+            pg = page_alloc( ALLOC_ZERO );             
             // If the allocation fails return NULL
             if(!pg){
                 return NULL;
             }
-
             // Set the page in pgdir with present, write and user flags set
             pgdir[ptd_idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U;
-
             // Increment the reference count
             pg->pp_ref += 1;
 
@@ -851,27 +873,27 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 
     pte_t * pte;
     int re_ins_flag;
-    /*XXX Some bug to fix in the page walk!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+    
     // Find the PTE (allocate huge or normal in case it's not)
     if(perm & PTE_PS){
         pte = pgdir_walk(pgdir, va, CREATE_HUGE);
     }else{
         pte = pgdir_walk(pgdir, va, CREATE_NORMAL);
     }
-    // No memory return
 
+    // No memory return
     if(!pte){
         return -E_NO_MEM;
     }
 
     // Check for re insertion of the same page
-    re_ins_flag = PTE_ADDR(*pte) !=  page2pa(pp);
+    re_ins_flag = (PTE_ADDR(*pte) !=  page2pa(pp));
 
     // If the page is present, remove it
     if((*pte & PTE_P) && re_ins_flag ){
         page_remove(pgdir, va);
     }
-
+ 
     // Increment the ref count
     if(re_ins_flag){
         pp->pp_ref++;
