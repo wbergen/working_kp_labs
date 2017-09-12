@@ -194,9 +194,6 @@ void mem_init(void)
      * Your code goes here:
      */
 
-    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
-    // cprintf("UPAGES: %u, PTSIZE: %u\n", UPAGES, PTSIZE);
-    // I think correct:
     boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U );
 
 /*********************************************************************
@@ -211,12 +208,7 @@ void mem_init(void)
      *     Permissions: kernel RW, user NONE
      * Your code goes here:
      */
-    //boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm);
 
-    // [KSTACKTOP-KSTKSIZE, KSTACKTOP)
-
-    // cprintf("stack_size: %u\n", stack_size);
-    // I think correct (BUT) maybe it should be all done in one, not two calls...
     boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
     /* Note: Dont map anything between KSTACKTOP - PTSIZE and KSTACKTOP - KTSIZE
@@ -233,10 +225,8 @@ void mem_init(void)
      * Your code goes here:
      */
 
-    // t should be one 2^32-KERNBASE
-    // Should be correct...
     uint32_t t = 0 - KERNBASE;
-    // cprintf("t: %u == 4294967296. ROUNDUP: %u\n", t, ROUNDUP(t, PGSIZE));
+
     boot_map_region(kern_pgdir, KERNBASE, t, 0, PTE_W);
 
     /* Enable Page Size Extensions for huge page support */
@@ -270,6 +260,9 @@ void mem_init(void)
     check_page_hugepages();
 }
 
+/*
+This funtion is used only in the first part of the mem_init and will return true only if the page is free
+*/
 int is_allocated_init(struct page_info *pp){
     physaddr_t page_a;
     page_a = page2pa(pp);
@@ -414,6 +407,9 @@ void page_init(void)
     }
 }
 
+/*
+The function finds the first alligned free huge page in the pages array
+*/
 int find_huge_page(){
         int count = 0; // Free consecutive pages count
         int hp_idx = 0; // to keep track of a valid Huge Page candidate
@@ -477,7 +473,7 @@ struct page_info *page_alloc(int alloc_flags)
 
 
         hp_idx = find_huge_page();
-        cprintf("hp_idx: %d, %x \n", hp_idx, page2kva(&pages[hp_idx]));
+
         if( hp_idx != -1 ){
 
             if(alloc_flags & POISON_AFTER_FREE){
@@ -516,6 +512,7 @@ struct page_info *page_alloc(int alloc_flags)
         }
     }
     // Single page allocation
+    //In case of PREMAPPED_FLAG on give a ph page withing 4 MB
     if(PREMAPPED_FLAG){
         pg0 = remove_element_4MB_pfl();
     }else{
@@ -674,7 +671,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
     // Page to allocate in case the pte is not present
     struct page_info * pg;
 
-    // Page table entry to return and page table to adress
+    // Page table entry to return and page table to address
     pte_t * pte;
 
     // Page table Directory entry
@@ -686,6 +683,7 @@ pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create){
         if(create == 0){
             return NULL;
         }
+        // If CREATE_HUGE is set do not allocate the second level page table but just return the pdt entry
         if(create & CREATE_HUGE){
             
             pgdir[ptd_idx] = 0;
@@ -824,7 +822,6 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
     
     // Find the PTE (allocate huge or normal in case it's not)
     if(perm & PTE_PS){
-        cprintf("huge\n");
         pte = pgdir_walk(pgdir, va, CREATE_HUGE);
     }else{
         pte = pgdir_walk(pgdir, va, CREATE_NORMAL);
@@ -833,22 +830,18 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
     // No memory return
     if(!pte){
         return -E_NO_MEM;
-    }
-        cprintf("huge1 \n");    
+    } 
     // Check for re insertion of the same page
     re_ins_flag = (PTE_ADDR(*pte) !=  page2pa(pp));
 
     // If the page is present, remove it
     if((*pte & PTE_P) && re_ins_flag ){
-        cprintf("huge 2\n");
         page_remove(pgdir, va);
-    }
-        cprintf("huge 3\n"); 
+    } 
     // Increment the ref count
     if(re_ins_flag){
         pp->pp_ref++;
     }
-        cprintf("huge 4\n");
     // Insert the page with the perm flags and PTE_P
     *pte = page2pa(pp) | perm | PTE_P;
 
@@ -869,14 +862,10 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
  */
 struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
-    /* Fill this function in */
     panic_if_null("page_lookup: pgdir is NULL!\n", pgdir);
 
     // Get the pt entry of the va:
     pte_t * pte = pgdir_walk(pgdir, va, 0);
-
-    // TODO: pte_store part of this func!!!
-    // ERROR CHECKING: ensure present isn't set, etc
 
     // if pte_store not 0, set pte's value:
     if (pte_store){
@@ -913,26 +902,29 @@ void page_remove(pde_t *pgdir, void *va)
     pte_t *pte;
     struct page_info * pp = page_lookup(pgdir, va, 0);
 
+    // If page lookup cannot find the page return
     if(!pp){
         return;
     }
+
+    // Check the reference count to be more than 0
     if(pp->pp_ref <= 0){
         panic("page_remove: PAGE REF COUNT ALREADY 0\n");
     }
-    // decrement the ref count
+    // Decrement the ref count
     pp->pp_ref--;
 
-    // if ref count is 0 free the page
+    // iI ref count is 0 free the page
     if(pp->pp_ref == 0)
         page_free(pp);
 
-    // set to zero the pte value
+    // Set to zero the pte value
     pte = pgdir_walk(pgdir, va, 0);
     if(pte){
         *pte = 0;
     }
 
-    // invalidate the tlb entry
+    // Invalidate the tlb entry
     tlb_invalidate(pgdir, va);
 }
 
