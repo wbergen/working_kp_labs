@@ -18,3 +18,4 @@ V = @
 # following line and set it to the full path to QEMU.
 #
 QEMU=qemu-system-i386
+CFLAGS=-O0 -g3

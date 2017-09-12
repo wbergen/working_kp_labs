@@ -18,9 +18,7 @@ extern size_t npages;
 
 extern pde_t *kern_pgdir;
 
-
-/*
- * This macro takes a kernel virtual address -- an address that points above
+/* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
  * and returns the corresponding physical address.  It panics if you pass it a
  * non-kernel virtual address.
@@ -51,7 +49,10 @@ enum {
     ALLOC_ZERO = 1<<0,
     ALLOC_HUGE = 1<<1,
     ALLOC_PREMAPPED = 1<<2,
+    ALLOC = 1<<4,
+    POISON_AFTER_FREE = 1<<5,
 };
+
 
 enum {
     /* For pgdir_walk, tells whether to create normal page or huge page */
