@@ -9,6 +9,8 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
+struct env;
+
 extern char bootstacktop[], bootstack[];
 
 extern struct page_info *pages;
@@ -70,6 +72,9 @@ void page_decref(struct page_info *pp);
 
 void tlb_invalidate(pde_t *pgdir, void *va);
 
+int  user_mem_check(struct env *env, const void *va, size_t len, int perm);
+void user_mem_assert(struct env *env, const void *va, size_t len, int perm);
+
 static inline physaddr_t page2pa(struct page_info *pp)
 {
     return (pp - pages) << PGSHIFT;
@@ -86,5 +91,7 @@ static inline void *page2kva(struct page_info *pp)
 {
     return KADDR(page2pa(pp));
 }
+
+pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
 
 #endif /* !JOS_KERN_PMAP_H */
