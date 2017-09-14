@@ -304,18 +304,19 @@ static void region_alloc(struct env *e, void *va, size_t len)
      *   (Watch out for corner-cases!)
      */
 
-    struct page_info *p;
-    uint32_t *va_ptr = ROUNDDOWN(va, PGSIZE);
-    uint32_t num_pages = (uint32_t) ROUNDUP(len + va, PGSIZE) / PGSIZE;
+    struct page_info *p; // the page to allocate
+    void *va_ptr = ROUNDDOWN(va, PGSIZE); // address start
+    uint32_t num_pages = (uint32_t) ROUNDUP( (len + (va - va_ptr)), PGSIZE) / PGSIZE; // number of pages to alloc
+
     cprintf("(CHECK ME region_alloc()) num_pages: %u\n", num_pages);
     for (i = 0; i < num_pages; ++i)
     {
-        // Allocate a page per:
+        // allocate a phy page
         p = page_alloc(0);
-
+        //if the page cannot be allocated panic
         if (p){
-
-            if(page_insert(e->env_pgdir, p, va_ptr, PTE_U | PTE_W)){
+            //insert the page in the env_pgdir, if fails panic
+            if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), PTE_U | PTE_W)){
                 panic("region_alloc(): page_insert failure\n");
             }
         } else {
