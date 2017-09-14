@@ -390,6 +390,11 @@ static void load_icode(struct env *e, uint8_t *binary)
       GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
     */
 
+    // Ensure that we're using the enviorment's pg_dir:
+    if (e != curenv){
+        lcr3(PADDR(e->env_pgdir));
+    }
+
     // Structures:
     struct elf *eh;
     struct elf_proghdr *ph, *eph;
@@ -450,7 +455,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     e->env_tf.tf_eip == eh->e_entry;
 
 
-    /* LAB 3: Your code here. 
+    /* LAB 3: Your code here. */
 }
 
 /*
