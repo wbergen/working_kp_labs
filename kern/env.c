@@ -382,6 +382,60 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 3: Your code here. */
 
+    /* obj/user/hello:
+      Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+      LOAD           0x001000 0x00200000 0x00200000 0x03e4f 0x03e4f RW  0x1000
+      LOAD           0x005020 0x00800020 0x00800020 0x01130 0x01130 R E 0x1000
+      LOAD           0x007000 0x00802000 0x00802000 0x00004 0x00008 RW  0x1000
+      GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
+    */
+
+    // 
+    struct elf *eh;
+    struct elf_proghdr *ph, *eph;
+
+
+    // Cast binary as elf_header:
+    eh = (struct elf *) binary;
+
+    /* is this a valid ELF? */
+    cprintf("elf magic: %x", eh->e_magic);
+    if (eh->e_magic != ELF_MAGIC)
+        panic("load_icode(): Invalid ELF!\n");
+
+
+    // Get Program Header:
+    ph = (struct elf_proghdr *) ((uint8_t *) eh + eh->e_phoff);
+    
+    // Check size:
+    if (ph->p_filesz > ph->p_memsz){
+        panic("load_icode(): filesz > memsz!\n");
+    }
+
+    // For each segment in the binary that's marked LOAD, map it into memory:
+
+/*   *  You should only load segments with ph->p_type == ELF_PROG_LOAD.
+     *  Each segment's virtual address can be found in ph->p_va and its size in
+     *  memory can be found in ph->p_memsz.
+     *  The ph->p_filesz bytes from the ELF binary, starting at 'binary +
+     *  ph->p_offset', should be copied to virtual address ph->p_va.
+     *  Any remaining memory bytes should be cleared to zero
+*/
+
+    eph = ph + eh->e_phnum;
+
+
+    // /* load each program segment (ignores ph flags) */
+    // ph = (struct elf_proghdr *) ((uint8_t *) ELFHDR + ELFHDR->e_phoff);
+    // eph = ph + ELFHDR->e_phnum;
+    // for (; ph < eph; ph++)
+    //     /* p_pa is the load address of this segment (as well as the physical
+    //      * address) */
+    //     readseg(ph->p_pa, ph->p_memsz, ph->p_offset);
+
+    /* call the entry point from the ELF header
+     * note: does not return! */
+
     /* Now map one page for the program's initial stack at virtual address
      * USTACKTOP - PGSIZE. */
 
