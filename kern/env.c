@@ -205,8 +205,8 @@ static int env_setup_vm(struct env *e)
 
     // Initialize env_pgdir, using kern_pgdir as template (ie. copy?)
     // The copy provides the user page dir with kernel position information
-    // int i;
-    for (i = 0; i < PGSIZE / sizeof(pde_t); ++i)
+    // we map everything above UTOP 
+    for (i = PDX(UTOP); i < PGSIZE / sizeof(pde_t); i++)
     {
         e->env_pgdir[i] = kern_pgdir[i];
     }
