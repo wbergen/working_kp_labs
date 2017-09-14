@@ -405,11 +405,6 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     // Get Program Header:
     ph = (struct elf_proghdr *) ((uint8_t *) eh + eh->e_phoff);
-    
-    // Check size:
-    if (ph->p_filesz > ph->p_memsz){
-        panic("load_icode(): filesz > memsz!\n");
-    }
 
     // For each segment in the binary that's marked LOAD, map it into memory:
 
@@ -421,7 +416,31 @@ static void load_icode(struct env *e, uint8_t *binary)
      *  Any remaining memory bytes should be cleared to zero
 */
 
+    // Number of program headers:
     eph = ph + eh->e_phnum;
+
+    // Segment info:
+    uint32_t *va;
+    size_t msize;
+    for (; ph < eph; ph++)
+    {   
+        // If the segment is LOAD, map it:
+        if (ph->p_type == ELF_PROG_LOAD){
+
+            // Check size:
+            if (ph->p_filesz > ph->p_memsz){
+                panic("load_icode(): Segment's filesz > memsz!\n");
+            }
+
+            // Get the address to map @, and the size:
+            va = (uint32_t *) ph->p_va;
+            msize = (size_t) ph->p_memsz;
+
+            // Map:
+            // void region_alloc(struct env *e, void *va, size_t len)
+            region_alloc(e, va, msize);
+        }
+    }
 
 
     // /* load each program segment (ignores ph flags) */
