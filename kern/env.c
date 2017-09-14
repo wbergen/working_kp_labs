@@ -389,9 +389,10 @@ static void load_icode(struct env *e, uint8_t *binary)
       LOAD           0x007000 0x00802000 0x00802000 0x00004 0x00008 RW  0x1000
       GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
     */
-
+    size_t change_env_flag = 0;
     // Ensure that we're using the enviorment's pg_dir:
     if (e != curenv){
+        change_env_flag = 1;
         lcr3(PADDR(e->env_pgdir));
     }
 
@@ -447,6 +448,9 @@ static void load_icode(struct env *e, uint8_t *binary)
         }
     }
 
+    if ( change_env_flag ){
+        lcr3(PADDR(kern_pgdir));
+    }
 
     // Now map one page for the program's initial stack at virtual address
     region_alloc(e, (uint32_t *) USTACKTOP-PGSIZE, PGSIZE);
@@ -468,6 +472,19 @@ static void load_icode(struct env *e, uint8_t *binary)
 void env_create(uint8_t *binary, enum env_type type)
 {
     /* LAB 3: Your code here. */
+    struct env *e;
+    int ret = env_alloc(&e,0);
+
+    if(ret == -E_NO_MEM ){
+        panic("env_create: OUT OF MEMORY\n");
+    }
+    if(ret == -E_NO_FREE_ENV ){
+        panic("env_create: NO FREE ENV\n");
+    }
+
+    load_icode(e,binary);
+    e->env_type = type;
+
 }
 
 /*
@@ -559,8 +576,7 @@ void env_pop_tf(struct trapframe *tf)
  *
  * This function does not return.
  */
-void env_run(struct env *e)
-{
+void env_run(struct env *e){
     /*
      * Step 1: If this is a context switch (a new environment is running):
      *     1. Set the current environment (if any) back to
@@ -581,7 +597,38 @@ void env_run(struct env *e)
      */
 
     /* LAB 3: Your code here. */
+    if(curenv != e){
+        /*
+     *     1. Set the current environment (if any) back to
+     *        ENV_RUNNABLE if it is ENV_RUNNING (think about
+     *        what other states it can be in)
+     */
+        if(curenv != NULL){
+            if(curenv->env_status == ENV_RUNNABLE ||
+                curenv->env_status == ENV_FREE ||
+                curenv->env_status == ENV_NOT_RUNNABLE){
+                panic("env_run: ENV STATUS IS IN A INCONSISTENT STATE\n");
+            }
+            if(curenv->env_status == ENV_RUNNING){
+                curenv->env_status = ENV_RUNNABLE;
+            }
+            //if the current env it's dying free it.
+            if(curenv->env_status == ENV_DYING){
+                env_free(curenv);
+            }
+        }
+        //2. Set 'curenv' to the new environment
+        curenv = e;
+        //3. Set its status to ENV_RUNNING
+        curenv->env_status = ENV_RUNNING;
+        //4. Update its 'env_runs' counter
+        curenv->env_runs++;
+        //5. Use lcr3() to switch to its address space.
+        lcr3(PADDR(curenv->env_pgdir));
 
-    panic("env_run not yet implemented");
+    }
+    // Step2
+    env_pop_tf(&curenv->env_tf);
+
 }
 
