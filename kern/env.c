@@ -390,7 +390,7 @@ static void load_icode(struct env *e, uint8_t *binary)
       GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
     */
 
-    // 
+    // Structures:
     struct elf *eh;
     struct elf_proghdr *ph, *eph;
 
@@ -407,15 +407,6 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Get Program Header:
     ph = (struct elf_proghdr *) ((uint8_t *) eh + eh->e_phoff);
 
-    // For each segment in the binary that's marked LOAD, map it into memory:
-
-/*   *  You should only load segments with ph->p_type == ELF_PROG_LOAD.
-     *  Each segment's virtual address can be found in ph->p_va and its size in
-     *  memory can be found in ph->p_memsz.
-     *  The ph->p_filesz bytes from the ELF binary, starting at 'binary +
-     *  ph->p_offset', should be copied to virtual address ph->p_va.
-     *  Any remaining memory bytes should be cleared to zero
-*/
 
     // Number of program headers:
     eph = ph + eh->e_phnum;
@@ -438,27 +429,28 @@ static void load_icode(struct env *e, uint8_t *binary)
             msize = (size_t) ph->p_memsz;
 
             // Map:
-            // void region_alloc(struct env *e, void *va, size_t len)
             region_alloc(e, va, msize);
+
+            // Copy Memory:
+            memcpy(va, eh+ph->p_offset, ph->p_filesz);
+
+            // Write 0s to (filesz, memsz]:
+            if (ph->p_filesz != msize){
+                memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
+            }
+
         }
     }
 
 
-    // /* load each program segment (ignores ph flags) */
-    // ph = (struct elf_proghdr *) ((uint8_t *) ELFHDR + ELFHDR->e_phoff);
-    // eph = ph + ELFHDR->e_phnum;
-    // for (; ph < eph; ph++)
-    //     /* p_pa is the load address of this segment (as well as the physical
-    //      * address) */
-    //     readseg(ph->p_pa, ph->p_memsz, ph->p_offset);
+    // Now map one page for the program's initial stack at virtual address
+    region_alloc(e, (uint32_t *) USTACKTOP-PGSIZE, PGSIZE);
 
-    /* call the entry point from the ELF header
-     * note: does not return! */
+    // Set the enviorment's entry point (in the trapframe) to the elf's:
+    e->env_tf.tf_eip == eh->e_entry;
 
-    /* Now map one page for the program's initial stack at virtual address
-     * USTACKTOP - PGSIZE. */
 
-    /* LAB 3: Your code here. */
+    /* LAB 3: Your code here. 
 }
 
 /*
