@@ -60,7 +60,30 @@ static const char *trapname(int trapno)
     return "(unknown trap)";
 }
 
+//Declare thee trap handler functions
+void trap_handler0_de();
+void trap_handler1_db();
+void trap_handler2_nmi();
+void trap_handler3_bp();
+void trap_handler4_of();
+void trap_handler5_br();
+void trap_handler6_ud();
+void trap_handler7_nm();
+void trap_handler8_df();
+void trap_handler9_cso();
+void trap_handler10_ts();
+void trap_handler11_np();
+void trap_handler12_ss();
+void trap_handler13_gp();
+void trap_handler14_pf();
+void trap_handler15_res();
+void trap_handler16_mf();
+void trap_handler17_ac();
+void trap_handler18_mc();
+void trap_handler19_xm();
+void trap_handler20_ve();
 
+void trap_handler48_sc();
 void trap_init(void)
 {
     extern struct segdesc gdt[];

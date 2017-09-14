@@ -46,8 +46,58 @@
 /*
  * Lab 3: Your code here for generating entry points for the different traps.
  */
+/*
 
+    0   DE no
+    1   DB no
+    2   NMI no
+    3   BP no
+    4   OF no
+    5   BR no
+    6   UD no
+    7   NM no
+    8   DF yes
+    9   CSO no
+    10  TS yes
+    11  NP yes
+    12  SS yes
+    13  GP yes
+    14  PF yes
+    15  RES no
+    16  MF no
+    17  AC yes
+    18  MC no
+    19  XM no
+    20  VE no
+    21 - 31 res 
+    32+ user defined
+    48 system call no
+    TRAPHANDLER_NOEC(,);
+    TRAPHANDLER(,);
+*/
+TRAPHANDLER_NOEC(trap_handler0_de,0);
+TRAPHANDLER_NOEC(trap_handler1_db,1);
+TRAPHANDLER_NOEC(trap_handler2_nmi,2);
+TRAPHANDLER_NOEC(trap_handler3_bp,3);
+TRAPHANDLER_NOEC(trap_handler4_of,4);
+TRAPHANDLER_NOEC(trap_handler5_br,5);
+TRAPHANDLER_NOEC(trap_handler6_ud,6);
+TRAPHANDLER_NOEC(trap_handler7_nm,7);
+TRAPHANDLER(trap_handler8_df,8);
+TRAPHANDLER_NOEC(trap_handler9_cso,9);
+TRAPHANDLER(trap_handler10_ts,10);
+TRAPHANDLER(trap_handler11_np,11);
+TRAPHANDLER(trap_handler12_ss,12);
+TRAPHANDLER(trap_handler13_gp,13);
+TRAPHANDLER(trap_handler14_pf,14);
+TRAPHANDLER_NOEC(trap_handler15_res,15);
+TRAPHANDLER_NOEC(trap_handler16_mf,16);
+TRAPHANDLER(trap_handler17_ac,17);
+TRAPHANDLER_NOEC(trap_handler18_mc,18);
+TRAPHANDLER_NOEC(trap_handler19_xm,19);
+TRAPHANDLER_NOEC(trap_handler20_ve,20);
 
+TRAPHANDLER_NOEC(trap_handler48_sc,48);
 
 /*
  * Lab 3: Your code here for _alltraps

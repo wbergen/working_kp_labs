@@ -431,7 +431,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             }
 
             // Get the address to map @, and the size:
-            va = (uint32_t *) ph->p_va;
+            va = (void *) ph->p_va;
             msize = (size_t) ph->p_memsz;
 
             // Map:
@@ -453,7 +453,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     }
 
     // Now map one page for the program's initial stack at virtual address
-    region_alloc(e, (uint32_t *) USTACKTOP-PGSIZE, PGSIZE);
+    region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip == eh->e_entry;
@@ -483,6 +483,7 @@ void env_create(uint8_t *binary, enum env_type type)
     }
 
     load_icode(e,binary);
+
     e->env_type = type;
 
 }
@@ -628,7 +629,6 @@ void env_run(struct env *e){
 
     }
     // Step2
-    env_pop_tf(&curenv->env_tf);
-
+    env_pop_tf(&e->env_tf);
 }
 
