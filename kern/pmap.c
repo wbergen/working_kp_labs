@@ -166,10 +166,15 @@ void mem_init(void)
      * 'npages' is the number of physical pages in memory.  Your code goes here.
      */
 
+    pages = boot_alloc((npages)*sizeof(struct page_info));
      /*********************************************************************
      * Make 'envs' point to an array of size 'NENV' of 'struct env'.
      * LAB 3: Your code here.
      */
+
+    // Need to boot_alloc this...?
+    envs = boot_alloc(sizeof(struct env) * NENV);
+    // struct env envs[sizeof(struct env) * NENV];
 
 
     /*********************************************************************
@@ -206,6 +211,8 @@ void mem_init(void)
      *    - envs itself -- kernel RW, user NONE
      * LAB 3: Your code here.
      */
+
+    boot_map_region(kern_pgdir, UENVS, sizeof(struct env)*NENV, PADDR(envs), PTE_U);
 
     /*********************************************************************
      * Use the physical memory that 'bootstack' refers to as the kernel
@@ -766,7 +773,8 @@ static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t 
 
 
     // Map Pages:
-    for (int i = 0; i < pages_to_map; ++i)
+    int i;
+    for (i = 0; i < pages_to_map; ++i)
     {
         // Get a new page:
         pte_t * pte = pgdir_walk(pgdir, (void *)va, CREATE_NORMAL);

@@ -19,6 +19,10 @@ static struct env *env_free_list;   /* Free environment list */
 
 #define ENVGENSHIFT 12      /* >= LOGNENV */
 
+pde_t *env_pgdir;
+
+int i;  // Index var
+
 /*
  * Global descriptor table.
  *
@@ -121,6 +125,16 @@ void env_init(void)
     /* Set up envs array. */
     /* LAB 3: Your code here. */
 
+    // Count backwards to keep order == in envs:
+    int i;
+    for (i = NENV; i >= 0; i--) {
+
+        envs[i].env_id = 0;
+        envs[i].env_link = env_free_list;
+        env_free_list = &envs[i];
+
+    }
+
     /* Per-CPU part of the initialization */
     env_init_percpu();
 }
@@ -182,6 +196,22 @@ static int env_setup_vm(struct env *e)
      */
 
     /* LAB 3: Your code here. */
+    // Increment pp_ref
+    p->pp_ref ++;
+    
+    // Set the enviorment's pgdir to the kva of new page:
+    // This is like boot_alloc(PGSIZE), but we already have a page, don't need to find one, so just cast:
+    e->env_pgdir = (pde_t *) page2kva(p);
+
+    // Initialize env_pgdir, using kern_pgdir as template (ie. copy?)
+    // The copy provides the user page dir with kernel position information
+    // int i;
+    for (i = 0; i < PGSIZE / sizeof(pde_t); ++i)
+    {
+        e->env_pgdir[i] = kern_pgdir[i];
+    }
+
+
 
     /* UVPT maps the env's own page table read-only.
      * Permissions: kernel R, user R */
@@ -273,6 +303,28 @@ static void region_alloc(struct env *e, void *va, size_t len)
      *   You should round va down, and round (va + len) up.
      *   (Watch out for corner-cases!)
      */
+
+    struct page_info *p;
+    uint32_t *va_ptr = ROUNDDOWN(va, PGSIZE);
+    uint32_t num_pages = (uint32_t) ROUNDUP(len + va, PGSIZE) / PGSIZE;
+    cprintf("(CHECK ME region_alloc()) num_pages: %u\n", num_pages);
+    for (i = 0; i < num_pages; ++i)
+    {
+        // Allocate a page per:
+        p = page_alloc(0);
+
+        if (p){
+
+            if(page_insert(e->env_pgdir, p, va_ptr, PTE_U | PTE_W)){
+                panic("region_alloc(): page_insert failure\n");
+            }
+        } else {
+            panic("region_alloc(): page_alloc failure\n");
+
+        }
+    }
+
+
 }
 
 /*

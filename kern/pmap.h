@@ -61,7 +61,6 @@ enum {
 };
 
 void mem_init(void);
-
 void page_init(void);
 struct page_info *page_alloc(int alloc_flags);
 void page_free(struct page_info *pp);
