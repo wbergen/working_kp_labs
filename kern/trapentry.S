@@ -72,8 +72,7 @@
     21 - 31 res 
     32+ user defined
     48 system call no
-    TRAPHANDLER_NOEC(,);
-    TRAPHANDLER(,);
+
 */
 TRAPHANDLER_NOEC(trap_handler0_de,0);
 TRAPHANDLER_NOEC(trap_handler1_db,1);
@@ -102,3 +101,13 @@ TRAPHANDLER_NOEC(trap_handler48_sc,48);
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+    pushl %ds
+    pushl %es
+    pushal
+
+    mov GD_KD, %ds
+    mov GD_KD, %es
+
+    push %esp
+    call trap
