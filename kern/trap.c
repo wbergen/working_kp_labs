@@ -112,8 +112,6 @@ void trap_init(void)
     SETGATE(idt[T_MCHK], 0, GD_KT, trap_handler18_mc, 0);
     SETGATE(idt[T_SIMDERR], 0, GD_KT, trap_handler19_xm, 0);
 
-
-    
     SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handler48_sc, 3);
 
     /*XXX set all the handlers*/
