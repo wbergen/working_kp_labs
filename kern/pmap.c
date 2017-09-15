@@ -982,12 +982,27 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
     /* LAB 3: Your code here. */
 
     // Is the address above ULIM, return fault:
-    // if (va > ULIM){
-    //     return -E_FAULT;
-    // }
+    if ((uint32_t) va > ULIM){
+        return -E_FAULT;
+    }
 
     // Permissions:
-    
+    pte_t *p;
+    uint32_t low = (uint32_t) ROUNDDOWN(va, PGSIZE);
+    uint32_t pnum = (uint32_t) ROUNDUP(len + (va - low), PGSIZE);
+    int i;
+    for (i = 0; i < pnum / PGSIZE; ++i)
+    {
+        p = pgdir_walk(env->env_pgdir, va+(PGSIZE*i), 0);
+
+        if (p && (*p & PTE_P)){
+            if ((*p & perm) != perm){
+                return -E_FAULT;
+            }
+        } else {
+            return -E_FAULT;
+        }
+    }
 
     return 0;
 }
