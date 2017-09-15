@@ -981,6 +981,14 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
 {
     /* LAB 3: Your code here. */
 
+    // Is the address above ULIM, return fault:
+    // if (va > ULIM){
+    //     return -E_FAULT;
+    // }
+
+    // Permissions:
+    
+
     return 0;
 }
 
