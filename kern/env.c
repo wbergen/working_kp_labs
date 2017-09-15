@@ -438,7 +438,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             region_alloc(e, va, msize);
 
             // Copy Memory:
-            memcpy(va, eh+ph->p_offset, ph->p_filesz);
+            memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
 
             // Write 0s to (filesz, memsz]:
             if (ph->p_filesz != msize){
@@ -456,7 +456,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
     // Set the enviorment's entry point (in the trapframe) to the elf's:
-    e->env_tf.tf_eip == eh->e_entry;
+    e->env_tf.tf_eip = eh->e_entry;
 
 
     /* LAB 3: Your code here. */
@@ -628,6 +628,9 @@ void env_run(struct env *e){
         lcr3(PADDR(curenv->env_pgdir));
 
     }
+
+    cprintf("e's trapframe eip: %x\n", e->env_tf.tf_eip);
+    cprintf("e's trapframe sp: %x\n", e->env_tf.tf_esp);
     // Step2
     env_pop_tf(&e->env_tf);
 }
