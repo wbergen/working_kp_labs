@@ -83,18 +83,18 @@ TRAPHANDLER_NOEC(trap_handler5_br,5);
 TRAPHANDLER_NOEC(trap_handler6_ud,6);
 TRAPHANDLER_NOEC(trap_handler7_nm,7);
 TRAPHANDLER(trap_handler8_df,8);
-TRAPHANDLER_NOEC(trap_handler9_cso,9);
+
 TRAPHANDLER(trap_handler10_ts,10);
 TRAPHANDLER(trap_handler11_np,11);
 TRAPHANDLER(trap_handler12_ss,12);
 TRAPHANDLER(trap_handler13_gp,13);
 TRAPHANDLER(trap_handler14_pf,14);
-TRAPHANDLER_NOEC(trap_handler15_res,15);
+
 TRAPHANDLER_NOEC(trap_handler16_mf,16);
 TRAPHANDLER(trap_handler17_ac,17);
 TRAPHANDLER_NOEC(trap_handler18_mc,18);
 TRAPHANDLER_NOEC(trap_handler19_xm,19);
-TRAPHANDLER_NOEC(trap_handler20_ve,20);
+
 
 TRAPHANDLER_NOEC(trap_handler48_sc,48);
 

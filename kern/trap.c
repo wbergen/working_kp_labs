@@ -91,8 +91,31 @@ void trap_init(void)
 
     /* LAB 3: Your code here. */
     // #define SETGATE(gate, istrap, sel, off, dpl)
-    // ISTRAP ???
-    SETGATE(idt[T_DIVIDE], 0, GD_KT, trap_handler0_de, 0);  
+    SETGATE(idt[T_DIVIDE], 0, GD_KT, trap_handler0_de, 0);
+    SETGATE(idt[T_DEBUG], 0, GD_KT, trap_handler1_db, 0);
+    SETGATE(idt[T_NMI], 0, GD_KT, trap_handler2_nmi, 0);
+    SETGATE(idt[T_BRKPT], 0, GD_KT, trap_handler3_bp, 3);
+    SETGATE(idt[T_OFLOW], 0, GD_KT, trap_handler4_of, 0);
+    SETGATE(idt[T_BOUND], 0, GD_KT, trap_handler5_br, 0);
+    SETGATE(idt[T_ILLOP], 0, GD_KT, trap_handler6_ud, 0);
+    SETGATE(idt[T_DEVICE], 0, GD_KT, trap_handler7_nm, 0);
+    SETGATE(idt[T_DBLFLT], 0, GD_KT, trap_handler8_df, 0);  
+
+    SETGATE(idt[T_TSS], 0, GD_KT, trap_handler10_ts, 0);
+    SETGATE(idt[T_SEGNP], 0, GD_KT, trap_handler11_np, 0);
+    SETGATE(idt[T_STACK], 0, GD_KT, trap_handler12_ss, 0);
+    SETGATE(idt[T_GPFLT], 0, GD_KT, trap_handler13_gp, 0);
+    SETGATE(idt[T_PGFLT], 0, GD_KT, trap_handler14_pf, 0);
+
+    SETGATE(idt[T_FPERR], 0, GD_KT, trap_handler16_mf, 0);
+    SETGATE(idt[T_ALIGN], 0, GD_KT, trap_handler17_ac, 0);
+    SETGATE(idt[T_MCHK], 0, GD_KT, trap_handler18_mc, 0);
+    SETGATE(idt[T_SIMDERR], 0, GD_KT, trap_handler19_xm, 0);
+
+
+    
+    SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handler48_sc, 3);
+
     /*XXX set all the handlers*/
 
 
