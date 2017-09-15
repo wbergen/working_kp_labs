@@ -190,7 +190,9 @@ static void trap_dispatch(struct trapframe *tf)
     /* Handle processor exceptions. */
     /* LAB 3: Your code here. */
 
+    // Syscall Ret:
     int ret;
+
     // Forward page faults to page_fault_handler:
     if (tf->tf_trapno == T_PGFLT){
         page_fault_handler(tf);
@@ -202,13 +204,18 @@ static void trap_dispatch(struct trapframe *tf)
         monitor(tf);
     }
 
-    // Signature:
-    //int32_t syscall(uint32_t num, uint32_t a1, uint32_t a2, uint32_t a3,
-    //   uint32_t a4, uint32_t a5);
+    /*
+      DEF: int32_t syscall(uint32_t num, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5);
+      num: syscall number (eax)
+      a1-5: args
+      return value -> trapframe's eax reg
+      ADD specifications!
+    */
 
     // Syscall Functionality:
     else if (tf->tf_trapno == T_SYSCALL){
-        // Setup Args:
+        
+        // Setup Args, syscall:
         ret = syscall(tf->tf_regs.reg_eax,
                     tf->tf_regs.reg_edx,
                     tf->tf_regs.reg_ecx,
@@ -216,6 +223,7 @@ static void trap_dispatch(struct trapframe *tf)
                     tf->tf_regs.reg_edi,
                     tf->tf_regs.reg_esi);
 
+        tf->tf_regs.reg_eax = ret;
     }
 
     /* Unexpected trap: The user process or the kernel has a bug. */

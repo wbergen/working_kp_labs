@@ -23,6 +23,7 @@ static void sys_cputs(const char *s, size_t len)
 
     /* LAB 3: Your code here. */
     // void user_mem_assert(struct env *env, const void *va, size_t len, int perm)
+    // Ensure the memory access is user accessible:
     user_mem_assert(curenv, s, len, PTE_U);
 
     /* Print the string supplied by the user. */

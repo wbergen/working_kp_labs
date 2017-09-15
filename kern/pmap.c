@@ -986,16 +986,22 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
         return -E_FAULT;
     }
 
-    // Permissions:
+    // Bookkeeping:
     pte_t *p;
     uint32_t low = (uint32_t) ROUNDDOWN(va, PGSIZE);
     uint32_t pnum = (uint32_t) ROUNDUP(len + (va - low), PGSIZE);
     int i;
+    
+    // Check the rounded out pages:
     for (i = 0; i < pnum / PGSIZE; ++i)
     {
+        // Get VA's pte:
         p = pgdir_walk(env->env_pgdir, va+(PGSIZE*i), 0);
 
+        // Check that an entry exists, and that it is marked present:
         if (p && (*p & PTE_P)){
+
+            // Check that the PTE's permisions are correct (== passed perm)
             if ((*p & perm) != perm){
                 return -E_FAULT;
             }
@@ -1004,6 +1010,7 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
         }
     }
 
+    // Passes all checks:
     return 0;
 }
 

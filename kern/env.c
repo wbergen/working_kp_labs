@@ -308,7 +308,7 @@ static void region_alloc(struct env *e, void *va, size_t len)
     void *va_ptr = ROUNDDOWN(va, PGSIZE); // address start
     uint32_t num_pages = (uint32_t) ROUNDUP( (len + (va - va_ptr)), PGSIZE) / PGSIZE; // number of pages to alloc
 
-    cprintf("(CHECK ME region_alloc()) num_pages: %u\n", num_pages);
+    // Check rounded out pages:
     for (i = 0; i < num_pages; ++i)
     {
         // allocate a phy page
@@ -405,7 +405,6 @@ static void load_icode(struct env *e, uint8_t *binary)
     eh = (struct elf *) binary;
 
     /* is this a valid ELF? */
-    cprintf("elf magic: %x", eh->e_magic);
     if (eh->e_magic != ELF_MAGIC)
         panic("load_icode(): Invalid ELF!\n");
 
@@ -629,8 +628,6 @@ void env_run(struct env *e){
 
     }
 
-    cprintf("e's trapframe eip: %x\n", e->env_tf.tf_eip);
-    cprintf("e's trapframe sp: %x\n", e->env_tf.tf_esp);
     // Step2
     env_pop_tf(&e->env_tf);
 }
