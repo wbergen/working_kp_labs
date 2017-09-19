@@ -114,9 +114,6 @@ void trap_init(void)
 
     SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handler48_sc, 3);
 
-    /*XXX set all the handlers*/
-
-
     /* Per-CPU setup */
     trap_init_percpu();
 }
@@ -209,9 +206,8 @@ static void trap_dispatch(struct trapframe *tf)
     /*
       DEF: int32_t syscall(uint32_t num, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5);
       num: syscall number (eax)
-      a1-5: args
+      a1-5: args: five parameters in DX, CX, BX, DI, SI.
       return value -> trapframe's eax reg
-      ADD specifications!
     */
 
     // Syscall Functionality:

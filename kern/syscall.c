@@ -76,7 +76,7 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
      * Return any appropriate return value.
      * LAB 3: Your code here.
      */
-
+    // Syscalls dispatch
     switch (syscallno) {
         case SYS_cputs:
             sys_cputs((char *)a1, a2);
