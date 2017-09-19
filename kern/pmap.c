@@ -172,9 +172,9 @@ void mem_init(void)
      * LAB 3: Your code here.
      */
 
-    // Need to boot_alloc this...?
+
     envs = boot_alloc(sizeof(struct env) * NENV);
-    // struct env envs[sizeof(struct env) * NENV];
+   
 
 
     /*********************************************************************

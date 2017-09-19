@@ -28,7 +28,7 @@ struct pseudodesc idt_pd = {
 };
 
 
-//Declare thee trap handler functions
+//Declare the trap handler functions
 void trap_handler0_de();
 void trap_handler1_db();
 void trap_handler2_nmi();

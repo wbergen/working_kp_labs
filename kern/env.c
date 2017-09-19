@@ -458,7 +458,6 @@ static void load_icode(struct env *e, uint8_t *binary)
     e->env_tf.tf_eip = eh->e_entry;
 
 
-    /* LAB 3: Your code here. */
 }
 
 /*
