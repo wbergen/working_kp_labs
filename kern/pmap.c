@@ -981,37 +981,55 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
 {
     /* LAB 3: Your code here. */
 
-    // Is the address above ULIM, return fault:
-    if ((uint32_t) va > ULIM){
-        return -E_FAULT;
-    }
-
     // Bookkeeping:
     pte_t *p;
     uint32_t low = (uint32_t) ROUNDDOWN(va, PGSIZE);
-    uint32_t pnum = (uint32_t) ROUNDUP(len + (va - low), PGSIZE);
-    int i;
     
+    // Rounded out size in Bytes:
+    uint32_t pnum = (uint32_t) ROUNDUP(len + (va - low), PGSIZE);
+
+    int i;
+
     // Check the rounded out pages:
     for (i = 0; i < pnum / PGSIZE; ++i)
     {
         // Get VA's pte:
-        p = pgdir_walk(env->env_pgdir, va+(PGSIZE*i), 0);
+        p = pgdir_walk(env->env_pgdir, ((void *)low)+(PGSIZE*i), 0);
 
-        // Check that an entry exists, and that it is marked present:
-        if (p && (*p & PTE_P)){
+        // Check that an entry exists:
+        if (!p){
+            goto FAILURE;
+        }
 
-            // Check that the PTE's permisions are correct (== passed perm)
-            if ((*p & perm) != perm){
-                return -E_FAULT;
-            }
-        } else {
-            return -E_FAULT;
+        // Page is marked present:
+        if (!(*p & PTE_P)){
+            goto FAILURE;
+        }
+
+        // PTE permissions -eq requested permissions:
+        if ((*p & perm) != perm){
+            goto FAILURE;
+        }
+        
+        // Address is below ULIM (safe user space):
+        if ((low+(PGSIZE*1)) > ULIM){
+            goto FAILURE;
         }
     }
 
     // Passes all checks:
     return 0;
+
+FAILURE:
+    // cprintf("va: %x\n", va);
+    // If first page, return the va, else page-aligned address:
+    if ((uint32_t)va > (low + (i*PGSIZE))){
+        user_mem_check_addr = (uintptr_t) va+(PGSIZE*i);
+    } else {
+        user_mem_check_addr = (uintptr_t) low+(PGSIZE*i);
+    }
+    return -E_FAULT;
+
 }
 
 /*
