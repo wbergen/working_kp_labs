@@ -382,7 +382,11 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 3: Your code here. */
 
-    /* obj/user/hello:
+    /* Now map one page for the program's initial stack at virtual address
+     * USTACKTOP - PGSIZE. */
+
+    /* LAB 3: Your code here. */
+/* obj/user/hello:
       Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
       LOAD           0x001000 0x00200000 0x00200000 0x03e4f 0x03e4f RW  0x1000
       LOAD           0x005020 0x00800020 0x00800020 0x01130 0x01130 R E 0x1000
@@ -457,7 +461,11 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip = eh->e_entry;
 
+/* vmatest binary uses the following */
+    /* 1. Map one RO page of VMA for UTEMP at virtual address UTEMP.
+     * 2. Map one RW page of VMA for UTEMP+PGSIZE at virtual address UTEMP. */
 
+    /* LAB 4: Your code here. */
 }
 
 /*
