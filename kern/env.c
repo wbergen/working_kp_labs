@@ -77,7 +77,6 @@ void vma_proc_init(struct env e){
 
     //NVMA -1 or NVMA? 
     for (i = (NVMA - 1); i >= 0; i--) {
-        cprintf(" vma address %x\n", &e.vmas[i]);
         //Mark the vma as VMA_UNUSED and 0 the remaining fields
         e.vmas[i].type = VMA_UNUSED;
         e.vmas[i].va = 0;
@@ -90,6 +89,107 @@ void vma_proc_init(struct env e){
     }
 }
 
+/*
+    Remove the fist element of a vma list
+*/
+struct vma * vma_remove_head(struct vma *list){
+
+    struct vma * el;
+    //check if the list is empty
+    if(list == NULL){
+        return NULL;
+    }
+
+    el = list;
+    list = el->vma_link;
+    el->vma_link = NULL;
+
+    return el;
+}
+
+/*
+    Insert an element in a vma list
+        If ordered is set insert the vma in an ordered fashion (order by va)
+        If ordered is not set add the element as new head of the list
+
+        I suppose the 
+*/
+void vma_insert( struct vma * el, struct vma * list, int ordered){
+
+    struct vma * vma_i= list;   // list iterator
+    struct vma * vma_old = list; // we append the new element to this one
+
+    // Handling corner case list NULL -> insert the element in the head 
+    if(!list){
+        ordered=0;
+    }
+
+    if(ordered){
+        // Ordered insert
+        // We need to find the first vma with the va < new_el.va
+        while(vma_i){
+
+            vma_old = vma_i;
+            // If we find the first element with va < new_el.va break
+            if(vma_i->va < el->va){
+                break;
+            }
+
+            vma_i = vma_i->vma_link;
+        }
+
+        // Insert the lement
+        el->vma_link = vma_old->vma_link;
+        vma_old->vma_link = el;
+
+    }else{
+        // Head insert
+        el->vma_link = list;
+        list = el;
+    }
+}
+
+
+/*
+    Create a new VMA:
+    Contraints:
+        va need to be page alligned
+        va + len doesn't need to be page alligned
+        No physical frame is allocated by this function
+        I suppose the va and the len is not mapped by any vma
+
+    return 1 if success, 0 if out of memory, -1 for any errors
+*/
+int vma_new(struct env *e, void *va, size_t len, int perm, ...){
+
+    struct vma * new;
+
+    // Return error if va it's not page alligned
+    if(((uint32_t)va % PGSIZE) != 0){
+        cprintf("vma_new: the va is not page alligned\n");
+        return -1;
+    }
+
+    // Remove a vma from the free list
+    new = vma_remove_head(e->free_vma_list);
+
+    // If out of vma return 0
+    if(!new){
+        cprintf("vma_new: out of memory, no more vmas available\n");
+        return 0;
+    }
+
+    // Initialize the new vma
+    new->va = va;
+    new->len = len;
+    new->perm = perm;
+
+    // Insert the page in the alloc list
+    vma_insert(new, e->alloc_vma_list, 1);
+
+    // Success
+    return 1;
+}
 /*
  * Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
