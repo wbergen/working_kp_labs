@@ -30,6 +30,26 @@ typedef int32_t envid_t;
 #define LOG2NENV        10
 #define NENV            (1 << LOG2NENV)
 #define ENVX(envid)     ((envid) & (NENV - 1))
+#define NVMA 128    // preallocated vmas 
+
+
+/* Anonymous VMAs are zero-initialized whereas binary VMAs
+ * are filled-in from the ELF binary.
+ */
+enum {
+    VMA_UNUSED,
+    VMA_ANON,
+    VMA_BINARY,
+};
+
+struct vma {
+    int type;
+    void *va;
+    size_t len;
+    int perm;
+    /* LAB 4: You may add more fields here, if required. */
+    struct vma *vma_link;   //Next VMAs pointer
+};
 
 /* Values of env_status in struct env */
 enum {
@@ -54,25 +74,12 @@ struct env {
     unsigned env_status;        /* Status of the environment */
     uint32_t env_runs;          /* Number of times environment has run */
 
+    /*  VMA lists     */
+    struct vma vmas[NVMA];       /* Array of preallocated VMAs */
+    struct vma *free_vma_list;  /* List of free vmas */
+    struct vma *alloc_vma_list; /* List of allocated VMAs */
     /* Address space */
     pde_t *env_pgdir;           /* Kernel virtual address of page dir */
-};
-
-/* Anonymous VMAs are zero-initialized whereas binary VMAs
- * are filled-in from the ELF binary.
- */
-enum {
-    VMA_UNUSED,
-    VMA_ANON,
-    VMA_BINARY,
-};
-
-struct vma {
-    int type;
-    void *va;
-    size_t len;
-    int perm;
-    /* LAB 4: You may add more fields here, if required. */
 };
 
 #endif /* !JOS_INC_ENV_H */

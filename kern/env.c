@@ -65,6 +65,32 @@ struct pseudodesc gdt_pd = {
 };
 
 /*
+    Initialize Process VMAs
+*/
+void vma_proc_init(struct env e){
+
+    int i;
+
+    // Initialize the vma list pointers
+    e.free_vma_list = NULL;
+    e.alloc_vma_list = NULL;
+
+    //NVMA -1 or NVMA? 
+    for (i = (NVMA - 1); i >= 0; i--) {
+        cprintf(" vma address %x\n", &e.vmas[i]);
+        //Mark the vma as VMA_UNUSED and 0 the remaining fields
+        e.vmas[i].type = VMA_UNUSED;
+        e.vmas[i].va = 0;
+        e.vmas[i].len = 0;
+        e.vmas[i].perm = 0;
+
+        //Add the vma to the free_vma_list
+        e.vmas[i].vma_link = e.free_vma_list;
+        e.free_vma_list = &e.vmas[i];
+    }
+}
+
+/*
  * Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
  * current environment or an immediate child of the current environment.
@@ -130,6 +156,10 @@ void env_init(void)
     for (i = NENV; i >= 0; i--) {
 
         envs[i].env_id = 0;
+
+        //Initialize the env vmas
+        vma_proc_init(envs[i]);
+
         envs[i].env_link = env_free_list;
         env_free_list = &envs[i];
 
