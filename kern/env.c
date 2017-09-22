@@ -190,6 +190,27 @@ int vma_new(struct env *e, void *va, size_t len, int perm, ...){
     // Success
     return 1;
 }
+
+/*
+    Lookup in the allocated vma if the va is mapped
+
+    return 1 if success, 0 if not
+*/
+int vma_lookup(struct env *e, void *va){
+
+    struct vma *vma_i = e->alloc_vma_list;
+
+    while(vma_i){
+
+        if(va >= vma_i->va && va <= (vma_i->va + vma_i->len) ){
+            return 1;
+        }
+        vma_i = vma_i->vma_link;
+    }
+
+    return 0;
+
+}
 /*
  * Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
