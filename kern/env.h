@@ -21,6 +21,8 @@ int  envid2env(envid_t envid, struct env **env_store, bool checkperm);
 void env_run(struct env *e) __attribute__((noreturn));
 void env_pop_tf(struct trapframe *tf) __attribute__((noreturn));
 
+int vma_lookup(struct env *e, void *va);
+
 /* Without this extra macro, we couldn't pass macros like TEST to ENV_CREATE
  * because of the C pre-processor's argument prescan rule. */
 #define ENV_PASTE3(x, y, z) x ## y ## z

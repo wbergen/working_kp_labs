@@ -296,6 +296,39 @@ void page_fault_handler(struct trapframe *tf)
     /* We've already handled kernel-mode exceptions, so if we get here, the page
      * fault happened in user mode. */
 
+
+        // LAB 4 TEST AREA:
+    // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
+    /* So the page fault hander needs to...
+        - is there an allocated for that?
+            - There should be, so panic if lookup fails (right?)
+            - walk the pgdir to retrieve the nonpresent pte
+            - allocate w/ page_alloc() and write pa to the pte
+    */ 
+
+    cprintf("page_fault_handler(): curenv == %x\n", curenv);
+
+    // vma_lookup rets 
+    if (vma_lookup(curenv, (void *)fault_va)){
+        // VMA exists, so page a page for the env:
+        cprintf("vma exists!  Allocating \"on demand\" page...\n");
+
+        // Get the pte that needs allocating:
+        // pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
+        pte_t *pte = pgdir_walk(curenv->env_pgdir, (void *)fault_va, 0);
+
+        // Allocate a page in it:
+        // struct page_info *page_alloc(int alloc_flags)
+        struct page_info * demand_page = page_alloc(0);
+
+        // Set the pte with the new physical page's addr:
+        *pte = page2pa(demand_page);
+
+    } else {
+        // Somthing bad has happened...
+        cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+    }
+
     /* Destroy the environment that caused the fault. */
     cprintf("[%08x] user fault va %08x ip %08x\n",
         curenv->env_id, fault_va, tf->tf_eip);

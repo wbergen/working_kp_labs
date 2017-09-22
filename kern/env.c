@@ -87,6 +87,8 @@ void vma_proc_init(struct env e){
         e.vmas[i].vma_link = e.free_vma_list;
         e.free_vma_list = &e.vmas[i];
     }
+
+    cprintf("vma_proc_init(): e's free list == %x\n", e.free_vma_list);
 }
 
 /*
@@ -94,15 +96,27 @@ void vma_proc_init(struct env e){
 */
 struct vma * vma_remove_head(struct vma *list){
 
+    cprintf("[DEBUG] vma_remove_head(): INITAL ARG == %x\n", list);
     struct vma * el;
-    //check if the list is empty
+    
+    // check if the list is empty
     if(list == NULL){
         return NULL;
     }
 
+    cprintf("[DEBUG] vma_remove_head(): list == %x\n", list);
+
+    // Save old first element:
     el = list;
+
+    // Set the list pointer to first element's link:
     list = el->vma_link;
+
+    // Remove old first element's link:
     el->vma_link = NULL;
+
+    cprintf("[DEBUG] vma_remove_head(): el == %x\n", el);
+
 
     return el;
 }
@@ -116,8 +130,10 @@ struct vma * vma_remove_head(struct vma *list){
 */
 void vma_insert( struct vma * el, struct vma * list, int ordered){
 
-    struct vma * vma_i= list;   // list iterator
+    struct vma * vma_i = list;   // list iterator
     struct vma * vma_old = list; // we append the new element to this one
+
+    cprintf("vma_insert(): inserting vma!\n");
 
     // Handling corner case list NULL -> insert the element in the head 
     if(!list){
@@ -160,17 +176,20 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env *e, void *va, size_t len, int perm, ...){
+int vma_new(struct env * e, void *va, size_t len, int perm, ...){
 
     struct vma * new;
 
+    cprintf("[DEBUG] vma_new(): passed env's free list == %x\n", e->free_vma_list);
+
     // Return error if va it's not page alligned
     if(((uint32_t)va % PGSIZE) != 0){
-        cprintf("vma_new: the va is not page alligned\n");
+        cprintf("[DEBUG] vma_new: the va is not page alligned\n");
         return -1;
     }
 
     // Remove a vma from the free list
+    cprintf("[DEBUG] vma_new(): passing to remove ==  %x\n", &e->free_vma_list);
     new = vma_remove_head(e->free_vma_list);
 
     // If out of vma return 0
@@ -589,7 +608,15 @@ static void load_icode(struct env *e, uint8_t *binary)
             msize = (size_t) ph->p_memsz;
 
             // Map:
-            region_alloc(e, va, msize);
+            // region_alloc(e, va, msize);
+
+            // VMA Map:
+            // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
+            // 1 success, 0 failure, -1 other errors...
+            cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", &e->free_vma_list);
+            if (vma_new(e, va, msize, 0) < 1){
+                panic("load_icode(): vma creation failed!\n");
+            }
 
             // Copy Memory:
             memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
@@ -607,7 +634,12 @@ static void load_icode(struct env *e, uint8_t *binary)
     }
 
     // Now map one page for the program's initial stack at virtual address
-    region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
+    // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
+
+
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, 0) < 1){
+        panic("load_icode(): vma stack creation failed!\n");
+    }
 
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip = eh->e_entry;
@@ -617,6 +649,22 @@ static void load_icode(struct env *e, uint8_t *binary)
      * 2. Map one RW page of VMA for UTEMP+PGSIZE at virtual address UTEMP. */
 
     /* LAB 4: Your code here. */
+
+    if (vma_new(e, (void*)UTEMP, PGSIZE, 0) < 1){
+        panic("load_icode(): vma stack creation failed!\n");
+    }
+
+    // Attempt to debug the vma's we've allocated?
+    // struct env *temp;
+    // void * temp = e->free_vma_list->vma_link;
+    // while (temp){
+    //     cprintf("%x\n", e->free_vma_list);
+    //     temp = (struct vma *)e->free_vma_list->vma_link;
+
+    // }
+
+    // cprintf("load_icode(): returning...\n");
+
 }
 
 /*
