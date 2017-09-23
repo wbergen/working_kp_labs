@@ -125,8 +125,6 @@ struct vma * vma_remove_head(struct vma **list){
     Insert an element in a vma list
         If ordered is set insert the vma in an ordered fashion (order by va)
         If ordered is not set add the element as new head of the list
-
-        I suppose the 
 */
 void vma_insert( struct vma * el, struct vma **list, int ordered){
 
@@ -581,23 +579,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
-            // 1 success, 0 failure, -1 other errors...
-            // cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
-                       
+            // 1 success, 0 failure, -1 other errors...                 
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
-            
-
-            // cprintf("[DEBUG] load_icode(): before memcpy va: \n");
-            // Copy Memory:
-            //memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
-            // cprintf("[DEBUG] load_icode(): after memcpy\n");
-            // Write 0s to (filesz, memsz]:
-            //if (ph->p_filesz != msize){
-           //     memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
-            //}
-
         }
     }
 
@@ -607,8 +592,6 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     // Now map one page for the program's initial stack at virtual address
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
-
-
     if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
@@ -616,7 +599,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip = eh->e_entry;
 
-/* vmatest binary uses the following */
+    /* vmatest binary uses the following */
     /* 1. Map one RO page of VMA for UTEMP at virtual address UTEMP.
      * 2. Map one RW page of VMA for UTEMP+PGSIZE at virtual address UTEMP. */
 

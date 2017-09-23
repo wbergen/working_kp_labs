@@ -256,7 +256,6 @@ void trap(struct trapframe *tf)
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
         assert(curenv);
-
         /* Copy trap frame (which is currently on the stack) into
          * 'curenv->env_tf', so that running the environment will restart at the
          * trap point. */
@@ -328,7 +327,7 @@ void alloc_page_after_fault(uint32_t fault_va){
 
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
-
+            cprintf("vma exists!  Allocating binary va:%x len:%x\n",vma_el->va,vma_el->len);
             region_alloc(vma_el->va, vma_el->len);
 
             memcpy(vma_el->va, vma_el->cpy_src ,vma_el->len);
@@ -346,12 +345,12 @@ void alloc_page_after_fault(uint32_t fault_va){
 
             //Insert the physical frame in the page directory
             if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
-
                 cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
             }
         }
     } else {
-        cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        cprintf("page_fault_handler(): Faulting addr %x not allocated in env's VMAs!\n", (void *)fault_va);
+        env_destroy(curenv);
     }
 }
 
@@ -361,7 +360,6 @@ void page_fault_handler(struct trapframe *tf)
     uint32_t fault_va;
     /* Read processor's CR2 register to find the faulting address */
     fault_va = rcr2();
-
     /* Handle kernel-mode page faults. */
 
     /* LAB 3: Your code here. */
@@ -376,7 +374,6 @@ void page_fault_handler(struct trapframe *tf)
 
 
     // LAB 4 TEST AREA:
-    // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
     /* So the page fault hander needs to...
         - is there an allocated for that?
             - There should be, so panic if lookup fails (right?)
@@ -392,6 +389,4 @@ void page_fault_handler(struct trapframe *tf)
     /* Destroy the environment that caused the fault. */
     cprintf("[%08x] user fault va %08x ip %08x\n",
         curenv->env_id, fault_va, tf->tf_eip);
-    print_trapframe(tf);
-    env_destroy(curenv);
 }
