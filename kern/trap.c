@@ -352,7 +352,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
             // Allocate a physical frame
-            struct page_info * demand_page = page_alloc(0);
+            struct page_info * demand_page = page_alloc(ALLOC_ZERO);
 
             //Insert the physical frame in the page directory
             if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
@@ -400,7 +400,7 @@ void page_fault_handler(struct trapframe *tf)
     // cprintf("page_fault_handler(): curenv == %x\n", curenv);
 
     // allocate the page 
-    print_trapframe(tf);
+    // print_trapframe(tf);
 
     // Check for protection fault:
     if(!(tf->tf_err & 1)) {
