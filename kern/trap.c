@@ -276,12 +276,61 @@ void trap(struct trapframe *tf)
     env_run(curenv);
 }
 
+/*
+ * Allocate len bytes of physical memory for environment env, and map it at
+ * virtual address va in the environment's address space.
+ * Does not zero or otherwise initialize the mapped pages in any way.
+ * Pages should be writable by user and kernel.
+ * Panic if any allocation attempt fails.
+ */
+static void region_alloc(void *va, size_t len)
+{
+    /*
+     * LAB 3: Your code here.
+     * (But only if you need it for load_icode.)
+     *
+     * Hint: It is easier to use region_alloc if the caller can pass
+     *   'va' and 'len' values that are not page-aligned.
+     *   You should round va down, and round (va + len) up.
+     *   (Watch out for corner-cases!)
+     */
+    struct env *e = curenv;
+    struct page_info *p; // the page to allocate
+    void *va_ptr = ROUNDDOWN(va, PGSIZE); // address start
+    uint32_t num_pages = (uint32_t) ROUNDUP( (len + (va - va_ptr)), PGSIZE) / PGSIZE; // number of pages to alloc
+
+    // Check rounded out pages:
+    for (i = 0; i < num_pages; ++i)
+    {
+        // allocate a phy page
+        p = page_alloc(0);
+        //if the page cannot be allocated panic
+        if (p){
+            //insert the page in the env_pgdir, if fails panic
+            if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), PTE_U | PTE_W)){
+                panic("region_alloc(): page_insert failure\n");
+            }
+        } else {
+            panic("region_alloc(): page_alloc failure\n");
+
+        }
+    }
+}
+
 void alloc_page_after_fault(uint32_t fault_va){
     
     struct vma * vma_el;
 
     vma_el = vma_lookup(curenv, (void *)fault_va);
     if (vma_el){
+
+        // If it's a binary allocate the enough pages to span all vma and copy from file
+        if(vma_el->type == VMA_BINARY){
+
+            region_alloc(vma_el->va, vma_el->len);
+
+            memcpy(vma_el->va, vma_el->cpy_src ,vma_el->len);
+        }
         // VMA exists, so page a page for the env:
         cprintf("vma exists!  Allocating \"on demand\" page...\n");
 
