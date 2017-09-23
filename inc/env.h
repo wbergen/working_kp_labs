@@ -48,7 +48,8 @@ struct vma {
     size_t len;
     int perm;
     /* LAB 4: You may add more fields here, if required. */
-    struct vma *vma_link;   //Next VMAs pointer
+    struct vma *vma_link;   // Next VMAs pointer
+    void *cpy_src;          // Copy source for binary vmas
 };
 
 /* Values of env_status in struct env */

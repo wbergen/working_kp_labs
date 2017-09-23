@@ -176,20 +176,23 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int type, int perm){
+int vma_new(struct env * e, void *va, size_t len, int type, char * src, int perm){
 
     struct vma * new;
 
-    cprintf("[DEBUG] vma_new(): passed env's free list == %x\n", e->free_vma_list);
+    // Return fail if BINARY && no src:
+    if ((type == VMA_BINARY) && (src == NULL)){
+        cprintf("vma_new(): type is binary, but no src address set.\n");
+        return -1;
+    }
 
     // Return error if va it's not page alligned
     if(((uint32_t)va % PGSIZE) != 0){
-        cprintf("[DEBUG] vma_new: the va is not page alligned\n");
+        cprintf("vma_new(): the va is not page alligned\n");
         return -1;
     }
 
     // Remove a vma from the free list
-    cprintf("[DEBUG] vma_new(): passing to remove ==  %x\n", &e->free_vma_list);
     new = vma_remove_head(e->free_vma_list);
 
     // If out of vma return 0
@@ -203,6 +206,10 @@ int vma_new(struct env * e, void *va, size_t len, int type, int perm){
     new->va = va;
     new->len = len;
     new->perm = perm;
+
+    if (type == VMA_BINARY)
+        new->cpy_src = src;
+
 
     // Insert the page in the alloc list
     vma_insert(new, e->alloc_vma_list, 1);
@@ -573,14 +580,17 @@ static void load_icode(struct env *e, uint8_t *binary)
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
             // 1 success, 0 failure, -1 other errors...
-            cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
-            if (vma_new(e, va, msize, VMA_BINARY, PTE_U | PTE_W) < 1){
+            // cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
+            
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
-            cprintf("[DEBUG] load_icode(): before memcpy va: \n");
+            
+
+            // cprintf("[DEBUG] load_icode(): before memcpy va: \n");
             // Copy Memory:
             memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
-            cprintf("[DEBUG] load_icode(): after memcpy\n");
+            // cprintf("[DEBUG] load_icode(): after memcpy\n");
             // Write 0s to (filesz, memsz]:
             if (ph->p_filesz != msize){
                 memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
@@ -597,7 +607,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
 
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -610,11 +620,15 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
+<<<<<<< HEAD
 
     if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, PTE_U | PTE_W) < 1){
+=======
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, PTE_U) < 1){
+>>>>>>> f3cff7521997d8e1d4566b72a2399ccf75797d35
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
