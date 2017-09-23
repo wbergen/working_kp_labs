@@ -617,10 +617,10 @@ static void load_icode(struct env *e, uint8_t *binary)
             if (vma_new(e, va, msize, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
-
+            cprintf("[DEBUG] load_icode(): before memcpy va: \n");
             // Copy Memory:
             memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
-
+            cprintf("[DEBUG] load_icode(): after memcpy\n");
             // Write 0s to (filesz, memsz]:
             if (ph->p_filesz != msize){
                 memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
@@ -650,10 +650,12 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-    if (vma_new(e, (void*)UTEMP, PGSIZE, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, PTE_U | PTE_W) < 1){
+        panic("load_icode(): vma stack creation failed!\n");
+    }
     // Attempt to debug the vma's we've allocated?
     // struct env *temp;
     // void * temp = e->free_vma_list->vma_link;

@@ -276,39 +276,10 @@ void trap(struct trapframe *tf)
     env_run(curenv);
 }
 
-
-void page_fault_handler(struct trapframe *tf)
-{
-    uint32_t fault_va;
+void alloc_page_after_fault(uint32_t fault_va){
+    
     struct vma * vma_el;
-    /* Read processor's CR2 register to find the faulting address */
-    fault_va = rcr2();
 
-    /* Handle kernel-mode page faults. */
-
-    /* LAB 3: Your code here. */
-
-    // If it's from the kernel, panic:
-    if (!(tf->tf_err & 4)){
-        panic("page_fault_handler(): kernel page fault!\n");
-    }
-
-    /* We've already handled kernel-mode exceptions, so if we get here, the page
-     * fault happened in user mode. */
-
-
-        // LAB 4 TEST AREA:
-    // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
-    /* So the page fault hander needs to...
-        - is there an allocated for that?
-            - There should be, so panic if lookup fails (right?)
-            - walk the pgdir to retrieve the nonpresent pte
-            - allocate w/ page_alloc() and write pa to the pte
-    */ 
-
-    cprintf("page_fault_handler(): curenv == %x\n", curenv);
-
-    // vma_lookup rets
     vma_el = vma_lookup(curenv, (void *)fault_va);
     if (vma_el){
         // VMA exists, so page a page for the env:
@@ -325,6 +296,41 @@ void page_fault_handler(struct trapframe *tf)
     } else {
         cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
     }
+}
+
+
+void page_fault_handler(struct trapframe *tf)
+{
+    uint32_t fault_va;
+    /* Read processor's CR2 register to find the faulting address */
+    fault_va = rcr2();
+
+    /* Handle kernel-mode page faults. */
+
+    /* LAB 3: Your code here. */
+
+    // If it's from the kernel, panic:
+    if (!(tf->tf_err & 4)){
+        panic("page_fault_handler(): kernel page fault!\n");
+    }
+
+    /* We've already handled kernel-mode exceptions, so if we get here, the page
+     * fault happened in user mode. */
+
+
+    // LAB 4 TEST AREA:
+    // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
+    /* So the page fault hander needs to...
+        - is there an allocated for that?
+            - There should be, so panic if lookup fails (right?)
+            - walk the pgdir to retrieve the nonpresent pte
+            - allocate w/ page_alloc() and write pa to the pte
+    */ 
+
+    cprintf("page_fault_handler(): curenv == %x\n", curenv);
+
+    // allocate the page 
+    alloc_page_after_fault(fault_va);
 
     /* Destroy the environment that caused the fault. */
     cprintf("[%08x] user fault va %08x ip %08x\n",
