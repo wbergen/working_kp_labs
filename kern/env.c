@@ -624,7 +624,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
