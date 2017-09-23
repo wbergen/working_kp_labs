@@ -50,6 +50,7 @@ struct vma {
     /* LAB 4: You may add more fields here, if required. */
     struct vma *vma_link;   // Next VMAs pointer
     void *cpy_src;          // Copy source for binary vmas
+    size_t src_sz;          // Copy source size (size on disk)
 };
 
 /* Values of env_status in struct env */

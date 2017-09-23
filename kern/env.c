@@ -176,12 +176,12 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int type, char * src, int perm){
+int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm){
 
     struct vma * new;
 
     // Return fail if BINARY && no src:
-    if ((type == VMA_BINARY) && (src == NULL)){
+    if ((type == VMA_BINARY) && ((src == NULL) || (filesize == 0))) {
         cprintf("vma_new(): type is binary, but no src address set.\n");
         return -1;
     }
@@ -209,6 +209,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, int perm
 
     if (type == VMA_BINARY)
         new->cpy_src = src;
+        new->src_sz = filesize;
 
 
     // Insert the page in the alloc list
@@ -623,7 +624,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             // 1 success, 0 failure, -1 other errors...
             // cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
             
-            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, PTE_U | PTE_W) < 1){
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
             
@@ -648,7 +649,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
 
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -661,7 +662,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, PTE_U) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
