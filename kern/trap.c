@@ -285,7 +285,7 @@ void trap(struct trapframe *tf)
  * Panic if any allocation attempt fails.
  */
 int i;
-static void region_alloc(void *va, size_t len)
+static void region_alloc(void *va, size_t len, int perm)
 {
     /*
      * LAB 3: Your code here.
@@ -309,7 +309,7 @@ static void region_alloc(void *va, size_t len)
         //if the page cannot be allocated panic
         if (p){
             //insert the page in the env_pgdir, if fails panic
-            if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), PTE_U | PTE_W)){
+            if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), perm)){
                 panic("region_alloc(): page_insert failure\n");
             }
         } else {
@@ -333,14 +333,13 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     vma_el = vma_lookup(curenv, (void *)fault_va);
     
     if (vma_el){
-
        
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
 
             cprintf("page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
-            region_alloc(vma_el->va, vma_el->len);
+            region_alloc(vma_el->va, vma_el->len, vma_el->perm);
 
             memcpy(vma_el->va, vma_el->cpy_src ,vma_el->src_sz);
 
@@ -410,10 +409,4 @@ void page_fault_handler(struct trapframe *tf)
         cprintf("page_fault_handler(): write protection fault, killing env!\n");
         kill_env(fault_va, tf);
     }
-
-    // /* Destroy the environment that caused the fault. */
-    // cprintf("[%08x] user fault va %08x ip %08x\n",
-    //     curenv->env_id, fault_va, tf->tf_eip);
-    // print_trapframe(tf);
-    // env_destroy(curenv);
 }
