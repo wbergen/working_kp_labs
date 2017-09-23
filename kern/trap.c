@@ -193,7 +193,7 @@ static void trap_dispatch(struct trapframe *tf)
 
     // Forward page faults to page_fault_handler:
     if (tf->tf_trapno == T_PGFLT){
-        // print_trapframe(tf);
+        print_trapframe(tf);
         page_fault_handler(tf);
         return;
     }
@@ -327,13 +327,8 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
-<<<<<<< HEAD
+
             cprintf("vma exists!  Allocating binary va:%x len:%x\n",vma_el->va,vma_el->len);
-=======
-
-            cprintf("page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
-
->>>>>>> 7d6a5577381acebfe6ca5bdac355ff00d6c3ede7
             region_alloc(vma_el->va, vma_el->len);
 
             memcpy(vma_el->va, vma_el->cpy_src ,vma_el->len);
@@ -345,7 +340,12 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         }else{
             // VMA exists, so page a page for the env:
             cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
-
+            if(vma_el->perm & PTE_W){
+                cprintf("pte write\n");
+            }
+            if(vma_el->perm & PTE_U){
+                cprintf("pte user\n");
+            }
             // Allocate a physical frame
             struct page_info * demand_page = page_alloc(0);
 
@@ -356,21 +356,11 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                     /* Destroy the environment that caused the fault. */
                     cprintf("[%08x] user fault va %08x ip %08x\n",
                         curenv->env_id, fault_va, tf->tf_eip);
-                    print_trapframe(tf);
                     env_destroy(curenv);
             }
         }
     } else {
-<<<<<<< HEAD
         cprintf("page_fault_handler(): Faulting addr %x not allocated in env's VMAs!\n", (void *)fault_va);
-=======
-        cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
-        
-        /* Destroy the environment that caused the fault. */
-        cprintf("[%08x] user fault va %08x ip %08x\n",
-            curenv->env_id, fault_va, tf->tf_eip);
-        print_trapframe(tf);
->>>>>>> 7d6a5577381acebfe6ca5bdac355ff00d6c3ede7
         env_destroy(curenv);
     }
 }
@@ -405,20 +395,9 @@ void page_fault_handler(struct trapframe *tf)
     // cprintf("page_fault_handler(): curenv == %x\n", curenv);
 
     // allocate the page 
-<<<<<<< HEAD
-    alloc_page_after_fault(fault_va);
 
-    /* Destroy the environment that caused the fault. */
     cprintf("[%08x] user fault va %08x ip %08x\n",
         curenv->env_id, fault_va, tf->tf_eip);
-=======
-    print_trapframe(tf);
     alloc_page_after_fault(fault_va, tf);
 
-    // /* Destroy the environment that caused the fault. */
-    // cprintf("[%08x] user fault va %08x ip %08x\n",
-    //     curenv->env_id, fault_va, tf->tf_eip);
-    // print_trapframe(tf);
-    // env_destroy(curenv);
->>>>>>> 7d6a5577381acebfe6ca5bdac355ff00d6c3ede7
 }

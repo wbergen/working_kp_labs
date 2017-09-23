@@ -588,20 +588,6 @@ static void load_icode(struct env *e, uint8_t *binary)
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
-<<<<<<< HEAD
-=======
-
-
-            // cprintf("[DEBUG] load_icode(): before memcpy va: \n");
-            // Copy Memory:
-            //memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
-            // cprintf("[DEBUG] load_icode(): after memcpy\n");
-            // Write 0s to (filesz, memsz]:
-            //if (ph->p_filesz != msize){
-           //     memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
-            //}
-
->>>>>>> 7d6a5577381acebfe6ca5bdac355ff00d6c3ede7
         }
     }
 
