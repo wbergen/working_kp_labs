@@ -332,6 +332,11 @@ void alloc_page_after_fault(uint32_t fault_va){
             region_alloc(vma_el->va, vma_el->len);
 
             memcpy(vma_el->va, vma_el->cpy_src ,vma_el->len);
+
+            // Write 0s to (filesz, memsz]:
+            if (vma_el->src_sz != vma_el->len){
+                memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
+            }
         }
         // VMA exists, so page a page for the env:
         cprintf("vma exists!  Allocating \"on demand\" page...\n");
