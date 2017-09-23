@@ -620,15 +620,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-<<<<<<< HEAD
-
-    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, PTE_U) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, PTE_U | PTE_W) < 1){
-=======
-    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, PTE_U) < 1){
->>>>>>> f3cff7521997d8e1d4566b72a2399ccf75797d35
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?

@@ -1,6 +1,7 @@
 #include <inc/mmu.h>
 #include <inc/x86.h>
 #include <inc/assert.h>
+#include <inc/string.h>
 
 #include <kern/pmap.h>
 #include <kern/trap.h>
@@ -283,6 +284,7 @@ void trap(struct trapframe *tf)
  * Pages should be writable by user and kernel.
  * Panic if any allocation attempt fails.
  */
+int i;
 static void region_alloc(void *va, size_t len)
 {
     /*
