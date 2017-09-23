@@ -94,7 +94,7 @@ void vma_proc_init(struct env *e){
 /*
     Remove the fist element of a vma list
 */
-struct vma * vma_remove_head(struct vma *list){
+struct vma * vma_remove_head(struct vma **list){
 
     cprintf("[DEBUG] vma_remove_head(): INITAL ARG == %x\n", list);
     struct vma * el;
@@ -107,10 +107,10 @@ struct vma * vma_remove_head(struct vma *list){
     cprintf("[DEBUG] vma_remove_head(): list == %x\n", list);
 
     // Save old first element:
-    el = list;
+    el = *list;
 
     // Set the list pointer to first element's link:
-    list = el->vma_link;
+    *list = el->vma_link;
 
     // Remove old first element's link:
     el->vma_link = NULL;
@@ -193,7 +193,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     }
 
     // Remove a vma from the free list
-    new = vma_remove_head(e->free_vma_list);
+    new = vma_remove_head(&e->free_vma_list);
 
     // If out of vma return 0
     if(!new){
