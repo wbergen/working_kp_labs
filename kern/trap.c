@@ -323,25 +323,16 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     struct vma * vma_el;
 
     vma_el = vma_lookup(curenv, (void *)fault_va);
-    
     if (vma_el){
 
-        // Check for protection fault:
-        if(!(tf->tf_err & 1)) {
+        // If it's a binary allocate the enough pages to span all vma and copy from file
+        if(vma_el->type == VMA_BINARY){
 
-<<<<<<< HEAD
             cprintf("vma exists!  Allocating binary va:%x len:%x\n",vma_el->va,vma_el->len);
             region_alloc(vma_el->va, vma_el->len);
-=======
-            // If it's a binary allocate the enough pages to span all vma and copy from file
-            if(vma_el->type == VMA_BINARY){
 
-                cprintf("page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
->>>>>>> 7ead21c80c481906d2fbd8ee8ab19dda48925f62
+            memcpy(vma_el->va, vma_el->cpy_src ,vma_el->len);
 
-                region_alloc(vma_el->va, vma_el->len);
-
-<<<<<<< HEAD
             // Write 0s to (filesz, memsz]:
             if (vma_el->src_sz != vma_el->len){
                 memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
@@ -349,12 +340,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         }else{
             // VMA exists, so page a page for the env:
             cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
-            if(vma_el->perm & PTE_W){
-                cprintf("pte write\n");
-            }
-            if(vma_el->perm & PTE_U){
-                cprintf("pte user\n");
-            }
+
             // Allocate a physical frame
             struct page_info * demand_page = page_alloc(0);
 
@@ -366,50 +352,10 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                     cprintf("[%08x] user fault va %08x ip %08x\n",
                         curenv->env_id, fault_va, tf->tf_eip);
                     env_destroy(curenv);
-=======
-                memcpy(vma_el->va, vma_el->cpy_src ,vma_el->src_sz);
-
-                // Write 0s to (filesz, memsz]:
-                if (vma_el->src_sz != vma_el->len){
-                    memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
-                }
-            }else{
-                // VMA exists, so page a page for the env:
-                cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
-
-                // Allocate a physical frame
-                struct page_info * demand_page = page_alloc(0);
-
-                //Insert the physical frame in the page directory
-                if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
-
-                    cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
-
-                        /* Destroy the environment that caused the fault. */
-                        cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
-                        print_trapframe(tf);
-                        env_destroy(curenv);
-                }
->>>>>>> 7ead21c80c481906d2fbd8ee8ab19dda48925f62
             }
-        } else {
-            cprintf("page_fault_handler(): Protection fault, destorying env!\n");
-        
-            /* Destroy the environment that caused the fault. */
-            cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
-            print_trapframe(tf);
-            env_destroy(curenv);
         }
     } else {
-<<<<<<< HEAD
         cprintf("page_fault_handler(): Faulting addr %x not allocated in env's VMAs!\n", (void *)fault_va);
-=======
-        cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
-        
-        /* Destroy the environment that caused the fault. */
-        cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
-        print_trapframe(tf);
->>>>>>> 7ead21c80c481906d2fbd8ee8ab19dda48925f62
         env_destroy(curenv);
     }
 }
@@ -428,7 +374,11 @@ void page_fault_handler(struct trapframe *tf)
     if (!(tf->tf_err & 4)){
         panic("page_fault_handler(): kernel page fault!\n");
     }
+    if ((tf->tf_err & 1)){
+        cprintf("page_fault_handler(): write protected page fault!\n");
+        env_destroy(curenv);
 
+    }
     /* We've already handled kernel-mode exceptions, so if we get here, the page
      * fault happened in user mode. */
 
@@ -447,6 +397,7 @@ void page_fault_handler(struct trapframe *tf)
 
     cprintf("[%08x] user fault va %08x ip %08x\n",
         curenv->env_id, fault_va, tf->tf_eip);
+
     alloc_page_after_fault(fault_va, tf);
 
 }
