@@ -100,7 +100,7 @@ struct vma * vma_remove_head(struct vma **list){
     struct vma * el;
     
     // check if the list is empty
-    if(list == NULL){
+    if(*list == NULL){
         return NULL;
     }
 
@@ -128,15 +128,15 @@ struct vma * vma_remove_head(struct vma **list){
 
         I suppose the 
 */
-void vma_insert( struct vma * el, struct vma * list, int ordered){
+void vma_insert( struct vma * el, struct vma **list, int ordered){
 
-    struct vma * vma_i = list;   // list iterator
-    struct vma * vma_old = list; // we append the new element to this one
+    struct vma * vma_i = *list;   // list iterator
+    struct vma * vma_old = *list; // we append the new element to this one
 
     cprintf("vma_insert(): inserting vma!\n");
 
     // Handling corner case list NULL -> insert the element in the head 
-    if(!list){
+    if(!*list){
         ordered=0;
     }
 
@@ -160,8 +160,8 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     }else{
         // Head insert
-        el->vma_link = list;
-        list = el;
+        el->vma_link = *list;
+        *list = el;
     }
 }
 
@@ -213,7 +213,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
 
     // Insert the page in the alloc list
-    vma_insert(new, e->alloc_vma_list, 1);
+    vma_insert(new, &e->alloc_vma_list, 1);
 
     // Success
     return 1;
