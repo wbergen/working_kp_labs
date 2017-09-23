@@ -189,10 +189,10 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     }
 
     // Return error if va it's not page alligned
-    if(((uint32_t)va % PGSIZE) != 0){
-        cprintf("vma_new(): the va is not page alligned\n");
-        return -1;
-    }
+    // if(((uint32_t)va % PGSIZE) != 0){
+    //     cprintf("vma_new(): the va is not page alligned\n");
+    //     return -1;
+    // }
 
     // Remove a vma from the free list
     new = vma_remove_head(&e->free_vma_list);
@@ -575,11 +575,11 @@ static void load_icode(struct env *e, uint8_t *binary)
             }
 
             // Get the address to map @, and the size:
-            va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
-            msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
+            // va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
+            // msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
-            // va = (void *) ph->p_va;
-            // msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
+            va = (void *) ph->p_va;
+            msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
 
             // Map:
             // region_alloc(e, va, msize);
