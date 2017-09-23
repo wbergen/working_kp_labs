@@ -67,28 +67,28 @@ struct pseudodesc gdt_pd = {
 /*
     Initialize Process VMAs
 */
-void vma_proc_init(struct env e){
+void vma_proc_init(struct env *e){
 
     int i;
 
     // Initialize the vma list pointers
-    e.free_vma_list = NULL;
-    e.alloc_vma_list = NULL;
+    e->free_vma_list = NULL;
+    e->alloc_vma_list = NULL;
 
     //NVMA -1 or NVMA? 
     for (i = (NVMA - 1); i >= 0; i--) {
         //Mark the vma as VMA_UNUSED and 0 the remaining fields
-        e.vmas[i].type = VMA_UNUSED;
-        e.vmas[i].va = 0;
-        e.vmas[i].len = 0;
-        e.vmas[i].perm = 0;
+        e->vmas[i].type = VMA_UNUSED;
+        e->vmas[i].va = 0;
+        e->vmas[i].len = 0;
+        e->vmas[i].perm = 0;
 
         //Add the vma to the free_vma_list
-        e.vmas[i].vma_link = e.free_vma_list;
-        e.free_vma_list = &e.vmas[i];
+        e->vmas[i].vma_link = e->free_vma_list;
+        e->free_vma_list = &e->vmas[i];
     }
 
-    cprintf("vma_proc_init(): e's free list == %x\n", e.free_vma_list);
+    cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
 }
 
 /*
@@ -176,7 +176,7 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int perm, ...){
+int vma_new(struct env * e, void *va, size_t len, int perm){
 
     struct vma * new;
 
@@ -213,21 +213,21 @@ int vma_new(struct env * e, void *va, size_t len, int perm, ...){
 /*
     Lookup in the allocated vma if the va is mapped
 
-    return 1 if success, 0 if not
+    return the vma if success, NULL if not
 */
-int vma_lookup(struct env *e, void *va){
+struct vma * vma_lookup(struct env *e, void *va){
 
     struct vma *vma_i = e->alloc_vma_list;
 
     while(vma_i){
 
         if(va >= vma_i->va && va <= (vma_i->va + vma_i->len) ){
-            return 1;
+            return vma_i;
         }
         vma_i = vma_i->vma_link;
     }
 
-    return 0;
+    return NULL;
 
 }
 /*
@@ -298,7 +298,7 @@ void env_init(void)
         envs[i].env_id = 0;
 
         //Initialize the env vmas
-        vma_proc_init(envs[i]);
+        vma_proc_init(&envs[i]);
 
         envs[i].env_link = env_free_list;
         env_free_list = &envs[i];
@@ -613,8 +613,8 @@ static void load_icode(struct env *e, uint8_t *binary)
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
             // 1 success, 0 failure, -1 other errors...
-            cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", &e->free_vma_list);
-            if (vma_new(e, va, msize, 0) < 1){
+            cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
+            if (vma_new(e, va, msize, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
 
@@ -637,7 +637,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
 
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, 0) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -650,7 +650,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-    if (vma_new(e, (void*)UTEMP, PGSIZE, 0) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 

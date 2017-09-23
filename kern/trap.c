@@ -280,7 +280,7 @@ void trap(struct trapframe *tf)
 void page_fault_handler(struct trapframe *tf)
 {
     uint32_t fault_va;
-
+    struct vma * vma_el;
     /* Read processor's CR2 register to find the faulting address */
     fault_va = rcr2();
 
@@ -308,24 +308,21 @@ void page_fault_handler(struct trapframe *tf)
 
     cprintf("page_fault_handler(): curenv == %x\n", curenv);
 
-    // vma_lookup rets 
-    if (vma_lookup(curenv, (void *)fault_va)){
+    // vma_lookup rets
+    vma_el = vma_lookup(curenv, (void *)fault_va);
+    if (vma_el){
         // VMA exists, so page a page for the env:
         cprintf("vma exists!  Allocating \"on demand\" page...\n");
 
-        // Get the pte that needs allocating:
-        // pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
-        pte_t *pte = pgdir_walk(curenv->env_pgdir, (void *)fault_va, 0);
-
-        // Allocate a page in it:
-        // struct page_info *page_alloc(int alloc_flags)
+        // Allocate a physical frame
         struct page_info * demand_page = page_alloc(0);
 
-        // Set the pte with the new physical page's addr:
-        *pte = page2pa(demand_page);
+        //Insert the physical frame in the page directory
+        if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
 
+            cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+        }
     } else {
-        // Somthing bad has happened...
         cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
     }
 
