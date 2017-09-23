@@ -88,7 +88,7 @@ void vma_proc_init(struct env *e){
         e->free_vma_list = &e->vmas[i];
     }
 
-    cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
+    // cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
 }
 
 /*
@@ -178,6 +178,8 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
     struct vma * new;
 
+    cprintf("trying to allocate new vma @ %x\n", va);
+
     // Return fail if BINARY && no src:
     if ((type == VMA_BINARY) && ((src == NULL) || (filesize == 0))) {
         cprintf("vma_new(): type is binary, but no src address set.\n");
@@ -185,10 +187,10 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     }
 
     // Return error if va it's not page alligned
-    if(((uint32_t)va % PGSIZE) != 0){
-        cprintf("vma_new(): the va is not page alligned\n");
-        return -1;
-    }
+    // if(((uint32_t)va % PGSIZE) != 0){
+    //     cprintf("vma_new(): the va is not page alligned\n");
+    //     return -1;
+    // }
 
     // Remove a vma from the free list
     new = vma_remove_head(&e->free_vma_list);
@@ -571,8 +573,11 @@ static void load_icode(struct env *e, uint8_t *binary)
             }
 
             // Get the address to map @, and the size:
-            va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
-            msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
+            // va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
+            // msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
+
+            va = (void *) ph->p_va;
+            msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
 
             // Map:
             // region_alloc(e, va, msize);
@@ -583,6 +588,20 @@ static void load_icode(struct env *e, uint8_t *binary)
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
+<<<<<<< HEAD
+=======
+
+
+            // cprintf("[DEBUG] load_icode(): before memcpy va: \n");
+            // Copy Memory:
+            //memcpy(va, ((char *)eh)+ph->p_offset, ph->p_filesz);
+            // cprintf("[DEBUG] load_icode(): after memcpy\n");
+            // Write 0s to (filesz, memsz]:
+            //if (ph->p_filesz != msize){
+           //     memset(va + ph->p_filesz, 0, msize - ph->p_filesz);
+            //}
+
+>>>>>>> 7d6a5577381acebfe6ca5bdac355ff00d6c3ede7
         }
     }
 
