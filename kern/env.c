@@ -176,7 +176,7 @@ void vma_insert( struct vma * el, struct vma * list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int perm){
+int vma_new(struct env * e, void *va, size_t len, int type, int perm){
 
     struct vma * new;
 
@@ -199,6 +199,7 @@ int vma_new(struct env * e, void *va, size_t len, int perm){
     }
 
     // Initialize the new vma
+    new->type = type;
     new->va = va;
     new->len = len;
     new->perm = perm;
@@ -614,7 +615,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
             // 1 success, 0 failure, -1 other errors...
             cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
-            if (vma_new(e, va, msize, PTE_U | PTE_W) < 1){
+            if (vma_new(e, va, msize, VMA_BINARY, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
             cprintf("[DEBUG] load_icode(): before memcpy va: \n");
@@ -637,7 +638,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 
 
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -650,10 +651,14 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
+<<<<<<< HEAD
     if (vma_new(e, (void*)UTEMP, PGSIZE, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, PTE_U | PTE_W) < 1){
+=======
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, PTE_U | PTE_W) < 1){
+>>>>>>> f4a865cc1ee9dec47480d14b9f14d6635fd3f13d
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
