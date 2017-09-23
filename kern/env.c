@@ -532,6 +532,7 @@ static void load_icode(struct env *e, uint8_t *binary)
       GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RWE 0x10
     */
     size_t change_env_flag = 0;
+
     // Ensure that we're using the enviorment's pg_dir:
     if (e != curenv){
         change_env_flag = 1;
@@ -572,8 +573,8 @@ static void load_icode(struct env *e, uint8_t *binary)
             }
 
             // Get the address to map @, and the size:
-            va = (void *) ph->p_va;
-            msize = (size_t) ph->p_memsz;
+            va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
+            msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
             // Map:
             // region_alloc(e, va, msize);
@@ -583,7 +584,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             // 1 success, 0 failure, -1 other errors...
             // cprintf("[DEBUG] load_icode(): calling vma_create with e's list == %x\n", e->free_vma_list);
                        
-            if (vma_new(e, ROUNDDOWN(va,PGSIZE), msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
             
