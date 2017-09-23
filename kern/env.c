@@ -464,48 +464,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id)
     return 0;
 }
 
-/*
- * Allocate len bytes of physical memory for environment env, and map it at
- * virtual address va in the environment's address space.
- * Does not zero or otherwise initialize the mapped pages in any way.
- * Pages should be writable by user and kernel.
- * Panic if any allocation attempt fails.
- */
-static void region_alloc(struct env *e, void *va, size_t len)
-{
-    /*
-     * LAB 3: Your code here.
-     * (But only if you need it for load_icode.)
-     *
-     * Hint: It is easier to use region_alloc if the caller can pass
-     *   'va' and 'len' values that are not page-aligned.
-     *   You should round va down, and round (va + len) up.
-     *   (Watch out for corner-cases!)
-     */
 
-    struct page_info *p; // the page to allocate
-    void *va_ptr = ROUNDDOWN(va, PGSIZE); // address start
-    uint32_t num_pages = (uint32_t) ROUNDUP( (len + (va - va_ptr)), PGSIZE) / PGSIZE; // number of pages to alloc
-
-    // Check rounded out pages:
-    for (i = 0; i < num_pages; ++i)
-    {
-        // allocate a phy page
-        p = page_alloc(0);
-        //if the page cannot be allocated panic
-        if (p){
-            //insert the page in the env_pgdir, if fails panic
-            if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), PTE_U | PTE_W)){
-                panic("region_alloc(): page_insert failure\n");
-            }
-        } else {
-            panic("region_alloc(): page_alloc failure\n");
-
-        }
-    }
-
-
-}
 
 /*
  * Set up the initial program binary, stack, and processor flags for a user
@@ -663,6 +622,9 @@ static void load_icode(struct env *e, uint8_t *binary)
     /* LAB 4: Your code here. */
 
     if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, PTE_U) < 1){
+        panic("load_icode(): vma stack creation failed!\n");
+    }
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
