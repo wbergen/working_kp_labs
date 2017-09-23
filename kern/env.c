@@ -88,7 +88,7 @@ void vma_proc_init(struct env *e){
         e->free_vma_list = &e->vmas[i];
     }
 
-    cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
+    // cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
 }
 
 /*
@@ -179,6 +179,8 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
 int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm){
 
     struct vma * new;
+
+    cprintf("trying to allocate new vma @ %x\n", va);
 
     // Return fail if BINARY && no src:
     if ((type == VMA_BINARY) && ((src == NULL) || (filesize == 0))) {
@@ -576,6 +578,9 @@ static void load_icode(struct env *e, uint8_t *binary)
             va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
             msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
+            // va = (void *) ph->p_va;
+            // msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
+
             // Map:
             // region_alloc(e, va, msize);
 
@@ -587,7 +592,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
-            
+
 
             // cprintf("[DEBUG] load_icode(): before memcpy va: \n");
             // Copy Memory:
