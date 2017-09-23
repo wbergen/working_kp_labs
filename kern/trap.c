@@ -337,17 +337,18 @@ void alloc_page_after_fault(uint32_t fault_va){
             if (vma_el->src_sz != vma_el->len){
                 memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
             }
-        }
-        // VMA exists, so page a page for the env:
-        cprintf("vma exists!  Allocating \"on demand\" page...\n");
+        }else{
+            // VMA exists, so page a page for the env:
+            cprintf("vma exists!  Allocating \"on demand\" page...\n");
 
-        // Allocate a physical frame
-        struct page_info * demand_page = page_alloc(0);
+            // Allocate a physical frame
+            struct page_info * demand_page = page_alloc(0);
 
-        //Insert the physical frame in the page directory
-        if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
+            //Insert the physical frame in the page directory
+            if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
 
-            cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+                cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+            }
         }
     } else {
         cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
