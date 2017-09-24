@@ -34,6 +34,7 @@ static inline int32_t syscall(int num, int check, uint32_t a1, uint32_t a2,
           "S" (a5)
         : "cc", "memory");
 
+    // Remove this with correct passing of check value
     if (num == 4) {
         return ret;
     }
@@ -68,7 +69,7 @@ void *sys_vma_create(size_t size, int perm, int flags)
 {
     /* LAB 4: Your code here */
     // static void *sys_vma_create(size_t size, int perm, int flags)
-    return (void *)syscall(SYS_vma_create, size, perm, flags, 0,0,0);
+    return (void *)syscall(SYS_vma_create, 0, size, perm, flags, 0, 0);
 
     // return NULL;
 }
@@ -77,7 +78,7 @@ int sys_vma_destroy(void *va, size_t size)
 {
     /* LAB 4: Your code here */
     //static int sys_vma_destroy(void *va, size_t size)
-    return syscall(SYS_vma_destroy, (uint32_t)va, size, 0, 0, 0, 0);
+    return syscall(SYS_vma_destroy, 0, (uint32_t)va, size, 0, 0, 0);
 
 
     // return -E_NO_SYS;

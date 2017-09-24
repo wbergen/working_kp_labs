@@ -118,9 +118,10 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
     // Get the next available spot on the list?
     // Naive, but should work for testing...
-    void * vat = curenv->alloc_vma_list->va;
-    size_t lent = curenv->alloc_vma_list->len;
-    void * spot = ROUNDUP(vat + lent, PGSIZE);
+    // void * vat = curenv->alloc_vma_list->va;
+    // size_t lent = curenv->alloc_vma_list->len;
+    // void * spot = ROUNDUP(vat + lent, PGSIZE);
+    void * spot = (void *)0;
 
     /*
     iterate over the allocated vmas:
@@ -131,15 +132,15 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     uint32_t gap = 0;
 
     while (temp){
-        cprintf("vma @ [%08u - %08u]\n", temp->va, temp->va + temp->len);
+        cprintf("vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
 
         temp = temp->vma_link;
-        gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)last_addr + last_size), PGSIZE);
+        gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
         cprintf("gap: %u\n", gap);
 
         if (gap > size) {
-            cprintf("spot should be: %08u\n",  last_addr + last_size);
-            spot = (void *)((uint32_t)last_addr + last_size);
+            cprintf("spot should be: %08x\n",  (uint32_t *)last_addr + last_size);
+            spot = (void *)((uint32_t *)last_addr + last_size);
             // spot = ROUNDUP(last_addr + last_size, PGSIZE);
             break;
         }
@@ -151,7 +152,7 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
     }
 
-    cprintf("[KERN] sys_vma_create(): vat ==  %x, lent == %u, spot == %x\n", vat, lent, spot);
+    cprintf("[KERN] sys_vma_create(): spot ==  %x, gap == %u, new vma size == %u\n", spot, gap, size);
 
 
     // int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm){
@@ -194,7 +195,7 @@ static int sys_vma_destroy(void *va, size_t size)
     */
 
     // Find the vma covering the range:
-    //struct vma * vma_lookup(struct env *e, void *va);
+    struct vma * vma_lookup(struct env *e, void *va);
     // struct vma * vmad = vma_lookup(curenv, va);
     // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
 

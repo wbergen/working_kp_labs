@@ -358,7 +358,6 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
             //Insert the physical frame in the page directory
             int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);
-            cprintf("%u\n", ret);
             if(ret != 0){
 
                 // If Failure:
