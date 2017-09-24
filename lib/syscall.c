@@ -34,11 +34,6 @@ static inline int32_t syscall(int num, int check, uint32_t a1, uint32_t a2,
           "S" (a5)
         : "cc", "memory");
 
-    // Remove this with correct passing of check value
-    if (num == 4) {
-        return ret;
-    }
-
     if(check && ret > 0)
         panic("syscall %d returned %d (> 0)", num, ret);
 

@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 
 #include <kern/vma.h>
+#include <kern/pmap.h>
 
 /*
     Initialize Process VMAs
@@ -215,6 +216,14 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
         if(vmad->va >= vma_i->va && vmad->va <= (vma_i->va + vma_i->len) ){
             cprintf("Found and removed vma!\n");
             
+            // Remove page entries:
+            int i;
+            for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i)
+            {
+                page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
+            }
+
+
             // Remove vma from list by link previous to next:
             previous_vma->vma_link = vma_i->vma_link;
             
