@@ -163,7 +163,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
     // Insert the page in the alloc list
     vma_insert(new, &e->alloc_vma_list, 1);
-    vma_print(e);
+    // vma_print(e);
     // Success
     return 1;
 }
@@ -189,26 +189,36 @@ struct vma * vma_lookup(struct env *e, void *va){
 
 }
 
-void    vma_print(struct env *e){
+// void vma_print(struct env *e){
 
-    struct vma * vma_i = e->alloc_vma_list;
+//     struct vma * vma_i = e->alloc_vma_list;
 
-    while(vma_i){
+//     while(vma_i){
 
-        cprintf("\t\tVMA INFO\t\t\n");
-        cprintf("va: %x len %d \n", vma_i->va, vma_i->len);
+//         cprintf("\t\tVMA INFO\t\t\n");
+//         cprintf("va: %x len %d \n", vma_i->va, vma_i->len);
 
-        if(vma_i->type == VMA_BINARY){
-            cprintf("Type: BINARY, src: %x, size: %d\n",vma_i->cpy_src, vma_i->src_sz);
-        }else{
-            cprintf("Type: ANON\n");
-        }
-        cprintf("\n");
-        vma_i = vma_i->vma_link;
+//         if(vma_i->type == VMA_BINARY){
+//             cprintf("Type: BINARY, src: %x, size: %d\n",vma_i->cpy_src, vma_i->src_sz);
+//         }else{
+//             cprintf("Type: ANON\n");
+//         }
+//         cprintf("\n");
+//         vma_i = vma_i->vma_link;
+//     }
+//     cprintf("\t END VMA LIST \t\n");
+// }
+
+
+void print_all_vmas(struct env * e){
+    struct vma * temp = e->alloc_vma_list;
+
+    while (temp){
+        cprintf("[%u][0x%08x <-> 0x%08x] (len: %u)\n", \
+         temp->type, temp->va, temp->va+temp->len, temp->len);
+        temp = temp->vma_link;
     }
-    cprintf("\t END VMA LIST \t\n");
 }
-
 
 /*
     Remove vma from the alloc list
@@ -323,6 +333,7 @@ struct vma * vma_split_lookup(void *va, size_t size){
         //create a new vma from the splited part    
         vma_new(curenv, va_t, size_tem, vmad->type, vmad->cpy_src, vmad->src_sz, vmad->perm);
     }
+
 
     return vmad;
 }

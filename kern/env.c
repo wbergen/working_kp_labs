@@ -404,9 +404,11 @@ static void load_icode(struct env *e, uint8_t *binary)
             // va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
             // msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
+            // cprintf("\nva: %x msize: %u\n", va, msize);
             va = (void *) ph->p_va;
             msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
 
+            // cprintf("\nva: %x msize: %u\n", va, msize);
             // Map:
             // region_alloc(e, va, msize);
 
@@ -416,6 +418,8 @@ static void load_icode(struct env *e, uint8_t *binary)
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
+
+
         }
     }
 

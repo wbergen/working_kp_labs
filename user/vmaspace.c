@@ -25,6 +25,7 @@ void umain(int argc, char **argv)
  
     /* Out of virtual memory space? */
     vb = sys_vma_create(ALLOC_SECOND, PERM_W, 0);
+    cprintf("vb == %x\n", vb);
     assert(MAP_FAILED == vb);
     cprintf("Second alloc failed. Size:%08x\n", ALLOC_SECOND);
 

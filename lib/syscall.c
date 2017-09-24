@@ -60,7 +60,7 @@ envid_t sys_getenvid(void)
      return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
 }
 
-void *sys_vma_create(size_t size, int perm, int flags)
+void *sys_vma_create(uint32_t size, int perm, int flags)
 {
     /* LAB 4: Your code here */
     // static void *sys_vma_create(size_t size, int perm, int flags)

@@ -85,10 +85,11 @@ static int sys_env_destroy(envid_t envid)
  * Returns the address to the start of the new mapping, on success,
  * or -1 if request could not be satisfied.
  */
-static void *sys_vma_create(size_t size, int perm, int flags)
+static void *sys_vma_create(uint32_t size, int perm, int flags)
 {
     cprintf("[KERN] sys_vma_create(): called\n");
     cprintf("[KERN] sys_vma_create(): size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
+
    /* Virtual Memory Area allocation */
 
    /* LAB 4: Your code here. */
@@ -101,10 +102,14 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
     // Bookkeeping:
     struct vma * temp = curenv->alloc_vma_list;
-    size_t last_size = temp->len;
-    uint32_t * last_addr = temp->va;
+    uint32_t last_size = temp->len;
+    void * last_addr = temp->va;
     uint32_t gap = 0;
     int vma_at_zero = 0;
+    uint32_t total_area = 0;
+    uint32_t max;
+
+    print_all_vmas(curenv);
 
     // Check for space under first element:
     if ((uint32_t)temp->va > size) {
@@ -116,20 +121,30 @@ static void *sys_vma_create(size_t size, int perm, int flags)
         // No space before first element, iterate:
         while (temp){
 
+            total_area = total_area + temp->len;
+
             // Handle last element case outside of loop
             if (!temp->vma_link){
                 break;
             }
 
-            cprintf("vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
+            cprintf("[KERN] vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
 
             temp = temp->vma_link;
-            gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
-            cprintf("gap: %u\n", gap);
+            // gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
+            gap = (uint32_t)(temp->va - last_addr + last_addr);
+            cprintf("[KERN] gap: %u\n", gap);
 
             if (gap > size) {
-                cprintf("spot should be: %08x\n",  (uint32_t *)last_addr + last_size);
-                spot = (void *)((uint32_t *)last_addr + last_size);
+
+                // Checking before acutally allowing an allocation for vm overrun works but...
+                if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - total_area)) {
+                    cprintf("[KERN] sy]s_vma_create(): Not enough mem to accomodate vma!\n");
+                    return (void *)-1;
+                }
+
+                cprintf("spot should be: %08x\n",  (void *)(last_addr + last_size));
+                spot = (void *)(last_addr + last_size);
                 // spot = ROUNDUP(last_addr + last_size, PGSIZE);
                 break;
             }
@@ -142,10 +157,13 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
     // Handle case where no gap is found:
     if (spot == 0 && !vma_at_zero){
+        cprintf("[KERN] sys_vma_create(): no gap found!");
         // Make sure length isn't > space:
-        spot = (void *)((uint32_t *)last_addr + last_size);
+        // gap = 0;
+        spot = (void *)(last_addr + last_size);
         // uint32_t max = ~0>>1;
-        if (((uint32_t)spot + size) > UTOP) {
+        // cprintf()
+        if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - total_area)) {
             cprintf("[KERN] sys_vma_create(): Not enough mem to accomodate vma!\n");
             return (void *)-1;
         }
@@ -178,6 +196,9 @@ static void *sys_vma_create(size_t size, int perm, int flags)
             }
         }
     }
+
+    print_all_vmas(curenv);
+
    return spot;
 }
 
@@ -189,7 +210,8 @@ static int sys_vma_destroy(void *va, size_t size)
 {
    /* Virtual Memory Area deallocation */
 
-    cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);  
+    cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);
+
     /*
     The sys_vma_destroy(void *va, size_t size) system call will unmap (part of) a VMA.
     
@@ -205,13 +227,16 @@ static int sys_vma_destroy(void *va, size_t size)
     // Find the vma covering the range:
     // struct vma * vma_lookup(struct env *e, void *va);
     // gonna call split on 
+    print_all_vmas(curenv);
 
     struct vma * vmad = vma_split_lookup(va,size);
     cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
-    if (vma_remove_alloced(curenv, vmad) < 1) {
-        cprintf("[KERN] sys_vma_destroy(): failed to remove the vma!\n");
-        return -1;
-    }
+    // if (vma_remove_alloced(curenv, vmad) < 1) {
+        // cprintf("[KERN] sys_vma_destroy(): failed to remove the vma!\n");
+        // return -1;
+    // }
+
+    print_all_vmas(curenv);
 
    /* LAB 4: Your code here. */
    return 0;
