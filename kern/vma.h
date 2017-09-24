@@ -54,4 +54,14 @@ struct vma * vma_lookup(struct env *e, void *va);
 
 int vma_remove_alloced(struct env *e, struct vma *vmad);
 
+/*
+
+    The function given a va and a size finds the right vma and,
+    in case the va and the size lies inside a valid vma, it splits it in multiple vmas
+
+    It returns the new vma or if nothing was splitted the looked up one.
+    returns null in case of errors
+*/
+struct vma * vma_split_lookup(void *va, size_t size)
+
 #endif  /* !JOS_INC_LIB_H */
