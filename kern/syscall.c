@@ -102,11 +102,13 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     size_t last_size = temp->len;
     uint32_t * last_addr = temp->va;
     uint32_t gap = 0;
+    int vma_at_zero = 0;
 
     // Check for space under first element:
     if ((uint32_t)temp->va > size) {
         cprintf("spot should be: %08x\n", 0x0);
-        spot = (void *)((uint32_t *)0x0);
+        spot = (void *)0x0;
+        vma_at_zero = 1;
     } else {
 
         // No space before first element, iterate:
@@ -137,7 +139,7 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     }
 
     // Handle case where no gap is found:
-    if (spot == 0){
+    if (spot == 0 && !vma_at_zero){
         // Make sure length isn't > space:
         spot = (void *)((uint32_t *)last_addr + last_size);
         // uint32_t max = ~0>>1;
