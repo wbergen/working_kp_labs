@@ -232,6 +232,64 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
         
     }
 
-
     return 0;
+}
+/*
+
+    The function given a va and a size finds the right vma and,
+    in case the va and the size lies inside a valid vma it split it in multiple vmas
+
+    It returns the new vma or if nothing was splitted the looked up one.
+    returns null in case of errors
+*/
+struct vma * vma_split_lookup(void *va, size_t size){
+
+    //lookup
+    struct vma * vmad = vma_lookup(curenv, va);
+
+    // If the lookup fails return null
+    if(!vmad){
+        return vmad;
+    }
+
+    // Check if it's a anon vma
+    if(vma->type != VMA_ANON){
+        cprintf("vma_split_lookup: this operation shouldn't be done for binary mappings\n");
+        return NULL; 
+    }
+    // if it spans multiple vmas kill the process that initiated the operation
+    if((size_t)va + size > (size_t)vmad->va + vmad->len){
+        cprintf("vma_split_lookup: the vma to split spans multiples vmas\n\n Killing the process...\n");
+        env_destroy(curenv);
+        return NULL;
+    }
+
+    // Case 1: if "va" is greater than "vmad->va" split the first part of the vma
+    if((size_t)va > (size_t)vmad->va){
+
+        void * va_t = vmad->va;
+        size_t site_tem = ((size_t)va - (size_t)vmad->va);
+
+        //update the vma 
+        vmad->va = va;
+        vmad->len = vmad->len - size_tem;
+
+        //create a new vma from the splited part
+        vma_new(curenv, va_t, size_tem, vmad->type, vmad->cpy_src, vmad->src_sz, vmad->perm);
+    }
+
+    //Case 2: if va + size is grater than vmad->va + vmad->len split the second part of the vma
+    if((size_t)va + size < (size_t)vmad->va + vmad->len){
+
+        void * va_t = va + size;
+        size_t site_tem = vmad->len - ( (size_t)va_t - (size_t)vmad->va );
+
+        //update the vma
+        vmad->len = vmad->len - size_tem;
+
+        //create a new vma from the splited part    
+        vma_new(curenv, va_t, size_tem, vmad->type, vmad->cpy_src, vmad->src_sz, vmad->perm);
+    }
+
+    return vmad;
 }
