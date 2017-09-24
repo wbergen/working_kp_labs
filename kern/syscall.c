@@ -89,7 +89,6 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 {
     cprintf("[KERN] sys_vma_create(): called\n");
     cprintf("[KERN] sys_vma_create(): size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
-
    /* Virtual Memory Area allocation */
 
    /* LAB 4: Your code here. */
@@ -179,7 +178,6 @@ static void *sys_vma_create(size_t size, int perm, int flags)
             }
         }
     }
-
    return spot;
 }
 
@@ -191,8 +189,7 @@ static int sys_vma_destroy(void *va, size_t size)
 {
    /* Virtual Memory Area deallocation */
 
-    cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);
-
+    cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);  
     /*
     The sys_vma_destroy(void *va, size_t size) system call will unmap (part of) a VMA.
     

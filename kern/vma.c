@@ -82,8 +82,9 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
 
     cprintf("vma_insert(): inserting vma!\n");
 
-    // Handling corner case list NULL -> insert the element in the head 
-    if(!*list){
+    // Handling corner case list NULL -> insert the element in the head
+    // Handling corener case  element < than the first element in the list
+    if(!*list ||  (vma_i->va > el->va)){
         ordered=0;
     }
 
@@ -91,16 +92,14 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
         // Ordered insert
         // We need to find the first vma with the va < new_el.va
         while(vma_i){
-
-            vma_old = vma_i;
             // If we find the first element with va < new_el.va break
-            if(vma_i->va < el->va){
+            if(vma_i->va > el->va){
+                //cprintf("to attach: %x old va: %x new va: %x\n",vma_old->va, vma_i->va,el->va);
                 break;
             }
-
+            vma_old = vma_i;
             vma_i = vma_i->vma_link;
         }
-
         // Insert the lement
         el->vma_link = vma_old->vma_link;
         vma_old->vma_link = el;
@@ -110,6 +109,7 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
         el->vma_link = *list;
         *list = el;
     }
+
 }
 
 
@@ -163,7 +163,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
     // Insert the page in the alloc list
     vma_insert(new, &e->alloc_vma_list, 1);
-
+    vma_print(e);
     // Success
     return 1;
 }
