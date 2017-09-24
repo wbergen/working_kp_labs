@@ -189,6 +189,25 @@ struct vma * vma_lookup(struct env *e, void *va){
 
 }
 
+void    vma_print(struct env *e){
+
+    struct vma * vma_i = e->alloc_vma_list;
+
+    while(vma_i){
+
+        cprintf("\t\tVMA INFO\t\t\n");
+        cprintf("va: %x len %d \n", vma_i->va, vma_i->len);
+
+        if(vma_i->type == VMA_BINARY){
+            cprintf("Type: BINARY, src: %x, size: %d\n",vma_i->cpy_src, vma_i->src_sz);
+        }else{
+            cprintf("Type: ANON\n");
+        }
+        cprintf("\n");
+        vma_i = vma_i->vma_link;
+    }
+    cprintf("\t END VMA LIST \t\n");
+}
 
 
 /*
@@ -220,6 +239,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
             int i;
             for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i)
             {
+                cprintf("removing page va: %x \n", vma_i->va);
                 page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
             }
 
@@ -235,12 +255,10 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
 
             vma_i->vma_link = e->free_vma_list;
             e->free_vma_list = vma_i; 
-
             return 1;
         }
         
     }
-
     return 0;
 }
 /*
@@ -256,7 +274,6 @@ struct vma * vma_split_lookup(void *va, size_t size){
     //lookup
     struct vma * vmad = vma_lookup(curenv, va);
 
-    
     // If the lookup fails return null
     if(!vmad){
         return vmad;
