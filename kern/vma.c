@@ -262,7 +262,7 @@ struct vma * vma_split_lookup(void *va, size_t size){
     }
 
     // Check if it's a anon vma
-    if(vma->type != VMA_ANON){
+    if(vmad->type != VMA_ANON){
         cprintf("vma_split_lookup: this operation shouldn't be done for binary mappings\n");
         return NULL; 
     }
@@ -277,7 +277,7 @@ struct vma * vma_split_lookup(void *va, size_t size){
     if((size_t)va > (size_t)vmad->va){
 
         void * va_t = vmad->va;
-        size_t site_tem = ((size_t)va - (size_t)vmad->va);
+        size_t size_tem = ((size_t)va - (size_t)vmad->va);
 
         //update the vma 
         vmad->va = va;
@@ -291,7 +291,7 @@ struct vma * vma_split_lookup(void *va, size_t size){
     if((size_t)va + size < (size_t)vmad->va + vmad->len){
 
         void * va_t = va + size;
-        size_t site_tem = vmad->len - ( (size_t)va_t - (size_t)vmad->va );
+        size_t size_tem = vmad->len - ( (size_t)va_t - (size_t)vmad->va );
 
         //update the vma
         vmad->len = vmad->len - size_tem;
