@@ -11,6 +11,8 @@
 #include <kern/syscall.h>
 #include <kern/console.h>
 
+#include <kern/vma.h>
+
 /*
  * Print a string to the system console.
  * The string is exactly 'len' characters long.
@@ -18,6 +20,9 @@
  */
 static void sys_cputs(const char *s, size_t len)
 {
+    cprintf("[KERN] sys_cputs(): called\n");
+    cprintf("[KERN] sys_cputs(): s: %s - len: %u\n", s, len);
+
     /* Check that the user has permission to read memory [s, s+len).
      * Destroy the environment if not. */
 
@@ -36,12 +41,14 @@ static void sys_cputs(const char *s, size_t len)
  */
 static int sys_cgetc(void)
 {
+    cprintf("[KERN] sys_cgetc(): called\n");
     return cons_getc();
 }
 
 /* Returns the current environment's envid. */
 static envid_t sys_getenvid(void)
 {
+    cprintf("[KERN] sys_getenvid(): called\n");
     return curenv->env_id;
 }
 
@@ -54,6 +61,7 @@ static envid_t sys_getenvid(void)
  */
 static int sys_env_destroy(envid_t envid)
 {
+    cprintf("[KERN] sys_env_destroy(): called\n");
     int r;
     struct env *e;
 
@@ -78,10 +86,88 @@ static int sys_env_destroy(envid_t envid)
  */
 static void *sys_vma_create(size_t size, int perm, int flags)
 {
+    cprintf("[KERN] sys_vma_create(): called\n");
+    cprintf("[KERN] sys_vma_create(): size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
+
    /* Virtual Memory Area allocation */
 
    /* LAB 4: Your code here. */
-   return (void *)-1;
+
+    // Get some permission information:
+
+    /*
+        #define TILE_SIZE   (4096)
+        #define SWEEP_SPACE (6 * TILE_SIZE)
+        #define STRIPE_SPACE    (2 * TILE_SIZE)
+        #define TILE(I)     (I * TILE_SIZE)
+        va = sys_vma_create(SWEEP_SPACE, PERM_W, MAP_POPULATE)
+    
+        MAP_POPULATE == 0x1, no other flags, in lib.h though..?
+         - only flag right now
+    */
+
+
+
+    if (flags & 0x1) { // MAP_POPULATE
+        cprintf("[KERN] sys_vma_create(): MAP_POPULATE %x\n",curenv);
+
+    }
+
+    // cprintf("%x\n", flags);   
+    cprintf("[KERN] sys_vma_create(): curenv's alloc_vma_list pointer: %x\n",&curenv->alloc_vma_list);
+
+    // Get the next available spot on the list?
+    // Naive, but should work for testing...
+    void * vat = curenv->alloc_vma_list->va;
+    size_t lent = curenv->alloc_vma_list->len;
+    void * spot = ROUNDUP(vat + lent, PGSIZE);
+
+    /*
+    iterate over the allocated vmas:
+    */
+    struct vma * temp = curenv->alloc_vma_list;
+    size_t last_size = temp->len;
+    uint32_t * last_addr = temp->va;
+    uint32_t gap = 0;
+
+    while (temp){
+        cprintf("vma @ [%08u - %08u]\n", temp->va, temp->va + temp->len);
+
+        temp = temp->vma_link;
+        gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)last_addr + last_size), PGSIZE);
+        cprintf("gap: %u\n", gap);
+
+        if (gap > size) {
+            cprintf("spot should be: %08u\n",  last_addr + last_size);
+            spot = last_addr + last_size;
+            // spot = ROUNDUP(last_addr + last_size, PGSIZE);
+            break;
+        }
+
+        last_size = temp->len;
+        last_addr = temp->va;
+
+
+
+    }
+
+    cprintf("[KERN] sys_vma_create(): vat ==  %x, lent == %u, spot == %x\n", vat, lent, spot);
+
+
+    // int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm){
+    // if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
+    int ret = vma_new(curenv, spot, size, VMA_ANON, NULL, 0, perm | PTE_U);
+    cprintf("[KERN] sys_vma_create(): vma_new returned %u\n", ret);
+    // int ret = 5;
+    if (ret < 1) {
+        return (void *)-1;
+    }
+
+    // cprintf("[DEV] sys_vma_create(): size ==  %x, perm == %x, flags == %u\n", size, perm, flags);
+    // cprintf("[DEV] sys_vma_create() called!\n");
+    cprintf("[KERN] sys_vma_create(): curenv's free_vma_list pointer: %x\n", &curenv->alloc_vma_list);
+
+   return spot;
 }
 
 /*
@@ -91,6 +177,8 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 static int sys_vma_destroy(void *va, size_t size)
 {
    /* Virtual Memory Area deallocation */
+
+    cprintf("[KERN] sys_vma_destroy(): va ==  %x, size == %x", va, size);
 
    /* LAB 4: Your code here. */
    return -1;
@@ -105,6 +193,9 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
      * Return any appropriate return value.
      * LAB 3: Your code here.
      */
+
+    // cprintf("syscall number: %x\n", syscallno);
+
     // Syscalls dispatch
     switch (syscallno) {
         case SYS_cputs:
@@ -116,6 +207,11 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
             return sys_getenvid();
         case SYS_env_destroy:
             return sys_env_destroy((envid_t) curenv->env_id);
+        case SYS_vma_create:
+            cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
+            return (int32_t)sys_vma_create(a1, a2, a3);
+        case SYS_vma_destroy:
+            return (int32_t)sys_vma_destroy((void*)a1, a2);
     default:
         return -E_NO_SYS;
     }

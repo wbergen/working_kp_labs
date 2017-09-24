@@ -319,8 +319,8 @@ static void region_alloc(void *va, size_t len, int perm)
     }
 }
 
+/* Destroy the environment that caused the fault. */
 void kill_env(uint32_t fault_va, struct trapframe *tf){
-    /* Destroy the environment that caused the fault. */
     cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
     print_trapframe(tf);
     env_destroy(curenv);
@@ -332,6 +332,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
     vma_el = vma_lookup(curenv, (void *)fault_va);
     
+    // Check for presence of a vma covering the faulting addr:
     if (vma_el){
        
         // If it's a binary allocate the enough pages to span all vma and copy from file
@@ -347,7 +348,8 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             if (vma_el->src_sz != vma_el->len){
                 memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
             }
-        }else{
+        } else {
+
             // VMA exists, so page a page for the env:
             cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
@@ -355,14 +357,21 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             struct page_info * demand_page = page_alloc(ALLOC_ZERO);
 
             //Insert the physical frame in the page directory
-            if(page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm) != 0){
+            int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);
+            cprintf("%u\n", ret);
+            if(ret != 0){
 
+                // If Failure:
                 cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
                 kill_env(fault_va, tf);
+            // } else {
+            //     // Anon, write zeros:
+            //     memset(vma_el->va, 0, vma_el->len);
             }
         }
     } else {
-        
+
+        // No vma covering addr:
         cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
         kill_env(fault_va, tf);
     }

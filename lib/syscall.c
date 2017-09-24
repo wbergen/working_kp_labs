@@ -34,6 +34,10 @@ static inline int32_t syscall(int num, int check, uint32_t a1, uint32_t a2,
           "S" (a5)
         : "cc", "memory");
 
+    if (num == 4) {
+        return ret;
+    }
+
     if(check && ret > 0)
         panic("syscall %d returned %d (> 0)", num, ret);
 
@@ -63,13 +67,18 @@ envid_t sys_getenvid(void)
 void *sys_vma_create(size_t size, int perm, int flags)
 {
     /* LAB 4: Your code here */
+    // static void *sys_vma_create(size_t size, int perm, int flags)
+    return (void *)syscall(SYS_vma_create, size, perm, flags, 0,0,0);
 
-    return NULL;
+    // return NULL;
 }
 
 int sys_vma_destroy(void *va, size_t size)
 {
     /* LAB 4: Your code here */
+    //static int sys_vma_destroy(void *va, size_t size)
+    return syscall(SYS_vma_destroy, (uint32_t)va, size, 0, 0, 0, 0);
 
-    return -E_NO_SYS;
+
+    // return -E_NO_SYS;
 }

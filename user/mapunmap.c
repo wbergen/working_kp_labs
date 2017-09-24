@@ -8,11 +8,17 @@
 
 void umain(int argc, char **argv)
 {
+
     void *va = NULL;
 
     va = sys_vma_create(SWEEP_SPACE, PERM_W, MAP_POPULATE);
 
+    cprintf("MAPUNMAP WORKING\n");
+
+
     *((uint32_t *)va) = 0x7777;
+
+    cprintf("MAPUNMAP WORKING 2\n");
 
     assert(0 == sys_vma_destroy((void *)(va + TILE(2)), STRIPE_SPACE));
 

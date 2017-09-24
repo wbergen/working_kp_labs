@@ -832,7 +832,7 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 
     // Check and set the pa's flags:
     if (perm & PTE_P){
-        panic("page_insert: PTE_P already set in perms!\n");
+        panic("page_insert: @ %x PTE_P already set in perms!\n", va);
     }
 
     pte_t * pte;
