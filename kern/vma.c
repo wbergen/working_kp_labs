@@ -256,10 +256,17 @@ struct vma * vma_split_lookup(void *va, size_t size){
     //lookup
     struct vma * vmad = vma_lookup(curenv, va);
 
+    
     // If the lookup fails return null
     if(!vmad){
         return vmad;
     }
+
+    //Round down the va and size
+    //void * va_sup = va;
+    //va = (void *) ROUNDDOWN((uint32_t)va, PGSIZE);
+    //size += (size_t) (va_sup - va);
+    //size = ROUNDUP(size,PGSIZE);
 
     // Check if it's a anon vma
     if(vmad->type != VMA_ANON){
@@ -288,7 +295,7 @@ struct vma * vma_split_lookup(void *va, size_t size){
     }
 
     //Case 2: if va + size is grater than vmad->va + vmad->len split the second part of the vma
-    if((size_t)va + size < (size_t)vmad->va + vmad->len){
+    if((size_t)(va + size) < (size_t)vmad->va + vmad->len){
 
         void * va_t = va + size;
         size_t size_tem = vmad->len - ( (size_t)va_t - (size_t)vmad->va );

@@ -94,6 +94,9 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
    /* LAB 4: Your code here. */
 
+    //align the size
+    //size = ROUNDUP(size,PGSIZE);
+
     // va to map vma at:
     void * spot = (void *)0;
 
