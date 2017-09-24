@@ -18,9 +18,10 @@ void umain(int argc, char **argv)
 
     *((uint32_t *)va) = 0x7777;
 
-    // cprintf("MAPUNMAP WORKING 2\n");
 
     assert(0 == sys_vma_destroy((void *)(va + TILE(2)), STRIPE_SPACE));
+
+    cprintf("MAPUNMAP WORKING 2\n");
 
     *((uint32_t *)(va + TILE(0))) = 0x02020202;
     *((uint32_t *)(va + TILE(5))) = 0x04040404;

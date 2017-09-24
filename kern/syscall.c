@@ -103,38 +103,45 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     uint32_t * last_addr = temp->va;
     uint32_t gap = 0;
 
-    // Iterate over the env's vmas:
-    while (temp){
+    // Check for space under first element:
+    if ((uint32_t)temp->va > size) {
+        cprintf("spot should be: %08x\n", 0x0);
+        spot = (void *)((uint32_t *)0x0);
+    } else {
 
-        // Handle last element case outside of loop
-        if (!temp->vma_link){
-            break;
+        // No space before first element, iterate:
+        while (temp){
+
+            // Handle last element case outside of loop
+            if (!temp->vma_link){
+                break;
+            }
+
+            cprintf("vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
+
+            temp = temp->vma_link;
+            gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
+            cprintf("gap: %u\n", gap);
+
+            if (gap > size) {
+                cprintf("spot should be: %08x\n",  (uint32_t *)last_addr + last_size);
+                spot = (void *)((uint32_t *)last_addr + last_size);
+                // spot = ROUNDUP(last_addr + last_size, PGSIZE);
+                break;
+            }
+
+            last_size = temp->len;
+            last_addr = temp->va;
+
         }
-
-        cprintf("vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
-
-        temp = temp->vma_link;
-        gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
-        cprintf("gap: %u\n", gap);
-
-        if (gap > size) {
-            cprintf("spot should be: %08x\n",  (uint32_t *)last_addr + last_size);
-            spot = (void *)((uint32_t *)last_addr + last_size);
-            // spot = ROUNDUP(last_addr + last_size, PGSIZE);
-            break;
-        }
-
-        last_size = temp->len;
-        last_addr = temp->va;
-
     }
 
     // Handle case where no gap is found:
     if (spot == 0){
         // Make sure length isn't > space:
         spot = (void *)((uint32_t *)last_addr + last_size);
-        uint32_t max = ~0>>1;
-        if (((uint32_t)spot + size) > max) {
+        // uint32_t max = ~0>>1;
+        if (((uint32_t)spot + size) > UTOP) {
             cprintf("[KERN] sys_vma_create(): Not enough mem to accomodate vma!\n");
             return (void *)-1;
         }
