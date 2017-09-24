@@ -107,7 +107,7 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     while (temp){
 
         // Handle last element case outside of loop
-        if (!temp->va_link){
+        if (!temp->vma_link){
             break;
         }
 
