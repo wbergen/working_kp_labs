@@ -20,8 +20,8 @@
  */
 static void sys_cputs(const char *s, size_t len)
 {
-    cprintf("[KERN] sys_cputs(): called\n");
-    cprintf("[KERN] sys_cputs(): s: %s - len: %u\n", s, len);
+    // cprintf("[KERN] sys_cputs(): called\n");
+    // cprintf("[KERN] sys_cputs(): s: %s - len: %u\n", s, len);
 
     /* Check that the user has permission to read memory [s, s+len).
      * Destroy the environment if not. */
@@ -139,7 +139,7 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
         if (gap > size) {
             cprintf("spot should be: %08u\n",  last_addr + last_size);
-            spot = last_addr + last_size;
+            spot = (void *)((uint32_t)last_addr + last_size);
             // spot = ROUNDUP(last_addr + last_size, PGSIZE);
             break;
         }
@@ -160,12 +160,13 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     cprintf("[KERN] sys_vma_create(): vma_new returned %u\n", ret);
     // int ret = 5;
     if (ret < 1) {
+        cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
         return (void *)-1;
     }
 
     // cprintf("[DEV] sys_vma_create(): size ==  %x, perm == %x, flags == %u\n", size, perm, flags);
     // cprintf("[DEV] sys_vma_create() called!\n");
-    cprintf("[KERN] sys_vma_create(): curenv's free_vma_list pointer: %x\n", &curenv->alloc_vma_list);
+    // cprintf("[KERN] sys_vma_create(): curenv's free_vma_list pointer: %x\n", &curenv->alloc_vma_list);
 
    return spot;
 }
@@ -178,7 +179,24 @@ static int sys_vma_destroy(void *va, size_t size)
 {
    /* Virtual Memory Area deallocation */
 
-    cprintf("[KERN] sys_vma_destroy(): va ==  %x, size == %x", va, size);
+    cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);
+
+    /*
+    The sys_vma_destroy(void *va, size_t size) system call will unmap (part of) a VMA.
+    
+    Note that this must not only remove the VMA, but also the pages that might have already been mapped
+     in (i.e., present in the page table and reserved in physical memory). This system call can be used on
+     subregions of a VMA, and might lead to VMA splitting. For example, one could create a single VMA of
+     3 pages using sys_vma_create, and then free the middle page. This would shrink the original VMA to
+     only the first page, and create a new VMA for the last page. You do not need to support unmapping of
+     ranges spanning multiple VMAs, or unmapping binary VMAs.
+
+    */
+
+    // Find the vma covering the range:
+    //struct vma * vma_lookup(struct env *e, void *va);
+    // struct vma * vmad = vma_lookup(curenv, va);
+    // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
 
    /* LAB 4: Your code here. */
    return -1;
@@ -208,9 +226,10 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         case SYS_env_destroy:
             return sys_env_destroy((envid_t) curenv->env_id);
         case SYS_vma_create:
-            cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
+            // cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_create(a1, a2, a3);
         case SYS_vma_destroy:
+            cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_destroy((void*)a1, a2);
     default:
         return -E_NO_SYS;
