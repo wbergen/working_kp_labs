@@ -195,13 +195,20 @@ static int sys_vma_destroy(void *va, size_t size)
     */
 
     // Find the vma covering the range:
-    struct vma * vma_lookup(struct env *e, void *va);
-    // struct vma * vmad = vma_lookup(curenv, va);
-    // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
+    // struct vma * vma_lookup(struct env *e, void *va);
+    struct vma * vmad = vma_lookup(curenv, va);
+    cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
+    if (vma_remove_alloced(curenv, vmad) < 1) {
+        cprintf("[KERN] sys_vma_destroy(): failed to remove the vma!\n");
+        return -1;
+    }
 
    /* LAB 4: Your code here. */
-   return -1;
+   return 0;
 }
+
+
+
 
 /* Dispatches to the correct kernel function, passing the arguments. */
 int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,

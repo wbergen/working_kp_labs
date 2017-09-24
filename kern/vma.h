@@ -44,4 +44,14 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 */
 struct vma * vma_lookup(struct env *e, void *va);
 
+
+/*
+    Remove vma from the alloc list
+    Must maintain links in the list
+    Must append the vma to the free list
+
+*/
+
+int vma_remove_alloced(struct env *e, struct vma *vmad);
+
 #endif  /* !JOS_INC_LIB_H */

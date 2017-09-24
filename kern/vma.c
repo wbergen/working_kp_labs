@@ -187,3 +187,51 @@ struct vma * vma_lookup(struct env *e, void *va){
     return NULL;
 
 }
+
+
+
+/*
+    Remove vma from the alloc list
+    Must maintain links in the list
+    Must append the vma to the free list
+    1 success, 0 failure
+
+*/
+
+int vma_remove_alloced(struct env *e, struct vma *vmad){
+    // Find the vma in the list (to get the previous element)
+    // struct vma * previous_vma = e->alloc_vma_list;
+
+    struct vma *vma_i = e->alloc_vma_list;
+    struct vma * previous_vma = e->alloc_vma_list;
+
+    while(vma_i){
+
+        // Save the current
+        previous_vma = vma_i;
+        vma_i = vma_i->vma_link;
+
+        // Check if vma is correct:
+        if(vmad->va >= vma_i->va && vmad->va <= (vma_i->va + vma_i->len) ){
+            cprintf("Found and removed vma!\n");
+            
+            // Remove vma from list by link previous to next:
+            previous_vma->vma_link = vma_i->vma_link;
+            
+            // Default vma, and add to free list:
+            vma_i->type = VMA_UNUSED;
+            vma_i->va = 0;
+            vma_i->len = 0;
+            vma_i->perm = 0;
+
+            vma_i->vma_link = e->free_vma_list;
+            e->free_vma_list = vma_i; 
+
+            return 1;
+        }
+        
+    }
+
+
+    return 0;
+}
