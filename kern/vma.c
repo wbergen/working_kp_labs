@@ -179,7 +179,7 @@ struct vma * vma_lookup(struct env *e, void *va){
 
     while(vma_i){
 
-        if(va >= vma_i->va && va <= (vma_i->va + vma_i->len) ){
+        if(va >= vma_i->va && va < (vma_i->va + vma_i->len) ){
             return vma_i;
         }
         vma_i = vma_i->vma_link;
