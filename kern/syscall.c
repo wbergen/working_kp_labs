@@ -190,7 +190,7 @@ static int sys_vma_destroy(void *va, size_t size)
     // struct vma * vma_lookup(struct env *e, void *va);
     // gonna call split on 
 
-    struct vma * vmad = vma_lookup(curenv, va);
+    struct vma * vmad = vma_split_lookup(va,size);
     cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
     if (vma_remove_alloced(curenv, vmad) < 1) {
         cprintf("[KERN] sys_vma_destroy(): failed to remove the vma!\n");
