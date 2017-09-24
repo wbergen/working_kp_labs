@@ -105,6 +105,12 @@ static void *sys_vma_create(size_t size, int perm, int flags)
 
     // Iterate over the env's vmas:
     while (temp){
+
+        // Handle last element case outside of loop
+        if (!temp->va_link){
+            break;
+        }
+
         cprintf("vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
 
         temp = temp->vma_link;
@@ -135,10 +141,16 @@ static void *sys_vma_create(size_t size, int perm, int flags)
     }
 
     
-    // Attempt to create a new mapping @ spot:
+    // Debuggin:
     cprintf("[KERN] sys_vma_create(): spot ==  %x, gap == %u, new vma size == %u\n", spot, gap, size);
 
-    // MAP_POPULATE - allocate pages now:
+    // Create a new vma:
+    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, perm | PTE_U) < 1) {
+        cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
+        return (void *)-1;
+    }
+
+    // MAP_POPULATE support - allocate pages now:
     if (flags & 0x1) { // MAP_POPULATE
         cprintf("[KERN] sys_vma_create(): MAP_POPULATE %x\n",curenv);
         struct page_info * populate_page = page_alloc(0);
@@ -148,17 +160,12 @@ static void *sys_vma_create(size_t size, int perm, int flags)
         {
             struct page_info * populate_page = page_alloc(0);
             if (page_insert(curenv->env_pgdir, populate_page, (void *)(spot+i*PGSIZE), perm | PTE_U)){
+                
                 // Page insert failure:
                 cprintf("[KERN] sys_vma_create(): page_insert failed trying to fulfil MAP_POPULATE!\n");
                 return (void *)-1;
             }
         }
-    }
-
-    // Normal - use demand paging for vma:
-    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, perm | PTE_U) < 1) {
-        cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
-        return (void *)-1;
     }
 
    return spot;
