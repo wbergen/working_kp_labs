@@ -196,26 +196,6 @@ struct vma * vma_lookup(struct env *e, void *va){
 
 }
 
-// void vma_print(struct env *e){
-
-//     struct vma * vma_i = e->alloc_vma_list;
-
-//     while(vma_i){
-
-//         cprintf("\t\tVMA INFO\t\t\n");
-//         cprintf("va: %x len %d \n", vma_i->va, vma_i->len);
-
-//         if(vma_i->type == VMA_BINARY){
-//             cprintf("Type: BINARY, src: %x, size: %d\n",vma_i->cpy_src, vma_i->src_sz);
-//         }else{
-//             cprintf("Type: ANON\n");
-//         }
-//         cprintf("\n");
-//         vma_i = vma_i->vma_link;
-//     }
-//     cprintf("\t END VMA LIST \t\n");
-// }
-
 
 void print_all_vmas(struct env * e){
     struct vma * temp = e->alloc_vma_list;

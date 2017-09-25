@@ -67,6 +67,5 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size);
 /*
     Print the vma data
 */
-void    vma_print(struct env *e);
 void print_all_vmas(struct env *e);
 #endif  /* !JOS_INC_LIB_H */
