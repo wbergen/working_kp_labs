@@ -45,7 +45,7 @@ void vma_proc_init(struct env *e){
 */
 struct vma * vma_remove_head(struct vma **list){
 
-    cprintf("[DEBUG] vma_remove_head(): INITAL ARG == %x\n", list);
+    cprintf("[VMA] vma_remove_head(): returning head of %x\n", list);
     struct vma * el;
     
     // check if the list is empty
@@ -53,7 +53,7 @@ struct vma * vma_remove_head(struct vma **list){
         return NULL;
     }
 
-    cprintf("[DEBUG] vma_remove_head(): list == %x\n", list);
+    // cprintf("[VMA] vma_remove_head(): list == %x\n", list);
 
     // Save old first element:
     el = *list;
@@ -64,7 +64,7 @@ struct vma * vma_remove_head(struct vma **list){
     // Remove old first element's link:
     el->vma_link = NULL;
 
-    cprintf("[DEBUG] vma_remove_head(): el == %x\n", el);
+    // cprintf("[VMA] vma_remove_head(): el == %x\n", el);
 
 
     return el;
@@ -80,7 +80,7 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
     struct vma * vma_i = *list;   // list iterator
     struct vma * vma_old = *list; // we append the new element to this one
 
-    cprintf("vma_insert(): inserting vma!\n");
+    cprintf("[VMA] vma_insert(): inserting vma...\n");
 
     // Handling corner case list NULL -> insert the element in the head
     // Handling corener case  element < than the first element in the list
@@ -128,11 +128,11 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
     struct vma * new;
 
-    cprintf("trying to allocate new vma @ %x\n", va);
+    cprintf("[VMA] vma_new(): trying to allocate new vma @ %x\n", va);
 
     // Return fail if BINARY && no src:
     if ((type == VMA_BINARY) && ((src == NULL) || (filesize == 0))) {
-        cprintf("vma_new(): type is binary, but no src address set.\n");
+        cprintf("[VMA] vma_new(): type is binary, but no src address set.\n");
         return -1;
     }
 
@@ -147,7 +147,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
 
     // If out of vma return 0
     if(!new){
-        cprintf("vma_new: out of memory, no more vmas available\n");
+        cprintf("[VMA] vma_new: out of memory, no more vmas available\n");
         return 0;
     }
 
@@ -239,17 +239,8 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
 
     while(vma_i){
 
-        /* cprintf("[%u][0x%08x <-> 0x%08x] (len: %u)\n", \
-         vma_i->type, vma_i->va, vma_i->va, vma_i->len, vma_i->len);
-         */
-
-        // cprintf("(vma_i->va: %x == vmad->va: %x)\n", vma_i->va, vmad->va);
-        // cprintf("(vma_i->len: %u == vmad->len: %u)\n", vma_i->len, vmad->len);
-
         // Check if vma is correct:
-        // if(vmad->va >= vma_i->va && vmad->va <= (vma_i->va + vma_i->len) ){
         if ((vma_i->va == vmad->va) && (vma_i->len == vmad->len)){
-            cprintf("Found and removed vma!\n");
 
             // Remove page entries:
             int i;
@@ -257,25 +248,25 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
             {
                 // Need to check for the presence of a page...
                 pte_t * pte = pgdir_walk(e->env_pgdir, vma_i->va+i*PGSIZE, 0);
-                // cprintf("test!\n");
+
+                // Ensure a mapping:
                 if (!pte){
                     break;
                 }
+
+                // Only remove PTE_P pages:
                 if (*pte & PTE_P) {
-                    cprintf("test inside!!\n");
                     page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
                 }
             }
 
-
             // Check if it's the head of the list:
             if (ct == 0) {
-                // Remove vma from list by linking previous to next:
-                previous_vma->vma_link = vma_i->vma_link;
                 e->alloc_vma_list = vma_i->vma_link;
-            } else {
-                previous_vma->vma_link = vma_i->vma_link;
             }
+
+            // Remove vma from list by linking previous to next:
+            previous_vma->vma_link = vma_i->vma_link;
 
             
             // Default vma, and add to free list:
@@ -291,8 +282,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
             // Head -> newly freed vma:
             e->free_vma_list = vma_i;
 
-            // cprintf("previous_vma: [%08x, %u], vma_i")
-            // print_all_vmas(e);
+            cprintf("[VMA] vma_remove_alloced(): Found and removed vma!\n");
 
             return 1;
         }
@@ -339,27 +329,22 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
 
     // Check if it's a anon vma
     if(vmad->type != VMA_ANON){
-        cprintf("vma_split_lookup: this operation shouldn't be done for binary mappings\n");
+        cprintf("[VMA] vma_split_lookup: this operation shouldn't be done for binary mappings\n");
         return NULL; 
     }
     // if it spans multiple vmas kill the process that initiated the operation
     if((size_t)va + size > (size_t)vmad_va + vmad->len){
-        cprintf("vma_split_lookup: the vma to split spans multiples vmas\n\n Killing the process...\n");
+        cprintf("[VMA] vma_split_lookup: the vma to split spans multiples vmas\n\n Killing the process...\n");
         // env_destroy(curenv);
         return NULL;
     }
 
-    cprintf("calling vma_remove_alloced\n");
-    print_all_vmas(e);
-
     // Since we've saved the bookkeeping, remove now:
     if (vma_remove_alloced(e, vmad) < 1){
-        cprintf("vma_split_lookup(): vma removal failed!\n");
+        cprintf("[VMA] vma_split_lookup(): vma removal failed!\n");
         // print_all_vmas(e);
         // return NULL;
     }
-
-    print_all_vmas(e);
 
     // Case 1: if "va" is greater than "vmad->va" split the first part of the vma
     if((size_t)va > (size_t)vmad_va){
@@ -372,7 +357,6 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         // vmad->len = vmad->len - size_tem;
 
         //create a new vma from the splited part
-        // vma_new(e, va_t, size_tem, vmad_type, vmad->cpy_src, vmad->src_sz, vmad->perm);
         vma_new(e, va_t, size_tem, vmad_type, NULL, 0, vmad_perm);
     }
 

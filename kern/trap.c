@@ -338,7 +338,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
 
-            cprintf("page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
+            cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
             region_alloc(vma_el->va, vma_el->len, vma_el->perm);
 
@@ -351,7 +351,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            cprintf("page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
+            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
             // Allocate a physical frame
             struct page_info * demand_page = page_alloc(ALLOC_ZERO);
@@ -361,7 +361,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             if(ret != 0){
 
                 // If Failure:
-                cprintf("page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+                cprintf("[KERN] page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
                 kill_env(fault_va, tf);
             // } else {
             //     // Anon, write zeros:
@@ -371,7 +371,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        cprintf("page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
         kill_env(fault_va, tf);
     }
 }
@@ -389,7 +389,7 @@ void page_fault_handler(struct trapframe *tf)
 
     // If it's from the kernel, panic:
     if (!(tf->tf_err & 4)){
-        panic("page_fault_handler(): kernel page fault!\n");
+        panic("[KERN ]page_fault_handler(): kernel page fault!\n");
     }
 
     /* We've already handled kernel-mode exceptions, so if we get here, the page
@@ -414,7 +414,7 @@ void page_fault_handler(struct trapframe *tf)
     if(!(tf->tf_err & 1)) {
         alloc_page_after_fault(fault_va, tf);
     } else {
-        cprintf("page_fault_handler(): write protection fault, killing env!\n");
+        cprintf("[KERN] page_fault_handler(): write protection fault, killing env!\n");
         kill_env(fault_va, tf);
     }
 }
