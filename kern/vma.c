@@ -124,9 +124,12 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm){
+int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize,size_t cpy_dst, int perm){
 
     struct vma * new;
+
+    // Round up the vma len:
+    len = ROUNDUP(len, PGSIZE);
 
     cprintf("[VMA] vma_new(): trying to allocate new vma @ %x\n", va);
 
@@ -137,10 +140,12 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     }
 
     // Return error if va it's not page alligned
-    // if(((uint32_t)va % PGSIZE) != 0){
-    //     cprintf("vma_new(): the va is not page alligned\n");
-    //     return -1;
-    // }
+    if(((uint32_t)va % PGSIZE) != 0){
+        cprintf("vma_new(): the va is not page alligned\n");
+        return -1;
+    }
+
+
 
     // Remove a vma from the free list
     new = vma_remove_head(&e->free_vma_list);
@@ -160,6 +165,7 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     if (type == VMA_BINARY)
         new->cpy_src = src;
         new->src_sz = filesize;
+        new->cpy_dst = cpy_dst;
 
 
     // Insert the page in the alloc list
@@ -215,8 +221,8 @@ void print_all_vmas(struct env * e){
     struct vma * temp = e->alloc_vma_list;
 
     while (temp){
-        cprintf("[0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x]\n", \
-         temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link);
+        cprintf("[0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x] B:[cpy_src: %x, cp_size: %u]\n", \
+         temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link, temp->cpy_src, temp->src_sz);
         temp = temp->vma_link;
     }
 }
@@ -357,7 +363,7 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         // vmad->len = vmad->len - size_tem;
 
         //create a new vma from the splited part
-        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, vmad_perm);
+        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, 0, vmad_perm);
     }
 
     //Case 2: if va + size is grater than vmad->va + vmad->len split the second part of the vma
@@ -370,7 +376,7 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         // vmad->len = vmad->len - size_tem;
 
         //create a new vma from the splited part    
-        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, vmad_perm);
+        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, 0, vmad_perm);
     }
 
 

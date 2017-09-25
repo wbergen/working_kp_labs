@@ -401,11 +401,11 @@ static void load_icode(struct env *e, uint8_t *binary)
             }
 
             // Get the address to map @, and the size:
-            // va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
+            va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
             // msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
             // cprintf("\nva: %x msize: %u\n", va, msize);
-            va = (void *) ph->p_va;
+            // va = (void *) ph->p_va;
             msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
 
             // cprintf("\nva: %x msize: %u\n", va, msize);
@@ -414,8 +414,8 @@ static void load_icode(struct env *e, uint8_t *binary)
 
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
-            // 1 success, 0 failure, -1 other errors...                 
-            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, PTE_U | PTE_W) < 1){
+            // 1 success, 0 failure, -1 other errors...             
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), PTE_U | PTE_W) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
 
@@ -429,7 +429,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     // Now map one page for the program's initial stack at virtual address
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -442,10 +442,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, PTE_U) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?
