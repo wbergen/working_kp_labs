@@ -227,9 +227,9 @@ static int sys_vma_destroy(void *va, size_t size)
     // Find the vma covering the range:
     // struct vma * vma_lookup(struct env *e, void *va);
     // gonna call split on 
-    print_all_vmas(curenv);
+    // print_all_vmas(curenv);
 
-    struct vma * vmad = vma_split_lookup(va,size);
+    struct vma * vmad = vma_split_lookup(curenv, va, size);
     cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
     // if (vma_remove_alloced(curenv, vmad) < 1) {
         // cprintf("[KERN] sys_vma_destroy(): failed to remove the vma!\n");

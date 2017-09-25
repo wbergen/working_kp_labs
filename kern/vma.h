@@ -62,7 +62,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad);
     It returns the new vma or if nothing was splitted the looked up one.
     returns null in case of errors
 */
-struct vma * vma_split_lookup(void *va, size_t size);
+struct vma * vma_split_lookup(struct env *e, void *va, size_t size);
 
 /*
     Print the vma data

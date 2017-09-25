@@ -92,6 +92,7 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
         // Ordered insert
         // We need to find the first vma with the va < new_el.va
         while(vma_i){
+            cprintf("vma_i->va: %x vma_i->vma_link: %x\n", vma_i->va, vma_i->vma_link);
             // If we find the first element with va < new_el.va break
             if(vma_i->va > el->va){
                 //cprintf("to attach: %x old va: %x new va: %x\n",vma_old->va, vma_i->va,el->va);
@@ -214,8 +215,8 @@ void print_all_vmas(struct env * e){
     struct vma * temp = e->alloc_vma_list;
 
     while (temp){
-        cprintf("[%u][0x%08x <-> 0x%08x] (len: %u)\n", \
-         temp->type, temp->va, temp->va+temp->len, temp->len);
+        cprintf("[0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x]\n", \
+         temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link);
         temp = temp->vma_link;
     }
 }
@@ -230,32 +231,40 @@ void print_all_vmas(struct env * e){
 
 int vma_remove_alloced(struct env *e, struct vma *vmad){
     // Find the vma in the list (to get the previous element)
-    // struct vma * previous_vma = e->alloc_vma_list;
+    // struct vma * previous_vma = e->alloc_vma_list
 
     struct vma *vma_i = e->alloc_vma_list;
-    struct vma * previous_vma = e->alloc_vma_list;
+    struct vma *previous_vma = e->alloc_vma_list;
+    int ct = 0;
 
     while(vma_i){
 
-        // Save the current
-        previous_vma = vma_i;
-        vma_i = vma_i->vma_link;
+        /* cprintf("[%u][0x%08x <-> 0x%08x] (len: %u)\n", \
+         vma_i->type, vma_i->va, vma_i->va, vma_i->len, vma_i->len);
+         */
+
+        cprintf("(vma_i->va: %x == vmad->va: %x)\n", vma_i->va, vmad->va);
+        cprintf("(vma_i->len: %u == vmad->len: %u)\n", vma_i->len, vmad->len);
 
         // Check if vma is correct:
-        if(vmad->va >= vma_i->va && vmad->va <= (vma_i->va + vma_i->len) ){
+        // if(vmad->va >= vma_i->va && vmad->va <= (vma_i->va + vma_i->len) ){
+        if ((vma_i->va == vmad->va) && (vma_i->len == vmad->len)){
             cprintf("Found and removed vma!\n");
             
             // Remove page entries:
             int i;
             for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i)
             {
-                cprintf("removing page va: %x \n", vma_i->va);
                 page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
             }
 
+            // Check if it's the head of the list:
+            if (ct == 0) {
+                // Remove vma from list by linking previous to next:
+                previous_vma->vma_link = vma_i->vma_link;
+                e->alloc_vma_list = vma_i->vma_link;
+            }
 
-            // Remove vma from list by link previous to next:
-            previous_vma->vma_link = vma_i->vma_link;
             
             // Default vma, and add to free list:
             vma_i->type = VMA_UNUSED;
@@ -265,8 +274,18 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
 
             vma_i->vma_link = e->free_vma_list;
             e->free_vma_list = vma_i; 
+
+            // cprintf("previous_vma: [%08x, %u], vma_i")
+            print_all_vmas(e);
+
             return 1;
         }
+
+
+        // Save the current
+        previous_vma = vma_i;
+        vma_i = vma_i->vma_link;
+        ct++;
         
     }
     return 0;
@@ -279,7 +298,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
     It returns the new vma or if nothing was splitted the looked up one.
     returns null in case of errors
 */
-struct vma * vma_split_lookup(void *va, size_t size){
+struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
 
     //lookup
     struct vma * vmad = vma_lookup(curenv, va);
@@ -288,6 +307,13 @@ struct vma * vma_split_lookup(void *va, size_t size){
     if(!vmad){
         return vmad;
     }
+
+    // save splitting information:
+    void * vmad_va = vmad->va;
+    uint32_t vmad_len = vmad->len;
+    int vmad_type = vmad->type;
+    int vmad_perm = vmad->perm;
+
 
     //Round down the va and size
     //void * va_sup = va;
@@ -301,37 +327,47 @@ struct vma * vma_split_lookup(void *va, size_t size){
         return NULL; 
     }
     // if it spans multiple vmas kill the process that initiated the operation
-    if((size_t)va + size > (size_t)vmad->va + vmad->len){
+    if((size_t)va + size > (size_t)vmad_va + vmad->len){
         cprintf("vma_split_lookup: the vma to split spans multiples vmas\n\n Killing the process...\n");
-        env_destroy(curenv);
+        // env_destroy(curenv);
         return NULL;
     }
 
-    // Case 1: if "va" is greater than "vmad->va" split the first part of the vma
-    if((size_t)va > (size_t)vmad->va){
+    cprintf("calling vma_remove_alloced\n");
 
-        void * va_t = vmad->va;
-        size_t size_tem = ((size_t)va - (size_t)vmad->va);
+    // Since we've saved the bookkeeping, remove now:
+    if (vma_remove_alloced(e, vmad) < 1){
+        cprintf("vma_split_lookup(): vma removal failed!\n");
+        // print_all_vmas(e);
+        // return NULL;
+    }
+
+    // Case 1: if "va" is greater than "vmad->va" split the first part of the vma
+    if((size_t)va > (size_t)vmad_va){
+
+        void * va_t = vmad_va;
+        size_t size_tem = ((size_t)va - (size_t)vmad_va);
 
         //update the vma 
-        vmad->va = va;
-        vmad->len = vmad->len - size_tem;
+        // vmad->va = va;
+        // vmad->len = vmad->len - size_tem;
 
         //create a new vma from the splited part
-        vma_new(curenv, va_t, size_tem, vmad->type, vmad->cpy_src, vmad->src_sz, vmad->perm);
+        // vma_new(e, va_t, size_tem, vmad_type, vmad->cpy_src, vmad->src_sz, vmad->perm);
+        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, vmad_perm);
     }
 
     //Case 2: if va + size is grater than vmad->va + vmad->len split the second part of the vma
-    if((size_t)(va + size) < (size_t)vmad->va + vmad->len){
+    if((size_t)(va + size) < (size_t)vmad_va + vmad_len){
 
         void * va_t = va + size;
-        size_t size_tem = vmad->len - ( (size_t)va_t - (size_t)vmad->va );
+        size_t size_tem = vmad_len - ( (size_t)va_t - (size_t)vmad_va );
 
         //update the vma
-        vmad->len = vmad->len - size_tem;
+        // vmad->len = vmad->len - size_tem;
 
         //create a new vma from the splited part    
-        vma_new(curenv, va_t, size_tem, vmad->type, vmad->cpy_src, vmad->src_sz, vmad->perm);
+        vma_new(e, va_t, size_tem, vmad_type, NULL, 0, vmad_perm);
     }
 
 
