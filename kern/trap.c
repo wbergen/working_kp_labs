@@ -10,6 +10,8 @@
 #include <kern/env.h>
 #include <kern/syscall.h>
 
+#include <kern/vma.h>
+
 static struct taskstate ts;
 
 /*
@@ -330,6 +332,13 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     
     struct vma * vma_el;
 
+    // Alignment debugging:
+    cprintf("\nlooking for %x in vmas...\n", fault_va);
+    print_all_vmas(curenv);
+    cprintf("\n");
+
+
+
     vma_el = vma_lookup(curenv, (void *)fault_va);
     
     // Check for presence of a vma covering the faulting addr:
@@ -342,11 +351,11 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
             region_alloc(vma_el->va, vma_el->len, vma_el->perm);
 
-            memcpy(vma_el->va, vma_el->cpy_src ,vma_el->src_sz);
+            memcpy(vma_el->va + vma_el->cpy_dst, vma_el->cpy_src ,vma_el->src_sz);
 
             // Write 0s to (filesz, memsz]:
             if (vma_el->src_sz != vma_el->len){
-                memset(vma_el->va + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz);
+                memset(vma_el->va + vma_el->cpy_dst + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz - vma_el->cpy_dst);
             }
         } else {
 

@@ -159,6 +159,8 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 
         // Set spot to beginning of remaining space:
         spot = (void *)(last_addr + last_size);
+        // spot = ROUNDUP(last_addr + last_size, PGSIZE);
+
         // uint32_t max = ~0>>1;
 
         // Ensure we have enough remaining memory to accomodate create:
@@ -173,7 +175,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     cprintf("[KERN] sys_vma_create(): new vma details: [spot:  %x, gap: %u, size: %u]\n", spot, gap, size);
 
     // Create a new vma:
-    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, perm | PTE_U) < 1) {
+    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U) < 1) {
         cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
         return (void *)-1;
     }

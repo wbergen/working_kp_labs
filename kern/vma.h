@@ -35,7 +35,7 @@ void vma_insert( struct vma * el, struct vma **list, int ordered);
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, int perm);
+int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, size_t cpy_dst, int perm);
 
 /*
     Lookup in the allocated vma if the va is mapped

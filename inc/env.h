@@ -51,6 +51,7 @@ struct vma {
     struct vma *vma_link;   // Next VMAs pointer
     void *cpy_src;          // Copy source for binary vmas
     size_t src_sz;          // Copy source size (size on disk)
+    size_t cpy_dst;         // Offset from Rounded va to copy at
 };
 
 /* Values of env_status in struct env */
