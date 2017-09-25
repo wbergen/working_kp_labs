@@ -231,9 +231,11 @@ static int sys_vma_destroy(void *va, uint32_t size)
     // gonna call split on 
     // print_all_vmas(curenv);
 
-    struct vma * vmad = vma_split_lookup(curenv, va, size);
+    if(vma_split_lookup(curenv, va, size, 1) == NULL){
+        cprintf("sys_vma_destroy: failed\n");
+        return -1;
+    }
     // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
-
     cprintf("[KERN] sys_vma_destroy(): VMAs after destory:\n");
     print_all_vmas(curenv);
 
@@ -241,7 +243,48 @@ static int sys_vma_destroy(void *va, uint32_t size)
    return 0;
 }
 
+/*
+    This function change the permission of a vma and all its allocated pages
+    it also split or merge vma if required
 
+    returns 1 for success and 0 for failure
+*/
+static int sys_vma_protect(void *va, size_t size, int perm){
+
+    struct vma * v = vma_lookup(curenv, va);
+
+    // if the vma doesn't exit return
+    if(!v){
+        cprintf("sys_vma_protect: vma not found\n");
+        return 0;
+    }
+    //if the permission are the same nothing to do, return
+    if(v->perm == perm){
+        return 1;
+    }
+
+    //split the vma
+    v = vma_split_lookup(curenv, va, size, 0);
+
+    //return in case of split failure
+    if(!v){
+        cprintf("sys_vma_protect: vma split failure\n");        
+        return 0;
+    }
+    //change the vma permission
+    if(!vma_change_perm(v, perm)){
+        cprintf("sys_vma_protect: vma change perm failure\n");
+        return 0;
+    }
+
+    //merge vma if required
+    if(vma_list_merge(curenv) != 0){
+        cprintf("sys_vma_protect: vma merge failure\n");
+        return 0;
+    }
+
+    return 1;
+}
 
 
 /* Dispatches to the correct kernel function, passing the arguments. */
@@ -273,6 +316,8 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         case SYS_vma_destroy:
             // cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_destroy((void*)a1, a2);
+        case SYS_vma_protect:
+            return sys_vma_protect( (void *)a1, a2, a3);
     default:
         return -E_NO_SYS;
     }

@@ -52,7 +52,7 @@ struct vma * vma_lookup(struct env *e, void *va);
 
 */
 
-int vma_remove_alloced(struct env *e, struct vma *vmad);
+int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages);
 
 /*
 
@@ -62,7 +62,29 @@ int vma_remove_alloced(struct env *e, struct vma *vmad);
     It returns the new vma or if nothing was splitted the looked up one.
     returns null in case of errors
 */
-struct vma * vma_split_lookup(struct env *e, void *va, size_t size);
+struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remove);
+
+
+/*
+    This function merge 2 vmas
+    return 0 if success -1 if errors occur
+*/
+int vma_merge(struct env * e, struct vma *v1, struct vma * v2);
+
+/*
+    This function merge consecutive vma with the same permissions
+    if presents in the alloc_vma_list
+
+    return 0 if success, -1 if any errors occur
+*/
+int vma_list_merge(struct env * e);
+
+/*
+    This function change the permission of a vma and all of its allocated pages
+
+    returns 1 if succes, 0 if errors (no 0 return for now)
+*/
+int vma_change_perm(struct vma *v, int perm);
 
 /*
     Print the vma data

@@ -215,7 +215,7 @@ void print_all_vmas(struct env * e){
 
 */
 
-int vma_remove_alloced(struct env *e, struct vma *vmad){
+int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
     // Find the vma in the list (to get the previous element)
     // struct vma * previous_vma = e->alloc_vma_list
 
@@ -228,21 +228,22 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
         // Check if vma is correct:
         if ((vma_i->va == vmad->va) && (vma_i->len == vmad->len)){
 
-            // Remove page entries:
-            int i;
-            for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i)
-            {
-                // Need to check for the presence of a page...
-                pte_t * pte = pgdir_walk(e->env_pgdir, vma_i->va+i*PGSIZE, 0);
+            if(destroy_pages){
+                // Remove page entries:
+                int i;
+                for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i){
+                    // Need to check for the presence of a page...
+                    pte_t * pte = pgdir_walk(e->env_pgdir, vma_i->va+i*PGSIZE, 0);
 
-                // Ensure a mapping:
-                if (!pte){
-                    break;
-                }
+                    // Ensure a mapping:
+                    if (!pte){
+                        break;
+                    }
 
-                // Only remove PTE_P pages:
-                if (*pte & PTE_P) {
-                    page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
+                    // Only remove PTE_P pages:
+                    if (*pte & PTE_P) {
+                        page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
+                    }
                 }
             }
 
@@ -287,10 +288,10 @@ int vma_remove_alloced(struct env *e, struct vma *vmad){
     The function given a va and a size finds the right vma and,
     in case the va and the size lies inside a valid vma it split it in multiple vmas
 
-    It returns the new vma or if nothing was splitted the looked up one.
-    returns null in case of errors
+    It returns 1 (vma_remove set) the splitted vma (vma_remove not set) if success, 
+    null if errors or if no vma is found
 */
-struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
+struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remove){
 
     //lookup
     struct vma * vmad = vma_lookup(curenv, va);
@@ -324,12 +325,13 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         // env_destroy(curenv);
         return NULL;
     }
-
-    // Since we've saved the bookkeeping, remove now:
-    if (vma_remove_alloced(e, vmad) < 1){
-        cprintf("[VMA] vma_split_lookup(): vma removal failed!\n");
-        // print_all_vmas(e);
-        // return NULL;
+    if(vma_remove){
+        // Since we've saved the bookkeeping, remove now:
+        if (vma_remove_alloced(e, vmad, 1) < 1){
+            cprintf("[VMA] vma_split_lookup(): vma removal failed!\n");
+            // print_all_vmas(e);
+            // return NULL;
+        }
     }
 
     // Case 1: if "va" is greater than "vmad->va" split the first part of the vma
@@ -338,9 +340,11 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         void * va_t = vmad_va;
         size_t size_tem = ((size_t)va - (size_t)vmad_va);
 
-        //update the vma 
-        // vmad->va = va;
-        // vmad->len = vmad->len - size_tem;
+        if(!vma_remove){
+            //update the vma 
+            vmad->va = va;
+            vmad->len = vmad->len - size_tem;
+        }
 
         //create a new vma from the splited part
         vma_new(e, va_t, size_tem, vmad_type, NULL, 0, 0, vmad_perm);
@@ -352,13 +356,123 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size){
         void * va_t = va + size;
         size_t size_tem = vmad_len - ( (size_t)va_t - (size_t)vmad_va );
 
+        if(!vma_remove){
         //update the vma
-        // vmad->len = vmad->len - size_tem;
-
+            vmad->len = vmad->len - size_tem;
+        }
         //create a new vma from the splited part    
         vma_new(e, va_t, size_tem, vmad_type, NULL, 0, 0, vmad_perm);
     }
 
+    if(vma_remove){
+        return (void *)1;
+    }else{
+        return vmad;
+    }
 
-    return vmad;
+}
+/*
+    This function change the permission of a vma and all of its allocated pages
+
+    returns 1 if succes, 0 if errors (no 0 return for now)
+*/
+int vma_change_perm(struct vma *v, int perm){
+
+    struct env * e = curenv;
+    //first change the permission of the vma
+    v->perm = perm;
+
+    //second change the permission of all the allocated pages accordingly
+    int i;
+    for (i = 0; i < ROUNDUP(v->len, PGSIZE)/PGSIZE; ++i){
+
+        // Need to check for the presence of a page...
+        pte_t * pte = pgdir_walk(e->env_pgdir, v->va+i*PGSIZE, 0);
+        struct page_info * pp;
+
+        // Ensure a mapping:
+        if (!pte){
+            break;
+        }
+
+        // Only change perm PTE_P pages:
+        if (*pte & PTE_P) {
+            // find the page_info
+            pp = page_lookup(e->env_pgdir, v->va+i*PGSIZE, NULL);
+            if(!pp){
+                cprintf("vma_change_perm: page lookup fail\n");
+                break;
+            }
+            //use page insert to change permission (re inserting the same element)
+            if(page_insert(e->env_pgdir, pp, v->va+i*PGSIZE, perm) != 0){
+                cprintf("vma_change_perm: page insert fail\n");
+            }
+        }
+    }
+
+    //page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
+    //struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
+    return 1;
+
+}
+/*
+    This function merge 2 vmas
+    returns 0 if success -1 if errors occur
+*/
+int vma_merge(struct env * e, struct vma *v1, struct vma * v2){
+    
+    v1->len += v2->len;
+
+    if(vma_remove_alloced(e, v2, 0)){
+        return 0;
+    }else{
+        return -1;
+    }
+
+
+}
+
+/*
+    This function merge consecutive vma with the same permissions
+    if presents in the alloc_vma_list
+
+    return 0 if success, -1 if any errors occur
+*/
+int vma_list_merge(struct env * e){
+
+    if(!e){
+        return -1;
+    }
+
+    struct vma *vma_old = e->alloc_vma_list;
+
+    // if the alloc_vma_list is null nothing to do
+    if (!vma_old)
+    {
+        return 0;
+    }
+    struct vma * vma_i = vma_old->vma_link;
+
+    // if also the second element in the alloc_vma_list is null nothing to do
+    if(!vma_i){
+        return 0;
+    }
+
+    // Iterate the list
+    while(vma_i){
+        // if two vma are consecutive and with the same permission and not BINARY merge
+        if((vma_old->va + vma_old->len) == vma_i->va && vma_old->perm == vma_i->perm
+            && vma_old->type != VMA_BINARY && vma_i->type != VMA_BINARY){
+
+            if(vma_merge(e,vma_old,vma_i) != 0){
+                return -1;
+            }
+        }
+
+        // update pointers
+        vma_old = vma_i;
+        vma_i = vma_i->vma_link;
+    }
+
+    return 0;
 }
