@@ -69,7 +69,7 @@ void *sys_vma_create(uint32_t size, int perm, int flags)
     // return NULL;
 }
 
-int sys_vma_destroy(void *va, size_t size)
+int sys_vma_destroy(void *va, uint32_t size)
 {
     /* LAB 4: Your code here */
     //static int sys_vma_destroy(void *va, size_t size)

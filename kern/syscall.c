@@ -206,7 +206,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
  * Unmaps the specified range of memory starting at 
  * virtual address 'va', 'size' bytes long.
  */
-static int sys_vma_destroy(void *va, size_t size)
+static int sys_vma_destroy(void *va, uint32_t size)
 {
    /* Virtual Memory Area deallocation */
 
