@@ -130,7 +130,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 
             temp = temp->vma_link;
             // gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
-            gap = (uint32_t)(temp->va - last_addr + last_addr);
+            gap = (uint32_t)(temp->va - last_addr + last_size);
             // cprintf("[KERN] gap: %u\n", gap);
 
             if (gap > size) {
