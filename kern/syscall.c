@@ -76,6 +76,7 @@ static int sys_env_destroy(envid_t envid)
     return 0;
 }
 
+
 /*
  * Creates a new anonymous mapping somewhere in the virtual address space.
  *
@@ -120,7 +121,6 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 
             // Sum vma area already allocated:
             total_area = total_area + temp->len;
-
             // Handle last element case outside of loop
             if (!temp->vma_link){
                 break;
@@ -183,18 +183,8 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     // MAP_POPULATE support - allocate pages now:
     if (flags & 0x1) { // MAP_POPULATE
         cprintf("[KERN] sys_vma_create(): MAP_POPULATE %x\n",curenv);
-        struct page_info * populate_page = page_alloc(0);
-
-        int i;
-        for (i = 0; i < ROUNDUP(size, PGSIZE)/PGSIZE; ++i)
-        {
-            struct page_info * populate_page = page_alloc(0);
-            if (page_insert(curenv->env_pgdir, populate_page, (void *)(spot+i*PGSIZE), perm | PTE_U)){
-                
-                // Page insert failure:
-                cprintf("[KERN] sys_vma_create(): page_insert failed trying to fulfil MAP_POPULATE!\n");
-                return (void *)-1;
-            }
+        if(!vma_populate(spot, size, perm)){
+            return (void *)-1;
         }
     }
 
@@ -232,7 +222,7 @@ static int sys_vma_destroy(void *va, uint32_t size)
     // print_all_vmas(curenv);
 
     if(vma_split_lookup(curenv, va, size, 1) == NULL){
-        cprintf("sys_vma_destroy: failed\n");
+        cprintf("[KERN]sys_vma_destroy: failed\n");
         return -1;
     }
     // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
@@ -255,7 +245,7 @@ static int sys_vma_protect(void *va, size_t size, int perm){
 
     // if the vma doesn't exit return
     if(!v){
-        cprintf("sys_vma_protect: vma not found\n");
+        cprintf("[KERN]sys_vma_protect: vma not found\n");
         return 0;
     }
     //if the permission are the same nothing to do, return
@@ -268,26 +258,57 @@ static int sys_vma_protect(void *va, size_t size, int perm){
 
     //return in case of split failure
     if(!v){
-        cprintf("sys_vma_protect: vma split failure\n");        
+        cprintf("[KERN]sys_vma_protect: vma split failure\n");        
         return 0;
     }
     //change the vma permission
     if(!vma_change_perm(v, perm)){
-        cprintf("sys_vma_protect: vma change perm failure\n");
+        cprintf("[KERN]sys_vma_protect: vma change perm failure\n");
         return 0;
     }
 
     //merge vma if required
     if(vma_list_merge(curenv) != 0){
-        cprintf("sys_vma_protect: vma merge failure\n");
+        cprintf("[KERN]sys_vma_protect: vma merge failure\n");
         return 0;
     }
 
     return 1;
 }
+/*
+    This function advise the kernel to execute ONE of the following operations:
+        -MADV_DONTNEED:
+            free the allocated pages in a vma
+        -MADV_WILLNEED:
+            populate the allocated pages in a vma
 
+    it returns 1 if success, 0 if any errors occur
+    cprintf("\n");
+*/
 int32_t sys_vma_advise(void *va, size_t size, int attr){
 
+    struct vma * v = vma_lookup(curenv, va);
+
+    //check if the va is mapped in the vma
+    if(!v){
+        cprintf("[KERN] sys_vma_advise: vma lookup failed\n");
+        return 0;
+    }
+
+    //check if the va and size specified are correct
+    if(!vma_size_check(va,size,v)){
+        cprintf("[KERN] sys_vma_advise: va + size spans multiple vmas\n");
+        return 0;
+    }
+
+    //if MADV_DONTNEED remove the allocated pages
+    if(attr == MADV_DONTNEED){
+        vma_remove_pages(curenv,v);
+    }
+    //if MADV_WILLNEED populate the pages
+    if (attr == MADV_WILLNEED){
+        vma_populate(va, size, v->perm);
+    }
     return 1;
 }
 /* Dispatches to the correct kernel function, passing the arguments. */

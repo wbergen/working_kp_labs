@@ -13,5 +13,10 @@ enum {
     SYS_vma_advise,
     NSYSCALLS
 };
+/*	memory advise flags*/
+enum {
+	MADV_DONTNEED = 0,
+	MADV_WILLNEED
+	};
 
 #endif /* !JOS_INC_SYSCALL_H */

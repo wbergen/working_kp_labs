@@ -291,6 +291,21 @@ int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
     }
     return 0;
 }
+
+/*
+    the function checks if the va + size specified spans the vma;
+
+    returns 1 if success, 0 if errors
+*/
+int vma_size_check(void * va, size_t size, struct vma * v){
+        // if it spans multiple vmas kill the process that initiated the operation
+    if((size_t)va + size > (size_t)v->va + v->len && va >= v->va){
+        cprintf("[VMA] vma_size_check(): the vma to split spans multiples vmas\n\n Killing the process...\n");
+        // env_destroy(curenv);
+        return 0;
+    }
+    return 1;
+}
 /*
 
     The function given a va and a size finds the right vma and,
@@ -328,11 +343,11 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
         return NULL; 
     }
     // if it spans multiple vmas kill the process that initiated the operation
-    if((size_t)va + size > (size_t)vmad_va + vmad->len){
-        cprintf("[VMA] vma_split_lookup: the vma to split spans multiples vmas\n\n Killing the process...\n");
-        // env_destroy(curenv);
+
+    if(!vma_size_check(va,size,vmad)){
         return NULL;
     }
+
     if(vma_remove){
         // Since we've saved the bookkeeping, remove now:
         if (vma_remove_alloced(e, vmad, 1) < 1){
@@ -379,6 +394,39 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
     }
 
 }
+/*
+    This function populate the pages spanning a vma
+
+    return 1 if success, 0 if errors
+*/
+
+int vma_populate(void * va, size_t size, int perm){
+
+    struct page_info * populate_page = page_alloc(0);
+
+    if(!populate_page){
+        cprintf("[KERN]vma_populate(): out of memory\n");
+    }
+
+    int i;
+    for (i = 0; i < ROUNDUP(size, PGSIZE)/PGSIZE; ++i)
+    {
+        struct page_info * populate_page = page_alloc(0);
+
+        if(!populate_page){
+            cprintf("[KERN]vma_populate(): out of memory\n");
+        }
+
+        if (page_insert(curenv->env_pgdir, populate_page, (void *)(va+i*PGSIZE), perm | PTE_U)){
+                
+            // Page insert failure:
+            cprintf("[KERN] vma_populate(): page_insert failed trying to fulfil MAP_POPULATE!\n");
+            return 0;
+        }
+    }
+    return 1;
+}
+
 /*
     This function change the permission of a vma and all of its allocated pages
 

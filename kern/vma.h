@@ -51,11 +51,26 @@ struct vma * vma_lookup(struct env *e, void *va);
 void vma_remove_pages(struct env *e, struct vma * v);
 
 /*
+    This function populate the pages spanning a vma
+
+    return 1 if success, 0 if errors
+*/
+
+int vma_populate(void * va, size_t size, int perm);
+
+/*
     Remove vma from the alloc list
     Must maintain links in the list
     Must append the vma to the free list
 
 */
+
+/*
+    the function checks if the va + size specified spans the vma;
+
+    returns 1 if success, 0 if errors
+*/
+int vma_size_check(void * va, size_t size, struct vma * v);
 
 int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages);
 
