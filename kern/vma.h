@@ -46,6 +46,11 @@ struct vma * vma_lookup(struct env *e, void *va);
 
 
 /*
+    This function removes all the allocated pages in a vma
+*/
+void vma_remove_pages(struct env *e, struct vma * v);
+
+/*
     Remove vma from the alloc list
     Must maintain links in the list
     Must append the vma to the free list

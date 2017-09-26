@@ -10,6 +10,7 @@ enum {
     SYS_vma_create,
     SYS_vma_destroy,
     SYS_vma_protect,
+    SYS_vma_advise,
     NSYSCALLS
 };
 

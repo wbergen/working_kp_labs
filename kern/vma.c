@@ -215,6 +215,28 @@ void print_all_vmas(struct env * e){
 
 */
 
+/*
+    This function removes all the allocated pages in a vma
+*/
+void vma_remove_pages(struct env *e, struct vma * v){
+    // Remove page entries:
+    int i;
+    for (i = 0; i < ROUNDUP(v->len, PGSIZE)/PGSIZE; ++i){
+        // Need to check for the presence of a page...
+        pte_t * pte = pgdir_walk(e->env_pgdir, v->va+i*PGSIZE, 0);
+
+        // Ensure a mapping:
+        if (!pte){
+            break;
+        }
+
+        // Only remove PTE_P pages:
+        if (*pte & PTE_P) {
+            page_remove(e->env_pgdir, v->va+i*PGSIZE);
+        }
+    }
+}
+
 int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
     // Find the vma in the list (to get the previous element)
     // struct vma * previous_vma = e->alloc_vma_list
@@ -230,21 +252,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
 
             if(destroy_pages){
                 // Remove page entries:
-                int i;
-                for (i = 0; i < ROUNDUP(vma_i->len, PGSIZE)/PGSIZE; ++i){
-                    // Need to check for the presence of a page...
-                    pte_t * pte = pgdir_walk(e->env_pgdir, vma_i->va+i*PGSIZE, 0);
-
-                    // Ensure a mapping:
-                    if (!pte){
-                        break;
-                    }
-
-                    // Only remove PTE_P pages:
-                    if (*pte & PTE_P) {
-                        page_remove(e->env_pgdir, vma_i->va+i*PGSIZE);
-                    }
-                }
+                vma_remove_pages(e, vma_i);
             }
 
             // Check if it's the head of the list:
@@ -413,7 +421,6 @@ int vma_change_perm(struct vma *v, int perm){
     //page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
     //struct page_info *page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
     return 1;
-
 }
 /*
     This function merge 2 vmas

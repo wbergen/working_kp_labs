@@ -286,7 +286,10 @@ static int sys_vma_protect(void *va, size_t size, int perm){
     return 1;
 }
 
+int32_t sys_vma_advise(void *va, size_t size, int attr){
 
+    return 1;
+}
 /* Dispatches to the correct kernel function, passing the arguments. */
 int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         uint32_t a4, uint32_t a5)
@@ -317,7 +320,9 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
             // cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_destroy((void*)a1, a2);
         case SYS_vma_protect:
-            return sys_vma_protect( (void *)a1, a2, a3);
+            return sys_vma_protect((void *)a1, a2, a3);
+        case SYS_vma_advise:
+            return sys_vma_advise((void *)a1, a2, a3);
     default:
         return -E_NO_SYS;
     }
