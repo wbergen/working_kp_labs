@@ -172,25 +172,49 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     int vma_at_zero = 0;
     uint32_t total_area = 0;
 
+    // MAP_HUGEPAGES support - ensure the size is a multiple of 4mb:
+    if (flags & 0x2){ // MAP_HUGEPAGES
+        if (size % (PGSIZE * 1024) != 0){
+            // Size is NOT 4mb aligned:
+            cprintf("[KERN] sys_vma_create(): MAP_HUGEPAGES, but size is not 4mb aligned!\n");
+            return (void *)-1;
+        }
+    }
+
     // Try to find a spot in the vma area where we can fit our new alloc at, or return if one can't be found
     spot = vma_find_spot(size, &vma_at_zero, &total_area);
     if (spot < 0){
         return (void *)-1;
     }
 
+    cprintf("===== spot: %x ======\n", spot);
+
     /* Now we have spot, allocate! */
     // Create a new vma:
+    struct vma * new;
     if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U) < 1) {
         cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
         return (void *)-1;
+    } else {
+        new = vma_lookup(curenv, spot);
     }
 
     // MAP_POPULATE support - allocate pages now:
-    if (flags & 0x1) { // MAP_POPULATE
+    if (flags & 0x1 && !(flags & 0x2)) { // MAP_POPULATE
         cprintf("[KERN] sys_vma_create(): MAP_POPULATE %x\n",curenv);
-        if(!vma_populate(spot, size, perm)){
+        if(!vma_populate(spot, size, perm, 0)){
             return (void *)-1;
         }
+    } else if (flags & 0x1 & 0x2){ // MAP_POPULATE + MAP_HUGEPAGES
+        cprintf("[KERN] sys_vma_create(): MAP_POPULATE + MAP_HUGEPAGES %x\n",curenv);
+        if(!vma_populate(spot, size, perm, 1)){
+
+            return (void *)-1;
+        }
+        new->hps = 1;
+    } else if (flags & 0x2) { // MAP_HUGEPAGES
+        cprintf("[KERN] sys_vma_create(): MAP_HUGEPAGES %x\n",curenv);
+        new->hps = 1;
     }
 
     cprintf("[KERN] sys_vma_create(): VMAs after create:\n");
@@ -208,6 +232,15 @@ static int sys_vma_destroy(void *va, uint32_t size)
    /* Virtual Memory Area deallocation */
 
     cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);
+
+    struct vma * v = vma_lookup(curenv, va);
+    if (v->hps){
+        if (v->len != size || v->va != va){
+            // huge problem
+            cprintf("[KERN] sys_vma_destroy(): vma marked as huge, but destroy params don't span whole area!\n");
+            return -1;
+        }
+    }
 
     /*
     The sys_vma_destroy(void *va, size_t size) system call will unmap (part of) a VMA.
@@ -308,11 +341,13 @@ int32_t sys_vma_advise(void *va, size_t size, int attr){
 
     //if MADV_DONTNEED remove the allocated pages
     if(attr == MADV_DONTNEED){
-        vma_remove_pages(curenv, va, size);
+        if (!v->hps){
+            vma_remove_pages(curenv, va, size);
+        }
     }
     //if MADV_WILLNEED populate the pages
     if (attr == MADV_WILLNEED){
-        vma_populate(va, size, v->perm);
+        vma_populate(va, size, v->perm, v->hps);
     }
     return 1;
 }

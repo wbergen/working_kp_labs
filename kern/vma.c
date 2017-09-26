@@ -34,6 +34,7 @@ void vma_proc_init(struct env *e){
         e->vmas[i].cpy_src = 0;
         e->vmas[i].src_sz = 0;
         e->vmas[i].cpy_dst = 0;
+        e->vmas[i].hps = 0;
 
         //Add the vma to the free_vma_list
         e->vmas[i].vma_link = e->free_vma_list;
@@ -62,7 +63,7 @@ int vma_consistency_check(struct vma * v, int type){
             }
             break;
         case VMA_ANON:
-            if(v->va == 0 || v->len <= 0 || v->cpy_src != 0 || v->src_sz != 0 || v->cpy_dst != 0){
+            if(v->len <= 0 || v->cpy_src != 0 || v->src_sz != 0 || v->cpy_dst != 0){
                 cprintf("vma_consistency_check:  vma anon inconsistent fields\n");
                 return 0;   
             }
@@ -244,8 +245,8 @@ void print_all_vmas(struct env * e){
     struct vma * temp = e->alloc_vma_list;
 
     while (temp){
-        cprintf("[0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x] B:[cpy_src: %x, cp_size: %u]\n", \
-         temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link, temp->cpy_src, temp->src_sz);
+        cprintf("[%u][0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x] B:[cpy_src: %x, cp_size: %u]\n", \
+         temp->hps, temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link, temp->cpy_src, temp->src_sz);
         temp = temp->vma_link;
     }
 }
@@ -263,6 +264,7 @@ void print_all_vmas(struct env * e){
 */
 void vma_remove_pages(struct env *e, void * va, size_t size){
     // Remove page entries:
+
     int i;
     for (i = 0; i < ROUNDUP(size, PGSIZE)/PGSIZE; ++i){
         // Need to check for the presence of a page...
@@ -371,7 +373,13 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
     }
 
     if(!vma_consistency_check(vmad, vmad->type)){
-        panic("[KERN]vma_split_lookup: vma consistency check failed\n");
+        panic("[VMA] vma_split_lookup(): vma consistency check failed\n");
+    }
+
+    // ignore huge page splits
+    if (vmad->hps){
+        cprintf("[VMA] vma_split_lookup(): not splitting huge pages!\n");
+        return NULL;
     }
 
     // save splitting information:
@@ -379,13 +387,6 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
     uint32_t vmad_len = vmad->len;
     int vmad_type = vmad->type;
     int vmad_perm = vmad->perm;
-
-
-    //Round down the va and size
-    //void * va_sup = va;
-    //va = (void *) ROUNDDOWN((uint32_t)va, PGSIZE);
-    //size += (size_t) (va_sup - va);
-    //size = ROUNDUP(size,PGSIZE);
 
     // Check if it's a anon vma
     if(vmad->type != VMA_ANON){
@@ -450,7 +451,7 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
     return 1 if success, 0 if errors
 */
 
-int vma_populate(void * va, size_t size, int perm){
+int vma_populate(void * va, size_t size, int perm, int hp){
 
     struct page_info * populate_page = page_alloc(0);
 
@@ -458,16 +459,27 @@ int vma_populate(void * va, size_t size, int perm){
         cprintf("[KERN]vma_populate(): out of memory\n");
     }
 
+    int hp_factor;
+    if (hp){
+        hp_factor = 1024;
+    } else {
+        hp_factor = 1;
+    }
+
     int i;
-    for (i = 0; i < ROUNDUP(size, PGSIZE)/PGSIZE; ++i)
+    for (i = 0; i < ROUNDUP(size, PGSIZE)/(PGSIZE*hp_factor); ++i)
     {
-        struct page_info * populate_page = page_alloc(0);
+        if (hp){
+            struct page_info * populate_page = page_alloc(ALLOC_HUGE);
+        } else {
+            struct page_info * populate_page = page_alloc(0);
+        }
 
         if(!populate_page){
             cprintf("[KERN]vma_populate(): out of memory\n");
         }
 
-        if (page_insert(curenv->env_pgdir, populate_page, (void *)(va+i*PGSIZE), perm | PTE_U)){
+        if (page_insert(curenv->env_pgdir, populate_page, (void *)(va+i*PGSIZE*hp_factor), perm | PTE_U)){
                 
             // Page insert failure:
             cprintf("[KERN] vma_populate(): page_insert failed trying to fulfil MAP_POPULATE!\n");

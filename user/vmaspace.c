@@ -8,6 +8,7 @@
 #define ALLOC_SECOND	(0x00a00000)
 #define ALLOC_THIRD	(0x00900000)
 #define MAP_FAILED	((void *)-1)
+#define HUGE 4096*1024*2
 
 void umain(int argc, char **argv)
 {
@@ -42,6 +43,23 @@ void umain(int argc, char **argv)
     vb = sys_vma_create(ALLOC_THIRD, PERM_W, 0);
     assert(MAP_FAILED != va);
     cprintf("Third alloc succeeded. Size:%08x\n", ALLOC_THIRD);
+
+#ifdef BONUS_LAB4
+    /* Testing our huge page alloc */
+    va = sys_vma_create(HUGE, PERM_W, 3);
+    assert(va != MAP_FAILED);
+    cprintf("Huge alloc succeeded:%08x\n", HUGE);
+
+    /* Testing our touch and destroy */
+    *((uint32_t *)va) = 0x01010101;
+    assert(0 == sys_vma_destroy((void *)((uint32_t)va), HUGE));
+    cprintf("Huge dealloc succeeded:%08x\n", HUGE);
+
+
+    /* Testing Mprotect */
+
+#endif
+
 
     cprintf("VMA space check succeeded.\n"); 
     return;    

@@ -30,7 +30,7 @@ typedef int32_t envid_t;
 #define LOG2NENV        10
 #define NENV            (1 << LOG2NENV)
 #define ENVX(envid)     ((envid) & (NENV - 1))
-#define NVMA 124    // preallocated vmas why 124? because they fit 
+#define NVMA            110        // preallocated vmas why 124? because they fit 
 
 
 /* Anonymous VMAs are zero-initialized whereas binary VMAs
@@ -52,6 +52,7 @@ struct vma {
     void *cpy_src;          // Copy source for binary vmas
     size_t src_sz;          // Copy source size (size on disk)
     size_t cpy_dst;         // Offset from Rounded va to copy at
+    int hps;                // 1 if the vma based on huge pages
 };
 
 /* Values of env_status in struct env */

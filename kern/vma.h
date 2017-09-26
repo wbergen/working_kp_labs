@@ -56,7 +56,7 @@ void vma_remove_pages(struct env *e, void * va, size_t size);
     return 1 if success, 0 if errors
 */
 
-int vma_populate(void * va, size_t size, int perm);
+int vma_populate(void * va, size_t size, int perm, int hp);
 
 /*
     Remove vma from the alloc list
