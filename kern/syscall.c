@@ -77,42 +77,21 @@ static int sys_env_destroy(envid_t envid)
 }
 
 
-/*
- * Creates a new anonymous mapping somewhere in the virtual address space.
- *
- * Supported flags: 
- *     MAP_POPULATE
- * 
- * Returns the address to the start of the new mapping, on success,
- * or -1 if request could not be satisfied.
- */
-static void *sys_vma_create(uint32_t size, int perm, int flags)
-{
-    cprintf("[KERN] sys_vma_create(): called w/ size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
+void * vma_find_spot(uint32_t size, int * vma_at_zero, uint32_t * total_area){
 
-   /* Virtual Memory Area allocation */
-
-   /* LAB 4: Your code here. */
-
-    //align the size
-    //size = ROUNDUP(size,PGSIZE);
-
-    // va to map vma at:
-    void * spot = (void *)0;
+    void * spot = (void *)-1;
 
     // Bookkeeping:
     struct vma * temp = curenv->alloc_vma_list;
     uint32_t last_size = temp->len;
     void * last_addr = temp->va;
     uint32_t gap = 0;
-    int vma_at_zero = 0;
-    uint32_t total_area = 0;
 
     // Check for space under first element:
     if ((uint32_t)temp->va > size) {
         cprintf("[KERN] sys_vma_create(): spot should be: %08x\n", 0x0);
         spot = (void *)0x0;
-        vma_at_zero = 1;
+        *vma_at_zero = 1;
 
     } else {
 
@@ -120,23 +99,20 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
         while (temp){
 
             // Sum vma area already allocated:
-            total_area = total_area + temp->len;
+            *total_area = *total_area + temp->len;
+            
             // Handle last element case outside of loop
             if (!temp->vma_link){
                 break;
             }
 
-            // cprintf("[KERN] vma @ [%08x - %08x]\n", temp->va, temp->va + temp->len);
-
             temp = temp->vma_link;
-            // gap = (uint32_t)temp->va - ROUNDUP(((uint32_t)&last_addr + last_size), PGSIZE);
             gap = (uint32_t)(temp->va - last_addr + last_size);
-            // cprintf("[KERN] gap: %u\n", gap);
 
             if (gap > size) {
 
                 // Checking before acutally allowing an allocation for vm overrun works but...
-                if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - total_area)) {
+                if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - *total_area)) {
                     cprintf("[KERN] sy]s_vma_create(): Not enough mem to accomodate vma!\n");
                     return (void *)-1;
                 }
@@ -159,21 +135,50 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 
         // Set spot to beginning of remaining space:
         spot = (void *)(last_addr + last_size);
-        // spot = ROUNDUP(last_addr + last_size, PGSIZE);
-
-        // uint32_t max = ~0>>1;
 
         // Ensure we have enough remaining memory to accomodate create:
-        if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - total_area)) {
+        if ((uint32_t)(spot + size) > (UTOP - 0x00800000 - *total_area)) {
             cprintf("[KERN] sys_vma_create(): Not enough mem to accomodate vma!\n");
             return (void *)-1;
         }
     }
 
-    
-    // Debuggin:
-    cprintf("[KERN] sys_vma_create(): new vma details: [spot:  %x, gap: %u, size: %u]\n", spot, gap, size);
+    return spot;
+}
 
+/*
+ * Creates a new anonymous mapping somewhere in the virtual address space.
+ *
+ * Supported flags: 
+ *     MAP_POPULATE
+ * 
+ * Returns the address to the start of the new mapping, on success,
+ * or -1 if request could not be satisfied.
+ */
+static void *sys_vma_create(uint32_t size, int perm, int flags)
+{
+    cprintf("[KERN] sys_vma_create(): called w/ size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
+
+   /* Virtual Memory Area allocation */
+
+   /* LAB 4: Your code here. */
+
+    /* Find a spot to create the new  */
+
+    // Va to map vma at:
+    void * spot = (void *)0;
+
+    // Bookkeeping:
+    int vma_at_zero = 0;
+    uint32_t total_area = 0;
+
+    // Try to find a spot in the vma area where we can fit our new alloc at, or return if one can't be found
+    spot = vma_find_spot(size, &vma_at_zero, &total_area);
+    if (spot < 0){
+        return (void *)-1;
+    }
+
+    /* Now we have spot, allocate! */
     // Create a new vma:
     if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U) < 1) {
         cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
