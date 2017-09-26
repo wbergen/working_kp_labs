@@ -48,7 +48,7 @@ struct vma * vma_lookup(struct env *e, void *va);
 /*
     This function removes all the allocated pages in a vma
 */
-void vma_remove_pages(struct env *e, struct vma * v);
+void vma_remove_pages(struct env *e, void * va, size_t size);
 
 /*
     This function populate the pages spanning a vma

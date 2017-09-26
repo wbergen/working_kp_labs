@@ -528,6 +528,9 @@ void env_free(struct env *e)
         page_decref(pa2page(pa));
     }
 
+    /*  reinizialize the vma    */
+    vma_proc_init(e);
+
     /* Free the page directory */
     pa = PADDR(e->env_pgdir);
     e->env_pgdir = 0;

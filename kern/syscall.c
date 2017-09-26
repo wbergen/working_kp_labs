@@ -303,7 +303,7 @@ int32_t sys_vma_advise(void *va, size_t size, int attr){
 
     //if MADV_DONTNEED remove the allocated pages
     if(attr == MADV_DONTNEED){
-        vma_remove_pages(curenv,v);
+        vma_remove_pages(curenv, va, size);
     }
     //if MADV_WILLNEED populate the pages
     if (attr == MADV_WILLNEED){

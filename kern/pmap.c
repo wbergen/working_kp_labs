@@ -251,7 +251,7 @@ void mem_init(void)
     lcr4(rcr4() | CR4_PSE);
 
     /* Check that the initial page directory has been set up correctly. */
-    // check_kern_pgdir();
+     check_kern_pgdir();
 
     /* Switch from the minimal entry page directory to the full kern_pgdir
     / * page table we just created.  Our instruction pointer should be

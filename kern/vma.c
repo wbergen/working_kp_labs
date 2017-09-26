@@ -31,6 +31,9 @@ void vma_proc_init(struct env *e){
         e->vmas[i].va = 0;
         e->vmas[i].len = 0;
         e->vmas[i].perm = 0;
+        e->vmas[i].cpy_src = 0;
+        e->vmas[i].src_sz = 0;
+        e->vmas[i].cpy_dst = 0;
 
         //Add the vma to the free_vma_list
         e->vmas[i].vma_link = e->free_vma_list;
@@ -40,6 +43,44 @@ void vma_proc_init(struct env *e){
     // cprintf("vma_proc_init(): e's free list == %x\n", e->free_vma_list);
 }
 
+/*
+    this function checks if a vma is consistent cprintf("vma_consistency_check: \n");
+
+    returns 1 if success, 0 if errors
+*/
+int vma_consistency_check(struct vma * v, int type){
+
+    if(v->type != type){
+        cprintf("vma_consistency_check:  type inconsistent\n");
+        return 0;
+    }
+    switch(v->type){
+        case VMA_BINARY:
+            if(v->va == 0 || v->len <= 0 || v->cpy_src == 0 || v->src_sz == 0){
+                cprintf("vma_consistency_check:  vma binary inconsistent fields\n");
+                return 0;   
+            }
+            break;
+        case VMA_ANON:
+            if(v->va == 0 || v->len <= 0 || v->cpy_src != 0 || v->src_sz != 0 || v->cpy_dst != 0){
+                cprintf("vma_consistency_check:  vma anon inconsistent fields\n");
+                return 0;   
+            }
+            break;
+        case VMA_UNUSED:
+            if(v->va != 0 || v->len != 0 || v->cpy_src != 0 || v->src_sz != 0
+                || v->cpy_dst != 0 || v->perm != 0){
+                cprintf("vma_consistency_check:  vma unused inconsistent fields\n");
+                return 0;   
+            }
+            break;
+        default:
+            cprintf("vma_consistency_check:  type unknown\n");
+            return 0; 
+    }
+    return 1;
+
+}
 /*
     Remove the fist element of a vma list
 */
@@ -65,7 +106,6 @@ struct vma * vma_remove_head(struct vma **list){
     el->vma_link = NULL;
 
     // cprintf("[VMA] vma_remove_head(): el == %x\n", el);
-
 
     return el;
 }
@@ -150,6 +190,9 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     // Remove a vma from the free list
     new = vma_remove_head(&e->free_vma_list);
 
+    if(!vma_consistency_check(new, VMA_UNUSED)){
+        panic("[KERN]vma_new: vma consistency check failed\n");
+    }
     // If out of vma return 0
     if(!new){
         cprintf("[VMA] vma_new: out of memory, no more vmas available\n");
@@ -218,12 +261,12 @@ void print_all_vmas(struct env * e){
 /*
     This function removes all the allocated pages in a vma
 */
-void vma_remove_pages(struct env *e, struct vma * v){
+void vma_remove_pages(struct env *e, void * va, size_t size){
     // Remove page entries:
     int i;
-    for (i = 0; i < ROUNDUP(v->len, PGSIZE)/PGSIZE; ++i){
+    for (i = 0; i < ROUNDUP(size, PGSIZE)/PGSIZE; ++i){
         // Need to check for the presence of a page...
-        pte_t * pte = pgdir_walk(e->env_pgdir, v->va+i*PGSIZE, 0);
+        pte_t * pte = pgdir_walk(e->env_pgdir, va+i*PGSIZE, 0);
 
         // Ensure a mapping:
         if (!pte){
@@ -232,7 +275,7 @@ void vma_remove_pages(struct env *e, struct vma * v){
 
         // Only remove PTE_P pages:
         if (*pte & PTE_P) {
-            page_remove(e->env_pgdir, v->va+i*PGSIZE);
+            page_remove(e->env_pgdir, va+i*PGSIZE);
         }
     }
 }
@@ -252,7 +295,7 @@ int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
 
             if(destroy_pages){
                 // Remove page entries:
-                vma_remove_pages(e, vma_i);
+                vma_remove_pages(e, vma_i->va, vma_i->len);
             }
 
             // Check if it's the head of the list:
@@ -269,6 +312,9 @@ int vma_remove_alloced(struct env *e, struct vma *vmad, int destroy_pages){
             vma_i->va = 0;
             vma_i->len = 0;
             vma_i->perm = 0;
+            vma_i->cpy_src = 0;
+            vma_i->src_sz = 0;
+            vma_i->cpy_dst = 0;
 
             // Add the found vma to the free list:
             // New head's link -> old head:
@@ -322,6 +368,10 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
     // If the lookup fails return null
     if(!vmad){
         return vmad;
+    }
+
+    if(!vma_consistency_check(vmad, vmad->type)){
+        panic("[KERN]vma_split_lookup: vma consistency check failed\n");
     }
 
     // save splitting information:
@@ -436,6 +486,10 @@ int vma_change_perm(struct vma *v, int perm){
 
     struct env * e = curenv;
     //first change the permission of the vma
+
+    if(vma_consistency_check(v,v->type)){
+        panic("[KERN] vma_change_perm: vma consistency check failed\n");
+    }
     v->perm = perm;
 
     //second change the permission of all the allocated pages accordingly
