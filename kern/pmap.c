@@ -999,7 +999,20 @@ void *mmio_map_region(physaddr_t pa, size_t size)
      *
      * LAB 5: Your code here:
      */
-    panic("mmio_map_region not implemented");
+    // panic("mmio_map_region not implemented");
+
+    // static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
+    size_t r_size = ROUNDUP(size, PGSIZE);
+
+    // Check for MMIOLIM overflow:
+    if ((base + r_size) > MMIOLIM) {
+        panic("mmio_map_region(): Size will overflow MMIOLIM!\n");
+    }
+
+    boot_map_region(kern_pgdir, base, r_size, pa, (PTE_PCD | PTE_PWT | PTE_W));
+
+
+    return (void *)base;
 }
 
 static uintptr_t user_mem_check_addr;
