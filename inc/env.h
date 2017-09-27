@@ -77,6 +77,7 @@ struct env {
     enum env_type env_type;     /* Indicates special system environments */
     unsigned env_status;        /* Status of the environment */
     uint32_t env_runs;          /* Number of times environment has run */
+    int env_cpunum;             /* The CPU that the env is running on */
 
     /*  VMA lists     */
     struct vma vmas[NVMA];       /* Array of preallocated VMAs */
@@ -84,6 +85,7 @@ struct env {
     struct vma *alloc_vma_list; /* List of allocated VMAs */
     /* Address space */
     pde_t *env_pgdir;           /* Kernel virtual address of page dir */
+    struct vma *env_vmas;       /* Virtual memory areas of this env. */
 };
 
 #endif /* !JOS_INC_ENV_H */

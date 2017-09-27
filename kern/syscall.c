@@ -10,10 +10,10 @@
 #include <kern/trap.h>
 #include <kern/syscall.h>
 #include <kern/console.h>
+#include <kern/sched.h>
 
 #include <kern/vma.h>
 #include <kern/pmap.h>
-
 /*
  * Print a string to the system console.
  * The string is exactly 'len' characters long.
@@ -272,9 +272,27 @@ static int sys_vma_destroy(void *va, uint32_t size)
 }
 
 /*
-    This function change the permission of a vma and all its allocated pages
-    it also split or merge vma if required
+ * Deschedule current environment and pick a different one to run.
+ */
+static void sys_yield(void)
+{
+    sched_yield();
+}
 
+static int sys_wait(envid_t envid)
+{
+    /* LAB 5: Your code here */
+    return -1;
+}
+
+static int sys_fork(void)
+{
+    /* fork() that follows COW semantics */
+    /* LAB 5: Your code here */
+    return -1;
+}
+
+/*
     returns 1 for success and 0 for failure
 */
 static int sys_vma_protect(void *va, size_t size, int perm){

@@ -11,6 +11,9 @@ enum {
     SYS_vma_destroy,
     SYS_vma_protect,
     SYS_vma_advise,
+    SYS_yield,
+    SYS_wait,
+    SYS_fork,
     NSYSCALLS
 };
 /*	memory advise flags*/
