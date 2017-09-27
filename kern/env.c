@@ -394,7 +394,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     {   
         // If the segment is LOAD, map it:
         if (ph->p_type == ELF_PROG_LOAD){
-
+            int perm = PTE_U | PTE_W;;
             // Check size:
             if (ph->p_filesz > ph->p_memsz){
                 panic("load_icode(): Segment's filesz > memsz!\n");
@@ -412,10 +412,16 @@ static void load_icode(struct env *e, uint8_t *binary)
             // Map:
             // region_alloc(e, va, msize);
 
+            //set the flags:
+            //if(ph->p_flags & ELF_PROG_FLAG_WRITE){
+                
+            //    perm |= PTE_W;  
+            //}
+            // if ELF_PROG_FLAG_READ or LF_PROG_FLAG_EXEC do nothing
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
-            // 1 success, 0 failure, -1 other errors...             
-            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), PTE_U | PTE_W) < 1){
+            // 1 success, 0 failure, -1 other errors...        
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), perm) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
 
