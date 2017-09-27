@@ -57,6 +57,11 @@ void umain(int argc, char **argv)
 
 
     /* Testing Mprotect */
+    va = sys_vma_create(ALLOC_THIRD, PERM_W, 1);
+    assert(va != MAP_FAILED);
+
+    
+
 
 #endif
 

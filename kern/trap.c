@@ -9,6 +9,11 @@
 #include <kern/monitor.h>
 #include <kern/env.h>
 #include <kern/syscall.h>
+#include <kern/sched.h>
+#include <kern/kclock.h>
+#include <kern/picirq.h>
+#include <kern/cpu.h>
+#include <kern/spinlock.h>
 
 #include <kern/vma.h>
 
@@ -85,8 +90,11 @@ static const char *trapname(int trapno)
         return excnames[trapno];
     if (trapno == T_SYSCALL)
         return "System call";
+    if (trapno >= IRQ_OFFSET && trapno < IRQ_OFFSET + 16)
+        return "Hardware Interrupt";
     return "(unknown trap)";
 }
+
 
 void trap_init(void)
 {
@@ -143,7 +151,7 @@ void trap_init_percpu(void)
 
 void print_trapframe(struct trapframe *tf)
 {
-    cprintf("TRAP frame at %p\n", tf);
+    cprintf("TRAP frame at %p from CPU %d\n", tf, cpunum());
     print_regs(&tf->tf_regs);
     cprintf("  es   0x----%04x\n", tf->tf_es);
     cprintf("  ds   0x----%04x\n", tf->tf_ds);
@@ -190,6 +198,17 @@ static void trap_dispatch(struct trapframe *tf)
     /* Handle processor exceptions. */
     /* LAB 3: Your code here. */
 
+    /*
+     * Handle spurious interrupts
+     * The hardware sometimes raises these because of noise on the
+     * IRQ line or other reasons. We don't care.
+    */
+    if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
+        cprintf("Spurious interrupt on irq 7\n");
+        print_trapframe(tf);
+        return;
+    }
+
     // Syscall Ret:
     int ret;
 
@@ -230,6 +249,12 @@ static void trap_dispatch(struct trapframe *tf)
         tf->tf_regs.reg_eax = ret;
     }
 
+/*
+     * Handle clock interrupts. Don't forget to acknowledge the interrupt using
+     * lapic_eoi() before calling the scheduler!
+     * LAB 5: Your code here.
+     */
+
     /* Unexpected trap: The user process or the kernel has a bug. */
     else if (tf->tf_cs == GD_KT) {
         print_trapframe(tf);
@@ -248,6 +273,15 @@ void trap(struct trapframe *tf)
      * clear. */
     asm volatile("cld" ::: "cc");
 
+    /* Halt the CPU if some other CPU has called panic(). */
+    extern char *panicstr;
+    if (panicstr)
+        asm volatile("hlt");
+
+    /* Re-acqurie the big kernel lock if we were halted in sched_yield(). */
+    if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
+        lock_kernel();
+
     /* Check that interrupts are disabled.
      * If this assertion fails, DO NOT be tempted to fix it by inserting a "cli"
      * in the interrupt path. */
@@ -257,7 +291,17 @@ void trap(struct trapframe *tf)
 
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
+        /* Acquire the big kernel lock before doing any serious kernel work.
+         * LAB 5: Your code here. */
+
         assert(curenv);
+
+        /* Garbage collect if current enviroment is a zombie. */
+        if (curenv->env_status == ENV_DYING) {
+            env_free(curenv);
+            curenv = NULL;
+            sched_yield();
+        }
 
         /* Copy trap frame (which is currently on the stack) into
          * 'curenv->env_tf', so that running the environment will restart at the
@@ -274,9 +318,12 @@ void trap(struct trapframe *tf)
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
 
-    /* Return to the current environment, which should be running. */
-    assert(curenv && curenv->env_status == ENV_RUNNING);
-    env_run(curenv);
+     /* If we made it to this point, then no other environment was scheduled, so
+     * we should return to the current environment if doing so makes sense. */
+    if (curenv && curenv->env_status == ENV_RUNNING)
+        env_run(curenv);
+    else
+        sched_yield();
 }
 
 /*
@@ -391,6 +438,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 void page_fault_handler(struct trapframe *tf)
 {
     uint32_t fault_va;
+
     /* Read processor's CR2 register to find the faulting address */
     fault_va = rcr2();
 
