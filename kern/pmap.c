@@ -979,7 +979,9 @@ void *mmio_map_region(physaddr_t pa, size_t size)
      * value will be preserved between calls to mmio_map_region
      * (just like nextfree in boot_alloc).
      */
+
     static uintptr_t base = MMIOBASE;
+    uintptr_t base_ret = base;
 
     /*
      * Reserve size bytes of virtual memory starting at base and map physical
@@ -1011,8 +1013,10 @@ void *mmio_map_region(physaddr_t pa, size_t size)
 
     boot_map_region(kern_pgdir, base, r_size, pa, (PTE_PCD | PTE_PWT | PTE_W));
 
+    // Update base for future calls:
+    base = base + r_size;
 
-    return (void *)base;
+    return (void *)base_ret;
 }
 
 static uintptr_t user_mem_check_addr;
@@ -1357,12 +1361,16 @@ static physaddr_t check_va2pa(pde_t *pgdir, uintptr_t va)
 {
     pte_t *p;
 
+    // get the pde:
     pgdir = &pgdir[PDX(va)];
-    if (!(*pgdir & PTE_P))
+    if (!(*pgdir & PTE_P)){
         return ~0;
+    }
+
     p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
-    if (!(p[PTX(va)] & PTE_P))
+    if (!(p[PTX(va)] & PTE_P)) {
         return ~0;
+    }
     return PTE_ADDR(p[PTX(va)]);
 }
 
@@ -1530,6 +1538,7 @@ static void check_page(void)
     /* check that they're page-aligned */
     assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
     /* check that they don't overlap */
+
     assert(mm1 + 8096 <= mm2);
     /* check page mappings */
     assert(check_va2pa(kern_pgdir, mm1) == 0);

@@ -236,7 +236,7 @@ static void trap_dispatch(struct trapframe *tf)
     else if (tf->tf_trapno == T_SYSCALL){
         
         // Make Grade Happy:
-        print_trapframe(tf);
+        // print_trapframe(tf);
         
         // Setup Args, syscall:
         ret = syscall(tf->tf_regs.reg_eax,
