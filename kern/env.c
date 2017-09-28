@@ -409,6 +409,8 @@ int env_dup(struct env * parent){
  */
 int env_alloc(struct env **newenv_store, envid_t parent_id)
 {
+
+    cprintf("env_alloc called!\n");
     int32_t generation;
     int r;
     struct env *e;
@@ -719,7 +721,9 @@ void env_free(struct env *e)
     page_decref(pa2page(pa));
 
     /* Free VMA list. */
-    pa = PADDR(e->env_vmas);
+    // cprintf("e->env_vmas: %x\n", e->env_vmas);
+    // I just changed this to be by ref.. and it fixed the multiprocessor issue, beware!
+    pa = PADDR(&e->env_vmas);
     e->env_vmas = 0;
     page_decref(pa2page(pa));
 

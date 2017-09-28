@@ -14,6 +14,12 @@ void sched_yield(void)
 {
     struct env *idle;
 
+    cprintf("sched_yield() called!\n");
+    // cprintf("curenv's id: %x\n", curenv);
+
+    // If i could only make curenv id access work...
+    static envid_t last = 0x1000;
+
     /*
      * Implement simple round-robin scheduling.
      *
@@ -33,6 +39,67 @@ void sched_yield(void)
      *
      * LAB 5: Your code here.
      */
+
+    /*
+    - Get current env
+    - From current env in envs[], itterate over whole list looking for next w/ env_status == ENV_RUNNABLE
+    - Run found env, or fall through to halt below
+    */
+
+    // Find index of current env first:
+    int cur_idx = 0;
+    for (cur_idx = 0; cur_idx < NENV; ++cur_idx){
+        // cprintf("envs[%u]: %08x\n", cur_idx, envs[cur_idx].env_id);
+        if (envs[cur_idx].env_id == last){
+            cprintf("currently running's id: %x [status: %x]\n", envs[cur_idx].env_id, envs[cur_idx].env_status);
+            break;
+        }
+    }
+
+    /*
+    enum {
+        ENV_FREE = 0,
+        ENV_DYING,
+        ENV_RUNNABLE,
+        ENV_RUNNING,
+        ENV_NOT_RUNNABLE
+    };
+
+    - From that index + 1, iterate over array looking for ENV_RUNNABLE
+    - If found, run it
+    - If end of list, reset i to begnining of list (to cover cur > next case)
+    - If we iterate back to our current env, and its ENV_RUNNING, run it
+    */
+
+    int i = cur_idx + 1;
+    for (i; i < NENV; ++i)
+    {
+        // Debug:
+        // cprintf("envs[%u]: %08x -- [status: %u]\n", i, envs[i].env_id, envs[i].env_status);
+
+        // If end of list found, set i to beginning:
+        if (i == (NENV - 1)){
+            i = 0;
+        }
+
+        // If runnable, run the new one:
+        if (envs[i].env_status == ENV_RUNNABLE){
+            cprintf("found runnable!\n");
+            last = envs[i].env_id;
+            env_run(&envs[i]);
+        }
+
+        // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
+        if (envs[i].env_id == last) {
+            cprintf("no others found, running current...\n");
+            if (envs[i].env_status == ENV_RUNNING){
+                last = envs[i].env_id;
+                env_run(&envs[i]);
+            } else {
+                break;
+            }
+        }
+    }
 
     /* sched_halt never returns */
     sched_halt();
