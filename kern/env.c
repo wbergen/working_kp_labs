@@ -291,6 +291,8 @@ int env_alloc(struct env **newenv_store, envid_t parent_id)
 
     /* Enable interrupts while in user mode.
      * LAB 5: Your code here. */
+    
+    e->env_tf.tf_eflags |= FL_IF;
 
 
     /* commit the allocation */

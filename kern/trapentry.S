@@ -99,6 +99,36 @@ TRAPHANDLER_NOEC(trap_handler19_xm,19);
 TRAPHANDLER_NOEC(trap_handler48_sc,48);
 
 /*
+#define IRQ_OFFSET  32
+
+#define IRQ_TIMER        0
+#define IRQ_KBD          1
+#define IRQ_SERIAL       4
+#define IRQ_SPURIOUS     7
+#define IRQ_IDE         14
+#define IRQ_ERROR       19
+*/
+
+
+TRAPHANDLER_NOEC(irq_handler0, 32);
+TRAPHANDLER_NOEC(irq_handler1, 32+1);
+TRAPHANDLER_NOEC(irq_handler2, 32+4);
+TRAPHANDLER_NOEC(irq_handler3, 32+7);
+TRAPHANDLER_NOEC(irq_handler4, 32+14);
+TRAPHANDLER_NOEC(irq_handler5, 32+19);
+# TRAPHANDLER_NOEC(irq_handler6, 106);
+# TRAPHANDLER_NOEC(irq_handler7, 107);
+# TRAPHANDLER_NOEC(irq_handler8, 108);
+# TRAPHANDLER_NOEC(irq_handler9, 109);
+# TRAPHANDLER_NOEC(irq_handler10, 110);
+# TRAPHANDLER_NOEC(irq_handler11, 111);
+# TRAPHANDLER_NOEC(irq_handler12, 112);
+# TRAPHANDLER_NOEC(irq_handler13, 113);
+# TRAPHANDLER_NOEC(irq_handler14, 114);
+# TRAPHANDLER_NOEC(irq_handler15, 115);
+
+
+/*
  * Lab 3: Your code here for _alltraps
  */
 _alltraps:
