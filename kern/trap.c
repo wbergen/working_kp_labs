@@ -473,6 +473,14 @@ void page_fault_handler(struct trapframe *tf)
     if(!(tf->tf_err & 1)) {
         alloc_page_after_fault(fault_va, tf);
     } else {
+        struct vma* v = vma_lookup(curenv, (void *)fault_va);
+        // if vma permission write we have a COW
+        if(v && (v->perm & PTE_W)){
+            if(!page_dedup(curenv, (void *)fault_va)){
+                cprintf("[KERN]page_fault_handler: page dedup failed\n");
+            }
+            alloc_page_after_fault(fault_va, tf);
+        }
         cprintf("[KERN] page_fault_handler(): write protection fault, killing env!\n");
         kill_env(fault_va, tf);
     }

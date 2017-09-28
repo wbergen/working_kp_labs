@@ -76,6 +76,13 @@ void *mmio_map_region(physaddr_t pa, size_t size);
 int  user_mem_check(struct env *env, const void *va, size_t len, int perm);
 void user_mem_assert(struct env *env, const void *va, size_t len, int perm);
 
+/*
+    This function deduplicate if needed a physical page
+
+    Returns 1 if succes, 0 if failure
+*/
+int page_dedup(struct env * e, void * va);
+
 static inline physaddr_t page2pa(struct page_info *pp)
 {
     return (pp - pages) << PGSHIFT;

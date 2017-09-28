@@ -22,6 +22,16 @@ int  envid2env(envid_t envid, struct env **env_store, bool checkperm);
 void env_run(struct env *e) __attribute__((noreturn));
 void env_pop_tf(struct trapframe *tf) __attribute__((noreturn));
 
+/*
+    this function duplicate two environments:
+        It sets the allocated pages in both parent and child COW 
+        It set the return values in both parent and child in eax
+
+    It returns child id if success if success, 0 if failure
+*/
+int env_dup(struct env * parent);
+
+
 struct vma * vma_lookup(struct env *e, void *va);
 
 /* Without this extra macro, we couldn't pass macros like TEST to ENV_CREATE

@@ -231,6 +231,175 @@ static int env_setup_vm(struct env *e)
 }
 
 /*
+    This function copies the trapframe of 2 environments
+*/
+void env_cpy_tf(struct env *child, struct env *parent){
+
+    child->env_tf.tf_regs.reg_edi = parent->env_tf.tf_regs.reg_edi ;
+    child->env_tf.tf_regs.reg_esi = parent->env_tf.tf_regs.reg_esi ;
+    child->env_tf.tf_regs.reg_ebp = parent->env_tf.tf_regs.reg_ebp ;
+    child->env_tf.tf_regs.reg_oesp = parent->env_tf.tf_regs.reg_oesp ;
+    child->env_tf.tf_regs.reg_ebx = parent->env_tf.tf_regs.reg_ebx ;
+    child->env_tf.tf_regs.reg_edx = parent->env_tf.tf_regs.reg_edx ;
+    child->env_tf.tf_regs.reg_ecx = parent->env_tf.tf_regs.reg_ecx ;
+    child->env_tf.tf_regs.reg_eax = parent->env_tf.tf_regs.reg_eax ;
+
+    child->env_tf.tf_es = parent->env_tf.tf_es ;
+    child->env_tf.tf_ds = parent->env_tf.tf_ds ;
+    child->env_tf.tf_trapno = parent->env_tf.tf_trapno ;
+    child->env_tf.tf_err = parent->env_tf.tf_err ;
+    child->env_tf.tf_eip = parent->env_tf.tf_eip ;
+    child->env_tf.tf_cs = parent->env_tf.tf_cs ;
+    child->env_tf.tf_eflags = parent->env_tf.tf_eflags ;
+    child->env_tf.tf_esp = parent->env_tf.tf_esp ;
+    child->env_tf.tf_ss = parent->env_tf.tf_ss ;
+
+}
+/*
+    This function copies the vmas of 2 environments
+
+    returns 1 is success, 0 if errors
+*/
+int env_cpy_vmas(struct env *child, struct env *parent){
+
+    struct vma * v = parent->alloc_vma_list;
+    struct vma * n;
+
+    //Iterate over the parent allocated vmas and create an identical one in the child
+    while(v){
+
+        //just to be sure
+        vma_consistency_check(v, v->type);
+
+        //create a new vma in the child
+        if(!vma_new(child, v->va, v->len, v->type, v->cpy_src, v->src_sz, v->cpy_dst, v->perm, &n)){
+            cprintf("[KERN]env_cpy_vmas(): vma new failed\n");
+            return 0;
+        }
+        n->hps = v->hps;
+
+        v = v->vma_link;
+    }
+    return 1;
+}
+/*
+    Create a second level page table in the child and copy the present pte COW
+
+    Return 1 if success, 0 if errors
+*/
+int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
+
+    //bookkeeping 
+    pte_t * pte_p, *pte_c;
+    struct page_info * pg, *pg1;
+    int i;
+
+    /*  FIRST we allocate a new pte for the child   */
+    pg = page_alloc( ALLOC_ZERO );             
+    // If the allocation fails return NULL
+    if(!pg){
+         cprintf("[KERN]env_cpy_pgdir_cow() cp_pte(): page alloc failed\n");
+        return 0;
+    }
+    // Set the page in pgdir with present, write and user flags set
+    *(c_pgdir + idx) = page2pa(pg) | PTE_P | PTE_W | PTE_U;
+    // Increment the reference count
+    pg->pp_ref += 1;
+
+    /*  get the pte address for child and parent*/
+    pte_p = KADDR(PTE_ADDR(&p_pgdir[idx]));
+    pte_c = KADDR(PTE_ADDR(&c_pgdir[idx]));
+
+    /*  copy all the present entries COW*/
+    for(i=0; i<PGSIZE; i++){
+        if(*(pte_p + i) & PTE_P){
+            *(pte_p + i) &= ~PTE_W;\
+            *(pte_c + i) = pte_p[i];
+
+            //increase ref_count
+            pg1 = pa2page(PTE_ADDR(&pte_p[i]));
+            pg1->pp_ref++;
+
+        }
+    }
+    return 1;
+}
+/*
+    This function copies pgdir of two environments
+    it also mark the allocated entries of both copy on write
+
+    Returns 1, 0 if failure
+*/
+int env_cpy_pgdir_cow(struct env *child, struct env *parent){
+
+    pde_t * p_pgdir =  parent->env_pgdir;
+    pde_t * c_pgdir = child->env_pgdir;
+    struct page_info *pg;
+    int i;
+    //first iterate over 1st pgdir
+    for(i = 0; i<PGSIZE; i++){
+        //if the entry is present cpy the range of the virtual addresses
+        if( *(p_pgdir + i) & PTE_P){
+            //if it's a huge page copy the entry directly
+            if(*(p_pgdir + i) & PTE_PS){
+                //if write flag is set remove it (COW)
+                *(p_pgdir + i) &= ~PTE_W;
+                *(c_pgdir + i) = p_pgdir[i];
+
+                //increase ref count
+                pg = pa2page(PTE_ADDR(&p_pgdir[i]));
+                pg->pp_ref++;                
+            }else{
+                //copy the second level pt from the parent to the child
+                if(!cp_pte( p_pgdir, c_pgdir, i)){
+                    return 0;
+                }
+            }
+        }       
+    }
+    return 1;
+
+}
+
+
+/*
+    this function duplicate two environments:
+        It sets the allocated pages in both parent and child COW 
+        It set the return values in both parent and child in eax
+
+    It returns child id if success if success, 0 if failure
+*/
+int env_dup(struct env * parent){
+    struct env * child;
+
+    //Allocate a new enviroment
+    if(env_alloc(&child, parent->env_id) < 0){
+        cprintf("[KERN]env_dup(): Impossible to allocate a new env\n");
+        return 0;
+    }
+
+    //Copy the trapframe
+    env_cpy_tf(child, parent);
+
+    //set the eax register with the return value for parent and child
+    child->env_tf.tf_regs.reg_eax = 0;
+    parent->env_tf.tf_regs.reg_eax = child->env_id;
+
+    //Copy the VMAs
+    if(!env_cpy_vmas(child, parent)){
+        cprintf("[KERN]env_dup(): cpy_vmas failed\n");
+        return 0;
+    }
+    //Copy the page table entries COW
+    if(!env_cpy_pgdir_cow(child, parent)){
+        cprintf("[KERN]env_dup(): cpy_pgdir_cow failed\n");
+        return 0;        
+    }
+    return child->env_id;
+
+
+}
+/*
  * Allocates and initializes a new environment.
  * On success, the new environment is stored in *newenv_store.
  *
@@ -428,7 +597,7 @@ static void load_icode(struct env *e, uint8_t *binary)
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
             // 1 success, 0 failure, -1 other errors...        
-            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), perm) < 1){
+            if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), perm, NULL) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
 
@@ -442,7 +611,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     // Now map one page for the program's initial stack at virtual address
     // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
-    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
 
@@ -455,10 +624,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 4: Your code here. */
 
-    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U) < 1){
+    if (vma_new(e, (void*)UTEMP, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W) < 1){
+    if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
     // Attempt to debug the vma's we've allocated?

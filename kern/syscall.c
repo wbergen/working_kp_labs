@@ -192,11 +192,9 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     /* Now we have spot, allocate! */
     // Create a new vma:
     struct vma * new;
-    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U) < 1) {
+    if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U, &new) < 1) {
         cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
         return (void *)-1;
-    } else {
-        new = vma_lookup(curenv, spot);
     }
 
     // MAP_POPULATE support - allocate pages now:
@@ -289,8 +287,13 @@ static int sys_fork(void)
 {
     /* fork() that follows COW semantics */
     /* LAB 5: Your code here */
-    return -1;
-}
+    int32_t child_id = env_dup(curenv);
+    if(!child_id){
+        cprintf("sys_fork(): fork failed\n");
+        return -1;
+    }
+    else return child_id;
+}   
 
 /*
     returns 1 for success and 0 for failure

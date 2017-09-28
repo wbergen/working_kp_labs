@@ -35,7 +35,7 @@ void vma_insert( struct vma * el, struct vma **list, int ordered);
 
     return 1 if success, 0 if out of memory, -1 for any errors
 */
-int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, size_t cpy_dst, int perm);
+int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t filesize, size_t cpy_dst, int perm, struct vma ** vma_store);
 
 /*
     Lookup in the allocated vma if the va is mapped
@@ -105,6 +105,11 @@ int vma_list_merge(struct env * e);
     returns 1 if succes, 0 if errors (no 0 return for now)
 */
 int vma_change_perm(struct vma *v, int perm);
+
+/*
+    It applies a consistency check on a vma
+*/
+int vma_consistency_check(struct vma * v, int type);
 
 /*
     Print the vma data

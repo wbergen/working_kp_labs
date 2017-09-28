@@ -877,6 +877,51 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 }
 
 /*
+    This function deduplicate if needed a physical page
+
+    Returns 1 if succes, 0 if failure
+*/
+int page_dedup(struct env * e, void * va){
+
+    pte_t * pte = pgdir_walk(e->env_pgdir, va, 0);
+
+    struct page_info *pg;
+
+    if(!pte){
+        cprintf("[KERN]page_dedup: No pte found\n");
+        return 0;
+    }
+
+    pg = pa2page(PTE_ADDR(pte));
+    // if ref == 1 I can keep the page otherwise I need to duplicate it   
+    if(pg->pp_ref == 1){
+        *pte |= PTE_W;
+    }else if(pg->pp_ref > 1){
+
+        //decrement ref count
+        pg->pp_ref--;
+
+        //If it's a huge page alloc a huge page,
+        if(*pte & PTE_PS){
+            pg = page_alloc(CREATE_HUGE);
+        }else{
+            //allocate a normal page
+            pg = page_alloc(CREATE_NORMAL);
+        }
+        if(!pg){
+            cprintf("[KERN]page_dedup: cannot allocate a new page\n");
+            return 0;
+        }
+        //set the new page phy address with the old flags + PTE_W
+        *pte = page2pa(pg) | (*pte & 7) | PTE_W;
+    }else{
+        panic("[KERN PANIC]page_dedup: page info ref is 0 or less!\n");
+    }
+
+    return 1;
+
+}
+/*
  * Return the page mapped at virtual address 'va'.
  * If pte_store is not zero, then we store in it the address
  * of the pte for this page.  This is used by page_remove and
