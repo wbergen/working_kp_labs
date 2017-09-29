@@ -306,25 +306,28 @@ int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
         return 0;
     }
     // Set the page in pgdir with present, write and user flags set
-    *(c_pgdir + idx) = page2pa(pg) | PTE_P | PTE_W | PTE_U;
+    c_pgdir[idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U;
     // Increment the reference count
     pg->pp_ref += 1;
 
     /*  get the pte address for child and parent*/
-    pte_p = KADDR(PTE_ADDR(*(p_pgdir + idx) ));
-    pte_c = KADDR(PTE_ADDR(*(c_pgdir + idx) ));
+    pte_p = KADDR(PTE_ADDR( p_pgdir[idx]));
+    pte_c = KADDR(PTE_ADDR( c_pgdir[idx]));
 
     /*  copy all the present entries COW*/
     for(i=0; i<NPTENTRIES; i++){
-        if(*(pte_p + i) & PTE_P){          
-            //*(pte_p + i) &= ~PTE_W;
-            *(pte_c + i) = *(pte_p + i);
-            cprintf("b %d %08x\n",i,*(pte_p + i));
-            //increase ref_count
-            pg1 = pa2page(PTE_ADDR(*(pte_p + i)));
-            cprintf("a%d\n",i);
-            pg1->pp_ref++;
-        }
+        //cprintf("%08x\n",(void *)(((idx+1)*PGSIZE*1024) + i*PGSIZE) );
+        //struct vma* v = vma_lookup(curenv, (void *)(((idx)*PGSIZE*1024) + i*PGSIZE) );
+            if((pte_p[i] & PTE_P) ){
+                
+                pte_p[i] &= ~PTE_W;
+                pte_c[i] = pte_p[i];
+                cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
+                //increase ref_count
+                pg1 = pa2page(PTE_ADDR(pte_p[i]));
+                pg1->pp_ref++;
+                
+            }
     }
     return 1;
 }
@@ -339,12 +342,14 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
     pde_t * p_pgdir =  parent->env_pgdir;
     pde_t * c_pgdir = child->env_pgdir;
     struct page_info *pg;
-    int i;
+    int i = 0;
     //first iterate over 1st pgdir
-    for(i = 0; i<NPDENTRIES; i++){
-        cprintf("%d\n",i);
+
+    for(i = 0; i<NPDENTRIES && ((i)*PGSIZE*1024) <= UTOP; i++){
+    cprintf("UTOP: %08x size%08x\n", UTOP, ((i)*PGSIZE*1024));      
         //if the entry is present cpy the range of the virtual addresses
         if( *(p_pgdir + i) & PTE_P){
+            cprintf(" PDE ENTRY: %d, from: %08x to %08x\n",i, ((i)*PGSIZE*1024), ((i+1)*PGSIZE*1024));
             //if it's a huge page copy the entry directly
             if(*(p_pgdir + i) & PTE_PS){
                 //if write flag is set remove it (COW)

@@ -87,6 +87,7 @@ void sched_yield(void)
             cprintf("found runnable!\n");
             last = envs[i].env_id;
             env_run(&envs[i]);
+
         }
 
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
