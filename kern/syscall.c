@@ -406,6 +406,8 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
             return sys_vma_protect((void *)a1, a2, a3);
         case SYS_vma_advise:
             return sys_vma_advise((void *)a1, a2, a3);
+        case SYS_fork:
+            return sys_fork();
         case SYS_yield:
             sys_yield();
     default:

@@ -491,7 +491,7 @@ struct page_info *page_alloc(int alloc_flags)
     if( !page_free_list ){
         return NULL;
     }
-
+    cprintf("---1\n");
     //Huge page consecutive support
     if(alloc_flags & ALLOC_HUGE){
 
@@ -543,27 +543,32 @@ struct page_info *page_alloc(int alloc_flags)
     if(PREMAPPED_FLAG){
         pg0 = remove_element_4MB_pfl();
     }else{
+        cprintf("---remove head\n");
         pg0 = remove_head_pfl();
     }
-    
+    cprintf("---2\n");  
 
     if((pg0->page_flags & ALLOC) || (pg0->page_flags & ALLOC_HUGE)){
         panic("page_alloc: PAGE TO ALLOC ALREADY MARKED ALLOC\n");
     }
+    cprintf("---3\n");
     if(alloc_flags & POISON_AFTER_FREE){
         if(pg0->page_flags & POISON_AFTER_FREE){
             panic("page_alloc huge: PAGE TO ALLOC ALREADY MARKED AS POISON_AFTER_FREE\n");
         }
         pg0->page_flags |= POISON_AFTER_FREE;
     }
+    cprintf("---4\n");
     // Set the Alloc flag
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
-
+    cprintf("---5 ph:%08x va:%08x \n",pg0, page2kva(pg0));
     if((alloc_flags & ALLOC_ZERO) ){
+        cprintf("---6\n");
         memset( page2kva(pg0) ,'\0', PGSIZE );          
     }
+    cprintf("---7\n");
     return pg0;
 }
 

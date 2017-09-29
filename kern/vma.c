@@ -462,7 +462,7 @@ int vma_populate(void * va, size_t size, int perm, int hp){
     if(!populate_page){
         cprintf("[KERN]vma_populate(): out of memory\n");
     }
-
+    page_free(populate_page);
     int hp_factor;
     if (hp){
         hp_factor = 1024;

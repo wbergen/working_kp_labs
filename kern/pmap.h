@@ -89,9 +89,9 @@ static inline physaddr_t page2pa(struct page_info *pp)
 }
 
 static inline struct page_info *pa2page(physaddr_t pa)
-{
+{   
     if (PGNUM(pa) >= npages)
-        panic("pa2page called with invalid pa");
+        panic("pa2page called with invalid pa pg:%d max:%d", PGNUM(pa), npages);
     return &pages[PGNUM(pa)];
 }
 
