@@ -61,6 +61,25 @@ void trap_handler20_ve();
 
 void trap_handler48_sc();
 
+void irq_handler0();
+void irq_handler1();
+void irq_handler2();
+void irq_handler3();
+void irq_handler4();
+void irq_handler5();
+// void irq_handler6();
+// void irq_handler7();
+// void irq_handler8();
+// void irq_handler9();
+// void irq_handler10();
+// void irq_handler11();
+// void irq_handler12();
+// void irq_handler13();
+// void irq_handler14();
+// void irq_handler15();
+
+
+
 static const char *trapname(int trapno)
 {
     static const char * const excnames[] = {
@@ -124,6 +143,36 @@ void trap_init(void)
     SETGATE(idt[T_SIMDERR], 0, GD_KT, trap_handler19_xm, 0);
 
     SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handler48_sc, 3);
+
+    /*
+    IRQs:
+    define IRQ_OFFSET  32 // IRQ 0 corresponds to int IRQ_OFFSET
+
+    Hardware IRQ numbers. We receive these as (IRQ_OFFSET+IRQ_WHATEVER)
+    #define IRQ_TIMER        0
+    #define IRQ_KBD          1
+    #define IRQ_SERIAL       4
+    #define IRQ_SPURIOUS     7
+    #define IRQ_IDE         14
+    #define IRQ_ERROR       19
+    */
+
+    SETGATE(idt[IRQ_OFFSET], 0, GD_KT, irq_handler0, 0);
+    SETGATE(idt[32+IRQ_KBD], 0, GD_KT, irq_handler1, 0);
+    SETGATE(idt[32+IRQ_SERIAL], 0, GD_KT, irq_handler2, 0);
+    SETGATE(idt[32+IRQ_SPURIOUS], 0, GD_KT, irq_handler3, 0);
+    SETGATE(idt[32+IRQ_IDE], 0, GD_KT, irq_handler4, 0);
+    SETGATE(idt[32+IRQ_ERROR], 0, GD_KT, irq_handler5, 0);
+    // SETGATE(idt[T_IRQ_6], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_7], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_8], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_9], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_10], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_11], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_12], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_13], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_14], 0, GD_KT, irq_handler0, 0);
+    // SETGATE(idt[T_IRQ_15], 0, GD_KT, irq_handler0, 0);
 
     /* Per-CPU setup */
     trap_init_percpu();
@@ -254,6 +303,12 @@ static void trap_dispatch(struct trapframe *tf)
      * lapic_eoi() before calling the scheduler!
      * LAB 5: Your code here.
      */
+
+    else if (tf->tf_trapno == IRQ_OFFSET) {
+        cprintf("[KERN] got a timer interrupt!\n");
+        lapic_eoi();
+        sched_yield();
+    }
 
     /* Unexpected trap: The user process or the kernel has a bug. */
     else if (tf->tf_cs == GD_KT) {
