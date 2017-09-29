@@ -410,6 +410,7 @@ int env_dup(struct env * parent){
         return 0;        
     }
     cprintf("[KERN] env_dup(): pgdir copied COW\n");
+
     return child->env_id;
 
 

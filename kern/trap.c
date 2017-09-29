@@ -471,7 +471,9 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             } else {
                 demand_page = page_alloc(ALLOC_ZERO);
             }
-
+            if(!demand_page){
+                panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
+            }
             //Insert the physical frame in the page directory
             int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);
             if(ret != 0){
@@ -503,6 +505,7 @@ void page_fault_handler(struct trapframe *tf)
 
     // If it's from the kernel, panic:
     if (!(tf->tf_err & 4)){
+        //if(vma)
         panic("[KERN ]page_fault_handler(): kernel page fault!\n");
     }
 
@@ -535,8 +538,9 @@ void page_fault_handler(struct trapframe *tf)
                 cprintf("[KERN]page_fault_handler: page dedup failed\n");
             }
             alloc_page_after_fault(fault_va, tf);
+        }else{
+            cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);
+            kill_env(fault_va, tf);
         }
-        cprintf("[KERN] page_fault_handler(): write protection fault, killing env!\n");
-        kill_env(fault_va, tf);
     }
 }

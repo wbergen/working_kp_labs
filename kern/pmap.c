@@ -317,6 +317,9 @@ struct page_info * remove_head_pfl(){
     page_free_list = pp->pp_link;
     pp->pp_link = NULL;
 
+    if(pp->pp_ref != 0){
+        panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
+    }
     return pp;
 }
 
@@ -912,6 +915,7 @@ int page_dedup(struct env * e, void * va){
             cprintf("[KERN]page_dedup: cannot allocate a new page\n");
             return 0;
         }
+        pg->pp_ref++;
         //set the new page phy address with the old flags + PTE_W
         *pte = page2pa(pg) | (*pte & 7) | PTE_W;
     }else{
@@ -980,7 +984,7 @@ void page_remove(pde_t *pgdir, void *va)
 
     // Check the reference count to be more than 0
     if(pp->pp_ref <= 0){
-        panic("page_remove: PAGE REF COUNT ALREADY 0\n");
+        panic("page_remove: PAGE REF COUNT ALREADY 0, IT'S: %d\n",pp->pp_ref);
     }
     // Decrement the ref count
     pp->pp_ref--;

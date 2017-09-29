@@ -21,6 +21,7 @@ void umain(int argc, char **argv)
     if (child_id == 0) {
         /* Child */
         child_id = thisenv->env_id;
+        cprintf("child: %d parent: %d",child_id,parent_id);
         assert(child_id != parent_id);
         cprintf("[%08x] g[0] = %x\n", child_id, g[0]);
         assert(g[0] == parent_id);

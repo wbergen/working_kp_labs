@@ -90,6 +90,7 @@ int sys_wait(envid_t envid)
 }
 
 envid_t sys_fork(void)
-{   cprintf("Fork called\n");
+{
+    cprintf("Fork called\n");
     return syscall(SYS_fork, 0, 0, 0, 0, 0, 0);
 }
