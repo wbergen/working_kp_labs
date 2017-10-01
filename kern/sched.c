@@ -14,11 +14,7 @@ void sched_yield(void)
 {
     struct env *idle;
 
-    cprintf("sched_yield() called!\n");
-    // cprintf("curenv's id: %x\n", curenv);
-
-    // If i could only make curenv id access work...
-    static envid_t last = 0x1000;
+    cprintf("[SCHED] sched_yield() called!\n");
 
     /*
      * Implement simple round-robin scheduling.
@@ -46,16 +42,6 @@ void sched_yield(void)
     - Run found env, or fall through to halt below
     */
 
-    // Find index of current env first:
-    int cur_idx = 0;
-    for (cur_idx = 0; cur_idx < NENV; ++cur_idx){
-        // cprintf("envs[%u]: %08x\n", cur_idx, envs[cur_idx].env_id);
-        if (envs[cur_idx].env_id == last){
-            cprintf("currently running's id: %x [status: %x]\n", envs[cur_idx].env_id, envs[cur_idx].env_status);
-            break;
-        }
-    }
-
     /*
     enum {
         ENV_FREE = 0,
@@ -71,30 +57,54 @@ void sched_yield(void)
     - If we iterate back to our current env, and its ENV_RUNNING, run it
     */
 
-    int i = cur_idx + 1;
-    for (i; i < NENV; ++i)
+    // DEBUG:
+    // int j = 0;
+    // cprintf("\nENVS:\n");
+    // for (j; j < NENV; ++j)
+    // {
+    //     cprintf("[%08x] (id: %08x status:)\n")
+    // }
+
+    // Enviorment indexes:
+    int i, last_idx;
+
+    // At first call, curenv hasn't been setup
+    if (curenv) {
+        cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
+        // Set next:
+        i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
+    } else {
+        cprintf("[SCHED] first scheduling, setting env next index to 1.\n");
+        i = 1;
+    }
+    
+    // Save current index:
+    last_idx = i - 1;
+
+
+    for (i; i <= NENV; ++i)
     {
         // Debug:
         // cprintf("envs[%u]: %08x -- [status: %u]\n", i, envs[i].env_id, envs[i].env_status);
 
         // If end of list found, set i to beginning:
-        if (i == (NENV - 1)){
+        if (i == (NENV)){
             i = 0;
         }
 
         // If runnable, run the new one:
         if (envs[i].env_status == ENV_RUNNABLE){
-            cprintf("found runnable!\n");
-            last = envs[i].env_id;
+            cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[i].env_id);
+            // last = envs[i].env_id;
             env_run(&envs[i]);
-
         }
 
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
-        if (envs[i].env_id == last) {
-            cprintf("no others found, running current...\n");
+        if (envs[i].env_id == envs[last_idx].env_id) {
+            cprintf("[SCHED] no others found, running current...\n");
             if (envs[i].env_status == ENV_RUNNING){
-                last = envs[i].env_id;
+                // last = envs[i].env_id;
+                cprintf("asdfasdf");
                 env_run(&envs[i]);
             } else {
                 break;

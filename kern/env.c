@@ -322,7 +322,7 @@ int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
                 
                 pte_p[i] &= ~PTE_W;
                 pte_c[i] = pte_p[i];
-                cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
+                // cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
                 //increase ref_count
                 pg1 = pa2page(PTE_ADDR(pte_p[i]));
                 pg1->pp_ref++;
@@ -346,7 +346,7 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
     //first iterate over 1st pgdir
 
     for(i = 0; i<NPDENTRIES && ((i)*PGSIZE*1024) <= UTOP; i++){
-    cprintf("UTOP: %08x size%08x\n", UTOP, ((i)*PGSIZE*1024));      
+    // cprintf("UTOP: %08x size%08x\n", UTOP, ((i)*PGSIZE*1024));      
         //if the entry is present cpy the range of the virtual addresses
         if( *(p_pgdir + i) & PTE_P){
             cprintf(" PDE ENTRY: %d, from: %08x to %08x\n",i, ((i)*PGSIZE*1024), ((i+1)*PGSIZE*1024));
