@@ -7,6 +7,9 @@
 
 void sched_halt(void);
 
+/*
+    This function calculates the delta to subtract to a env time slice
+*/
 uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){
 
         if(tick > last_tick){
@@ -16,6 +19,11 @@ uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){
         }
 
 }
+/*
+    this function checks if a process has the right to run again
+
+    returns 1 in case it can, 0 otherwise
+*/
 int check_time_slice(){
 
         if( curenv->env_status == ENV_RUNNING && curenv->time_slice < TS_DEFAULT){
@@ -26,6 +34,11 @@ int check_time_slice(){
             return 0;
         }
 }
+/* 
+    It looks for a runnable env
+
+    returns the index of the env or -1 if no env can be runned
+*/
 int runnable_env_lookup(int i){
 
     // Save current index:
