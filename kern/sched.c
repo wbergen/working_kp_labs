@@ -7,13 +7,60 @@
 
 void sched_halt(void);
 
+uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){
+
+        if(tick > last_tick){
+            return (tick - last_tick);
+        }else{
+            return (tick + ((uint64_t)0 - last_tick));
+        }
+
+}
+int check_time_slice(){
+
+        if( curenv->env_status == ENV_RUNNING && curenv->time_slice < TS_DEFAULT){
+            cprintf("[SCHED] positive time slice %u, reschedule process\n",curenv->time_slice);
+            return 1;
+        }else{
+            cprintf("[SCHED] negative time slice, reschedule  new process\n");
+            return 0;
+        }
+}
+int runnable_env_lookup(int i){
+
+    // Save current index:
+    int last_idx = i - 1;
+
+    for (i; i <= NENV; ++i){
+        // If end of list found, set i to beginning:
+        if (i == NENV){
+            i = 0;
+        }
+
+        // If runnable, run the new one:
+        if (envs[i].env_status == ENV_RUNNABLE){
+            return i;
+        }
+
+        // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
+        if (envs[i].env_id == envs[last_idx].env_id) {
+            if (envs[i].env_status == ENV_RUNNING){
+                return i;
+            } else {
+                return -1;
+            }
+        }
+    }
+    return -1;
+}
+
 /*
  * Choose a user environment to run and run it.
  */
 void sched_yield(void)
 {
     struct env *idle;
-
+    static uint64_t last_tick;
     cprintf("[SCHED] sched_yield() called!\n");
 
     /*
@@ -36,27 +83,6 @@ void sched_yield(void)
      * LAB 5: Your code here.
      */
 
-    /*
-    - Get current env
-    - From current env in envs[], itterate over whole list looking for next w/ env_status == ENV_RUNNABLE
-    - Run found env, or fall through to halt below
-    */
-
-    /*
-    enum {
-        ENV_FREE = 0,
-        ENV_DYING,
-        ENV_RUNNABLE,
-        ENV_RUNNING,
-        ENV_NOT_RUNNABLE
-    };
-
-    - From that index + 1, iterate over array looking for ENV_RUNNABLE
-    - If found, run it
-    - If end of list, reset i to begnining of list (to cover cur > next case)
-    - If we iterate back to our current env, and its ENV_RUNNING, run it
-    */
-
     // DEBUG:
     // int j = 0;
     // cprintf("\nENVS:\n");
@@ -68,97 +94,47 @@ void sched_yield(void)
     // }
     // cprintf("\n");
 
-    // time slices:
-    uint64_t delta = 0;
-    uint64_t ts = read_tsc();
-    // cprintf("tsc value: %8u\n", ts);
-    static uint64_t last_tsc;
 
-    // If not first time tsc read, cal time delta:
-    if (last_tsc){
-        delta = ts - last_tsc % ~(uint64_t)0;
-    }
-
-    // Update last:
-    last_tsc = ts;
-
-    // Enviorment indexes:
     int i, last_idx;
+    uint64_t tick = read_tsc();
+    int e_run;
 
-    // If current env:
+    // At first call, curenv hasn't been setup
     if (curenv) {
         cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
-        // Check if we still have a time:
-        // cprintf("delta %u\n", delta);
-        // cprintf("env time: %u\n", envs[ENVX(curenv->env_id)].env_ts);
+        // Set next:
+        i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
 
-        // cprintf("[env time: %u, delta: %u]\n", envs[ENVX(curenv->env_id)].env_ts, delta);
+        if(curenv->env_status != ENV_SLEEPING){
+            //Update the current env time slice
+            curenv->time_slice -= calulate_delta(tick, last_tick);
 
-        // Check time slice:
-        if ((delta != 0) && (curenv->env_ts > delta)){
-            // We have time, so update env's counter and run it:
-            cprintf("[SCHED] time not expired, continuing to run current...\n");
-            curenv->env_ts = curenv->env_ts - delta;
-            env_run(&envs[ENVX(curenv->env_id)]);
-        } else {
-            // We're out of time
-            cprintf("[SCHED] time expired, choosing next env...\n");
-            
-            // Reset env's ts:
-            envs[ENVX(curenv->env_id)].env_ts = 0x10000000;
-            // curenv->env_ts = 0x10000000;
+            //update last tick
+            last_tick = tick;
 
-            // Set enviorment iterator to next:
-            i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
+            if(check_time_slice())
+                env_run(curenv);
         }
+
     } else {
         // No curenv, set iteratior to 1:
         cprintf("[SCHED] first scheduling, setting env next index to 1.\n");
         i = 1;
+        //initialize last tick
+        last_tick = read_tsc();
     }
-
-
-
-    // If it's out of time, just continue normal scheduling:
-    
-    // Save current index:
+    //keep the last index
     last_idx = i - 1;
+    //look for a runnable env
+    e_run = runnable_env_lookup(i);
 
-    for (i; i <= NENV; ++i)
-    {
-        // Debug:
-        // cprintf("envs[%u]: %08x -- [status: %u]\n", i, envs[i].env_id, envs[i].env_status);
-
-
-
-
-        // If end of list found, set i to beginning:
-        if (i == (NENV)){
-            i = 0;
-        }
-
-        // If runnable, run the new one:
-        if (envs[i].env_status == ENV_RUNNABLE){
-            cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[i].env_id);
-            // last = envs[i].env_id;
-            env_run(&envs[i]);
-        }
-
-        // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
-        if (envs[i].env_id == envs[last_idx].env_id) {
-            if (envs[i].env_status == ENV_RUNNING){
-                cprintf("[SCHED] no others found, running current...\n");
-                // last = envs[i].env_id;
-                env_run(&envs[i]);
-            } else {
-                cprintf("[SCHED] got current env, but not runnable!\n");
-                break;
-            }
-        }
+    if(e_run >= 0){
+        cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id);
+        envs[e_run].time_slice = TS_DEFAULT;
+        env_run(&envs[e_run]);
+    }else{
+        sched_halt();
     }
-
-    /* sched_halt never returns */
-    sched_halt();
 }
 
 /*

@@ -275,28 +275,29 @@ static int sys_vma_destroy(void *va, uint32_t size)
 static void sys_yield(void)
 {
     cprintf("[KERN] sys_yield() called!\n");
+    //if the a process invoke sys yield tamper it's time slice to schedule another process
+    curenv->time_slice = TS_DEFAULT * 2;
     sched_yield();
 }
 
 static int sys_wait(envid_t envid)
 {
     /* LAB 5: Your code here */
-    int i, found = 0;
-    for (i = 0; i < NENV; ++i)
-    {
-        if (envs[i].env_id == envid){
-            // envid exists!  we can therefor wait for it:
-            curenv->env_wait_for = envid;
-            found = 1;
-        }
-    }
-    if (!found){
-        cprintf("sys_wait(): no env with that id!\n");
+    struct env *e;
+
+    // Look up the env
+    envid2env(envid, &e, 0);
+
+    if(!e){
+        cprintf("[KERN]sys_wait(): no env with that id!\n");
         return -1;
-    } else {
-        sched_yield();
-        return 0;
     }
+
+    curenv->wait_id = envid;
+    curenv->env_status = ENV_SLEEPING;
+
+    sched_yield();
+    return 0;
 }
 
 static int sys_fork(void)
@@ -399,7 +400,7 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
      */
 
     // cprintf("syscall number: %x\n", syscallno);
-
+    envid_t i;
     // Syscalls dispatch
     switch (syscallno) {
         case SYS_cputs:
@@ -410,7 +411,7 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         case SYS_getenvid:
             return sys_getenvid();
         case SYS_env_destroy:
-            return sys_env_destroy(a1);
+            return sys_env_destroy((envid_t) a1);
         case SYS_vma_create:
             // cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_create(a1, a2, a3);
@@ -422,7 +423,9 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         case SYS_vma_advise:
             return sys_vma_advise((void *)a1, a2, a3);
         case SYS_fork:
-            return sys_fork();
+            i = sys_fork();
+            //sys_yield();
+            return i;
         case SYS_yield:
             sys_yield();
         case SYS_wait:

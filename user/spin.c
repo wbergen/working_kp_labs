@@ -24,7 +24,7 @@ void umain(int argc, char **argv)
     sys_yield();
     sys_yield();
 
-    cprintf("I am the parent.  Killing the child...\n");
+    cprintf("I am the parent.  Killing the child... %u\n", env);
     sys_env_destroy(env);
 }
 

@@ -435,7 +435,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     struct vma * vma_el;
 
     // Alignment debugging:
-    cprintf("\nlooking for %x in vmas...\n", fault_va);
+    cprintf("\nlooking for %x in vmas... env_id:%x\n", fault_va,curenv->env_id);
     print_all_vmas(curenv);
     cprintf("\n");
 
@@ -505,8 +505,11 @@ void page_fault_handler(struct trapframe *tf)
 
     // If it's from the kernel, panic:
     if (!(tf->tf_err & 4)){
-        //if(vma)
-        panic("[KERN ]page_fault_handler(): kernel page fault!\n");
+        if(fault_va > UTOP){
+            //If  the kernel error is due to a print syscall must be checked
+            panic("[KERN ]page_fault_handler(): kernel page fault!\n");
+        }
+        alloc_page_after_fault(fault_va, tf);
     }
 
     /* We've already handled kernel-mode exceptions, so if we get here, the page

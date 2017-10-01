@@ -32,6 +32,8 @@ typedef int32_t envid_t;
 #define ENVX(envid)     ((envid) & (NENV - 1))
 #define NVMA            110        // preallocated vmas why 124? because they fit 
 
+//Default Time Slice
+#define TS_DEFAULT 100000000
 
 /* Anonymous VMAs are zero-initialized whereas binary VMAs
  * are filled-in from the ELF binary.
@@ -61,6 +63,7 @@ enum {
     ENV_DYING,
     ENV_RUNNABLE,
     ENV_RUNNING,
+    ENV_SLEEPING,
     ENV_NOT_RUNNABLE
 };
 
@@ -87,8 +90,11 @@ struct env {
     pde_t *env_pgdir;           /* Kernel virtual address of page dir */
     struct vma *env_vmas;       /* Virtual memory areas of this env. */
 
-    uint64_t env_ts;
-    envid_t env_wait_for;
+    /*Time Slice counter*/
+    uint64_t time_slice;
+
+    /* Wait pointer */
+    envid_t wait_id;
 };
 
 #endif /* !JOS_INC_ENV_H */

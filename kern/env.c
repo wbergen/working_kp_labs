@@ -139,7 +139,7 @@ void env_init(void)
 
         //Initialize the env vmas
         vma_proc_init(&envs[i]);
-
+        envs[i].wait_id = -1;
         envs[i].env_link = env_free_list;
         env_free_list = &envs[i];
 
@@ -449,7 +449,6 @@ int env_alloc(struct env **newenv_store, envid_t parent_id)
     e->env_type = ENV_TYPE_USER;
     e->env_status = ENV_RUNNABLE;
     e->env_runs = 0;
-    e->env_ts = 0x10000000;
 
     /*
      * Clear out all the saved register state, to prevent the register values of
@@ -696,12 +695,21 @@ void env_create(uint8_t *binary, enum env_type type)
 void env_free(struct env *e)
 {
     pte_t *pt;
+    int i;
     uint32_t pdeno, pteno;
     physaddr_t pa;
 
     /* If freeing the current environment, switch to kern_pgdir
      * before freeing the page directory, just in case the page
      * gets reused. */
+    //Notify wait process:
+    for(i = 0; i < NENV; i++){
+        if(envs[i].env_status == ENV_SLEEPING && envs[i].wait_id == e->env_id){
+            envs[i].env_status = ENV_RUNNABLE;
+            envs[i].wait_id = -1;
+        }
+
+    }
     if (e == curenv)
         lcr3(PADDR(kern_pgdir));
 
@@ -851,7 +859,6 @@ void env_run(struct env *e){
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
         lcr3(PADDR(curenv->env_pgdir));
-
     }
 
     // Step2
