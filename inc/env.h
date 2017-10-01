@@ -86,6 +86,9 @@ struct env {
     /* Address space */
     pde_t *env_pgdir;           /* Kernel virtual address of page dir */
     struct vma *env_vmas;       /* Virtual memory areas of this env. */
+
+    uint64_t env_ts;
+    envid_t env_wait_for;
 };
 
 #endif /* !JOS_INC_ENV_H */

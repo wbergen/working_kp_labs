@@ -58,37 +58,79 @@ void sched_yield(void)
     */
 
     // DEBUG:
-    int j = 0;
-    cprintf("\nENVS:\n");
-    for (j; j < NENV; ++j)
-    {
-        if (envs[j].env_status != ENV_FREE){
-            cprintf("[0x%08x] (id: %08x status: %d)\n", &envs[j], envs[j].env_id, envs[j].env_status);
-        }
+    // int j = 0;
+    // cprintf("\nENVS:\n");
+    // for (j; j < NENV; ++j)
+    // {
+    //     if (envs[j].env_status != ENV_FREE){
+    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].env_ts);
+    //     }
+    // }
+    // cprintf("\n");
+
+    // time slices:
+    uint64_t delta = 0;
+    uint64_t ts = read_tsc();
+    // cprintf("tsc value: %8u\n", ts);
+    static uint64_t last_tsc;
+
+    // If not first time tsc read, cal time delta:
+    if (last_tsc){
+        delta = ts - last_tsc % ~(uint64_t)0;
     }
-    cprintf("\n");
+
+    // Update last:
+    last_tsc = ts;
 
     // Enviorment indexes:
     int i, last_idx;
 
-    // At first call, curenv hasn't been setup
+    // If current env:
     if (curenv) {
         cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
-        // Set next:
-        i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
+        // Check if we still have a time:
+        // cprintf("delta %u\n", delta);
+        // cprintf("env time: %u\n", envs[ENVX(curenv->env_id)].env_ts);
+
+        // cprintf("[env time: %u, delta: %u]\n", envs[ENVX(curenv->env_id)].env_ts, delta);
+
+        // Check time slice:
+        if ((delta != 0) && (curenv->env_ts > delta)){
+            // We have time, so update env's counter and run it:
+            cprintf("[SCHED] time not expired, continuing to run current...\n");
+            curenv->env_ts = curenv->env_ts - delta;
+            env_run(&envs[ENVX(curenv->env_id)]);
+        } else {
+            // We're out of time
+            cprintf("[SCHED] time expired, choosing next env...\n");
+            
+            // Reset env's ts:
+            envs[ENVX(curenv->env_id)].env_ts = 0x10000000;
+            // curenv->env_ts = 0x10000000;
+
+            // Set enviorment iterator to next:
+            i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
+        }
     } else {
+        // No curenv, set iteratior to 1:
         cprintf("[SCHED] first scheduling, setting env next index to 1.\n");
         i = 1;
     }
+
+
+
+    // If it's out of time, just continue normal scheduling:
     
     // Save current index:
     last_idx = i - 1;
-
 
     for (i; i <= NENV; ++i)
     {
         // Debug:
         // cprintf("envs[%u]: %08x -- [status: %u]\n", i, envs[i].env_id, envs[i].env_status);
+
+
+
 
         // If end of list found, set i to beginning:
         if (i == (NENV)){
@@ -104,12 +146,12 @@ void sched_yield(void)
 
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
         if (envs[i].env_id == envs[last_idx].env_id) {
-            cprintf("[SCHED] no others found, running current...\n");
             if (envs[i].env_status == ENV_RUNNING){
+                cprintf("[SCHED] no others found, running current...\n");
                 // last = envs[i].env_id;
-                cprintf("asdfasdf");
                 env_run(&envs[i]);
             } else {
+                cprintf("[SCHED] got current env, but not runnable!\n");
                 break;
             }
         }

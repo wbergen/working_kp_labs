@@ -62,7 +62,7 @@ static envid_t sys_getenvid(void)
  */
 static int sys_env_destroy(envid_t envid)
 {
-    cprintf("[KERN] sys_env_destroy(): called\n");
+    cprintf("[KERN] sys_env_destroy(): called on %08x\n", envid);
     int r;
     struct env *e;
 
@@ -281,7 +281,22 @@ static void sys_yield(void)
 static int sys_wait(envid_t envid)
 {
     /* LAB 5: Your code here */
-    return -1;
+    int i, found = 0;
+    for (i = 0; i < NENV; ++i)
+    {
+        if (envs[i].env_id == envid){
+            // envid exists!  we can therefor wait for it:
+            curenv->env_wait_for = envid;
+            found = 1;
+        }
+    }
+    if (!found){
+        cprintf("sys_wait(): no env with that id!\n");
+        return -1;
+    } else {
+        sched_yield();
+        return 0;
+    }
 }
 
 static int sys_fork(void)
@@ -395,7 +410,7 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
         case SYS_getenvid:
             return sys_getenvid();
         case SYS_env_destroy:
-            return sys_env_destroy((envid_t) curenv->env_id);
+            return sys_env_destroy(a1);
         case SYS_vma_create:
             // cprintf("a1: %u - a2: %u - a3: %u - a4: %u - a5: %u\n", a1, a2, a3, a4, a5);
             return (int32_t)sys_vma_create(a1, a2, a3);
@@ -410,6 +425,8 @@ int32_t syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3,
             return sys_fork();
         case SYS_yield:
             sys_yield();
+        case SYS_wait:
+            return sys_wait(a1);
     default:
         return -E_NO_SYS;
     }
