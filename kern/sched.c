@@ -58,12 +58,15 @@ void sched_yield(void)
     */
 
     // DEBUG:
-    // int j = 0;
-    // cprintf("\nENVS:\n");
-    // for (j; j < NENV; ++j)
-    // {
-    //     cprintf("[%08x] (id: %08x status:)\n")
-    // }
+    int j = 0;
+    cprintf("\nENVS:\n");
+    for (j; j < NENV; ++j)
+    {
+        if (envs[j].env_status != ENV_FREE){
+            cprintf("[0x%08x] (id: %08x status: %d)\n", &envs[j], envs[j].env_id, envs[j].env_status);
+        }
+    }
+    cprintf("\n");
 
     // Enviorment indexes:
     int i, last_idx;
