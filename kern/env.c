@@ -317,9 +317,9 @@ int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
     /*  copy all the present entries COW*/
     for(i=0; i<NPTENTRIES; i++){
         //cprintf("%08x\n",(void *)(((idx+1)*PGSIZE*1024) + i*PGSIZE) );
-        //struct vma* v = vma_lookup(curenv, (void *)(((idx)*PGSIZE*1024) + i*PGSIZE) );
+        struct vma* v = vma_lookup(curenv, (void *)(((idx)*PGSIZE*1024) + i*PGSIZE) );
             if((pte_p[i] & PTE_P) ){
-                
+                //if(v->type != VMA_BINARY)
                 pte_p[i] &= ~PTE_W;
                 pte_c[i] = pte_p[i];
                 // cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));

@@ -540,7 +540,7 @@ void page_fault_handler(struct trapframe *tf)
             if(!page_dedup(curenv, (void *)fault_va)){
                 cprintf("[KERN]page_fault_handler: page dedup failed\n");
             }
-            alloc_page_after_fault(fault_va, tf);
+            //alloc_page_after_fault(fault_va, tf);
         }else{
             cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);
             kill_env(fault_va, tf);

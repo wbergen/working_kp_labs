@@ -886,10 +886,16 @@ int page_insert(pde_t *pgdir, struct page_info *pp, void *va, int perm)
 */
 int page_dedup(struct env * e, void * va){
 
-    pte_t * pte = pgdir_walk(e->env_pgdir, va, 0);
+    struct page_info *pg, *pgn;
+    // Look up the vma
+    struct vma * v = vma_lookup(e ,va);
 
-    struct page_info *pg;
-    cprintf("faulting va: %08x , pte %08x\n",va, *pte);
+    // Look up the pte
+    pte_t * pte = pgdir_walk(e->env_pgdir, va, 1);
+
+    cprintf("[KERN] page_dedup() called \n");
+    cprintf("[KERN]page_dedup before: faulting va: %08x ,pte %08x, pte content %08x\n", va, pte, *pte);
+
     if(!pte){
         cprintf("[KERN]page_dedup: No pte found\n");
         return 0;
@@ -906,18 +912,25 @@ int page_dedup(struct env * e, void * va){
 
         //If it's a huge page alloc a huge page,
         if(*pte & PTE_PS){
-            pg = page_alloc(CREATE_HUGE);
+            pgn = page_alloc(CREATE_HUGE);
         }else{
             //allocate a normal page
-            pg = page_alloc(CREATE_NORMAL);
+            pgn = page_alloc(CREATE_NORMAL);
         }
-        if(!pg){
+        if(!pgn){
             cprintf("[KERN]page_dedup: cannot allocate a new page\n");
             return 0;
         }
-        pg->pp_ref++;
-        //set the new page phy address with the old flags + PTE_W
-        *pte = page2pa(pg) | (*pte & 7) | PTE_W;
+
+        // Copy the content of the old page
+        memcpy(KADDR(page2pa(pgn)), KADDR(page2pa(pg)),PGSIZE);
+
+        //set the new page phy address with the old flags
+        *pte = page2pa(pgn) | v->perm;
+
+        pgn->pp_ref++;
+
+        cprintf("[KERN]page_dedup after: pte: %08x, pte content: %08x\n",pte, *pte);
     }else{
         panic("[KERN PANIC]page_dedup: page info ref is 0 or less!\n");
     }
