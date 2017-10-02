@@ -49,12 +49,10 @@ int runnable_env_lookup(int i){
         if (i == NENV){
             i = 0;
         }
-
         // If runnable, run the new one:
         if (envs[i].env_status == ENV_RUNNABLE){
             return i;
         }
-
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
         if (envs[i].env_id == envs[last_idx].env_id) {
             if (envs[i].env_status == ENV_RUNNING){
@@ -116,7 +114,7 @@ void sched_yield(void)
     if (curenv) {
         cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
         // Set next:
-        i = (int)curenv->env_id - 0x1000 + 1;  // Convert id to index + 1
+        i = (int)curenv->env_id - ENV_IDX_MIN + 1;  // Convert id to index + 1
 
         if(curenv->env_status != ENV_SLEEPING){
             //Update the current env time slice

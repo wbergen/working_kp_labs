@@ -6,5 +6,8 @@
 envid_t fork(void)
 {
     /* LAB 5: Your code here. */
-    return sys_fork();
+    envid_t i = sys_fork();
+    //if (i == )
+    //cprintf("env: %x forked -> %x\n", thisenv->env_id, i);
+    return i;
 }

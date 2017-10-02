@@ -283,6 +283,7 @@ static void sys_yield(void)
 static int sys_wait(envid_t envid)
 {
     /* LAB 5: Your code here */
+    cprintf("[KERN]sys_wait() called\n");
     struct env *e;
 
     // Look up the env
