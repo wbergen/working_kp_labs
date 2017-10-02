@@ -12,7 +12,7 @@ void umain(int argc, char **argv)
 
     g[0] = thisenv->env_id;
     orig_pte = uvpt[(uintptr_t)&g[0]/PGSIZE];
-    cprintf("[%08x] g[0] = %x (pte: %x)\n", parent_id, g[0], orig_pte);
+    cprintf("[%08x] g[0](%08x) = %x (pte: %x)\n", parent_id, &g[0], g[0], orig_pte);
 
     child_id = fork();
     if (child_id < 0)

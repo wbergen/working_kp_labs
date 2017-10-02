@@ -925,10 +925,8 @@ int page_dedup(struct env * e, void * va){
         // Copy the content of the old page
         memcpy(KADDR(page2pa(pgn)), KADDR(page2pa(pg)),PGSIZE);
 
+        page_insert(e->env_pgdir, pgn, va, v->perm);
         //set the new page phy address with the old flags
-        *pte = page2pa(pgn) | v->perm;
-
-        pgn->pp_ref++;
 
         cprintf("[KERN]page_dedup after: pte: %08x, pte content: %08x\n",pte, *pte);
     }else{

@@ -451,13 +451,16 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
             cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
-            region_alloc(vma_el->va, vma_el->len, vma_el->perm);
+            region_alloc(vma_el->va, vma_el->len, vma_el->perm | PTE_W);
 
             memcpy(vma_el->va + vma_el->cpy_dst, vma_el->cpy_src ,vma_el->src_sz);
 
             // Write 0s to (filesz, memsz]:
-            if (vma_el->src_sz != vma_el->len){
+            if (vma_el->src_sz != vma_el->len && vma_el->perm){
                 memset(vma_el->va + vma_el->cpy_dst + vma_el->src_sz, 0, vma_el->len - vma_el->src_sz - vma_el->cpy_dst);
+            }
+            if((vma_el->perm & PTE_W) == 0){
+                vma_change_perm(vma_el, vma_el->perm);
             }
         } else {
 

@@ -249,6 +249,9 @@ void print_all_vmas(struct env * e){
     struct vma * temp = e->alloc_vma_list;
 
     while (temp){
+        if(temp->perm & PTE_W)
+            cprintf("[W]");
+        else    cprintf("[-]");
         cprintf("[%u][0x%08x][%u][0x%08x <-> 0x%08x] (len: %u) -> [0x%08x] B:[cpy_src: %x, cp_size: %u]\n", \
          temp->hps, temp, temp->type, temp->va, temp->va+temp->len, temp->len, temp->vma_link, temp->cpy_src, temp->src_sz);
         temp = temp->vma_link;
@@ -503,9 +506,9 @@ int vma_change_perm(struct vma *v, int perm){
     struct env * e = curenv;
     //first change the permission of the vma
 
-    if(vma_consistency_check(v,v->type)){
+    /*if(vma_consistency_check(v,v->type)){
         panic("[KERN] vma_change_perm: vma consistency check failed\n");
-    }
+    }*/
     v->perm = perm;
 
     //second change the permission of all the allocated pages accordingly

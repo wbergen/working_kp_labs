@@ -254,6 +254,7 @@ void env_cpy_tf(struct env *child, struct env *parent){
     child->env_tf.tf_esp = parent->env_tf.tf_esp ;
     child->env_tf.tf_ss = parent->env_tf.tf_ss ;
 
+    //cprintf("p eip: %08x, c eip: %08x \n",parent->env_tf.tf_eip, child->env_tf.tf_eip);
 }
 /*
     This function copies the vmas of 2 environments
@@ -319,14 +320,16 @@ int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
         //cprintf("%08x\n",(void *)(((idx+1)*PGSIZE*1024) + i*PGSIZE) );
         struct vma* v = vma_lookup(curenv, (void *)(((idx)*PGSIZE*1024) + i*PGSIZE) );
             if((pte_p[i] & PTE_P) ){
-                //if(v->type != VMA_BINARY)
-                pte_p[i] &= ~PTE_W;
-                pte_c[i] = pte_p[i];
+                if(v->type != VMA_BINARY){
+                    pte_p[i] &= ~PTE_W;
+                    pte_c[i] = pte_p[i];
                 // cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
                 //increase ref_count
-                pg1 = pa2page(PTE_ADDR(pte_p[i]));
-                pg1->pp_ref++;
-                
+                    pg1 = pa2page(PTE_ADDR(pte_p[i]));
+                    pg1->pp_ref++;
+                }else{
+                    pte_c[i] = 0; 
+                }
             }
     }
     return 1;
@@ -337,6 +340,7 @@ int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
 
     Returns 1, 0 if failure
 */
+/*
 int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
     pde_t * p_pgdir =  parent->env_pgdir;
@@ -367,10 +371,51 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
             }
         }       
     }
+    cprintf("pgdir copy done %08x %08x \n",((i)*PGSIZE*1024), UTOP);
     return 1;
 
 }
+*/
+int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
+    struct vma * vp = parent->alloc_vma_list;
+    pde_t * p_pgdir =  parent->env_pgdir;
+    pde_t * c_pgdir = child->env_pgdir;
+    pte_t * pte_p, * pte_c;
+    struct page_info *pg;
+    void * va;
+    //struct vma * vc = child->alloc_vma_list;
+
+    while(vp){
+        if(vp->type == VMA_ANON || vp->type == VMA_BINARY){
+
+            for(va = vp->va; va < vp->va + vp->len; va += PGSIZE){
+                pte_p =  pgdir_walk(p_pgdir, va, 0);
+
+                if(pte_p){
+                    pte_c = pgdir_walk(c_pgdir, va, 1);
+                    if(!pte_c){
+                        return 0;
+                    }
+                    cprintf("[KERN] env_cpy_pgdir_cow():copying entry at va: %08x \n",va);
+                    //if(vp->type != VMA_BINARY){
+                        if(*pte_p & PTE_W){
+                            cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
+                            *pte_p &= ~PTE_W;
+                            cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
+                        }
+                    //}
+                    cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
+                    *pte_c = *pte_p;
+                    pg = pa2page(PTE_ADDR(*pte_p));
+                    pg->pp_ref++;   
+                }
+            }
+        }
+        vp = vp->vma_link;
+    }
+    return 1;
+}
 
 /*
     this function duplicate two environments:
@@ -586,11 +631,12 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Segment info:
     uint32_t *va;
     size_t msize;
+    int i = 0;
     for (; ph < eph; ph++)
     {   
         // If the segment is LOAD, map it:
         if (ph->p_type == ELF_PROG_LOAD){
-            int perm = PTE_U | PTE_W;;
+            int perm = PTE_U;
             // Check size:
             if (ph->p_filesz > ph->p_memsz){
                 panic("load_icode(): Segment's filesz > memsz!\n");
@@ -609,9 +655,12 @@ static void load_icode(struct env *e, uint8_t *binary)
             // region_alloc(e, va, msize);
 
             //set the flags:
-            //if(ph->p_flags & ELF_PROG_FLAG_WRITE){
+            if(ph->p_flags & ELF_PROG_FLAG_WRITE){
                 
-            //    perm |= PTE_W;  
+                perm |= PTE_W;  
+            }
+            //if(i != 0){
+              //  perm |= PTE_W;
             //}
             // if ELF_PROG_FLAG_READ or LF_PROG_FLAG_EXEC do nothing
             // VMA Map:
@@ -623,6 +672,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 
 
         }
+        i++;
     }
 
     if ( change_env_flag ){
