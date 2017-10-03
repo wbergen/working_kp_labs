@@ -376,6 +376,23 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
 }
 */
+
+void print_vma_pages(struct env * e, struct vma * v){
+
+    void *va;
+    pte_t *pte;
+    char * i;
+    for(va = v->va; va < (v->va + v->len); va += PGSIZE){
+        pte =  pgdir_walk(e->env_pgdir, va, 0);
+            if(pte){
+                cprintf("[DEBUGMYVMA] va: %08x\n", va);
+                for(i = va; i < (char *)(va + PGSIZE); i++){
+                    cprintf(" %08x",*i);
+                }
+                 cprintf("\n");
+            }
+    }
+}
 int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
     struct vma * vp = parent->alloc_vma_list;
@@ -384,12 +401,14 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
     pte_t * pte_p, * pte_c;
     struct page_info *pg;
     void * va;
-    //struct vma * vc = child->alloc_vma_list;
 
     while(vp){
         if(vp->type == VMA_ANON || vp->type == VMA_BINARY){
-
-            for(va = vp->va; va < vp->va + vp->len; va += PGSIZE){
+            //cprintf("VMA from %08x to %08x\n",vp->va, vp->va + vp->len);
+            //print_vma_pages(parent, vp);
+            // Copy the present entries
+            for(va = vp->va; va < (vp->va + vp->len); va += PGSIZE){
+                //Find the pte
                 pte_p =  pgdir_walk(p_pgdir, va, 0);
 
                 if(pte_p){
@@ -397,21 +416,21 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
                     if(!pte_c){
                         return 0;
                     }
-                    cprintf("[KERN] env_cpy_pgdir_cow():copying entry at va: %08x \n",va);
-                    //if(vp->type != VMA_BINARY){
-                        if(*pte_p & PTE_W){
-                            cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
-                            *pte_p &= ~PTE_W;
-                            cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
-                        }
-                    //}
-                    cprintf("pte: %08x\n", *(char *)KADDR(PTE_ADDR(*pte_p)));
+                    //cprintf("[KERN] env_cpy_pgdir_cow():copying entry at va: %08x \n",va);
+                    if(*pte_p & PTE_W){
+                        //cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
+                        *pte_p &= ~PTE_W;
+                        //cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
+                    }
+                    cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
                     *pte_c = *pte_p;
                     pg = pa2page(PTE_ADDR(*pte_p));
                     pg->pp_ref++;   
+                    cprintf("pte: %08x %08x ref:%d va: %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)), pg->pp_ref, va);
                 }
             }
         }
+        //print_vma_pages(child, vp);
         vp = vp->vma_link;
     }
     return 1;
@@ -433,13 +452,6 @@ int env_dup(struct env * parent){
         return 0;
     }
     cprintf("[KERN] env_dup(): env allocated\n");
-    //Copy the trapframe
-    env_cpy_tf(child, parent);
-
-    cprintf("[KERN] env_dup(): tf copied\n");
-    //set the eax register with the return value for parent and child
-    child->env_tf.tf_regs.reg_eax = 0;
-    parent->env_tf.tf_regs.reg_eax = child->env_id;
 
     cprintf("[KERN] env_dup(): eax modified\n");
     //Copy the VMAs
@@ -449,6 +461,14 @@ int env_dup(struct env * parent){
     }
     cprintf("[KERN] env_dup(): vmas copied\n");
 
+    //Copy the trapframe
+    env_cpy_tf(child, parent);
+
+    cprintf("[KERN] env_dup(): tf copied\n");
+    //set the eax register with the return value for parent and child
+    child->env_tf.tf_regs.reg_eax = 0;
+    parent->env_tf.tf_regs.reg_eax = child->env_id;
+    
     //Copy the page table entries COW
     if(!env_cpy_pgdir_cow(child, parent)){
         cprintf("[KERN]env_dup(): cpy_pgdir_cow failed\n");
@@ -456,6 +476,10 @@ int env_dup(struct env * parent){
     }
     cprintf("[KERN] env_dup(): pgdir copied COW\n");
 
+    //Sched the child
+    parent->time_slice = TS_DEFAULT *2;
+    sched_yield();
+    
     return child->env_id;
 
 
@@ -631,7 +655,6 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Segment info:
     uint32_t *va;
     size_t msize;
-    int i = 0;
     for (; ph < eph; ph++)
     {   
         // If the segment is LOAD, map it:
@@ -672,7 +695,6 @@ static void load_icode(struct env *e, uint8_t *binary)
 
 
         }
-        i++;
     }
 
     if ( change_env_flag ){

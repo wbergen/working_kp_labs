@@ -305,6 +305,9 @@ static void trap_dispatch(struct trapframe *tf)
      */
 
     else if (tf->tf_trapno == IRQ_OFFSET) {
+        if(tf->tf_cs == GD_KT){
+            return;
+        }
         cprintf("[KERN] got a timer interrupt!\n");
         lapic_eoi();
         sched_yield();
@@ -348,7 +351,6 @@ void trap(struct trapframe *tf)
         /* Trapped from user mode. */
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 5: Your code here. */
-
         assert(curenv);
 
         /* Garbage collect if current enviroment is a zombie. */
