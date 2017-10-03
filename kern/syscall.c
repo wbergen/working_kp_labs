@@ -276,7 +276,7 @@ static void sys_yield(void)
 {
     cprintf("[KERN] sys_yield() called!\n");
     //if the a process invoke sys yield tamper it's time slice to schedule another process
-    curenv->time_slice = TS_DEFAULT * 2;
+    invalidate_env_ts(curenv);
     sched_yield();
 }
 

@@ -8,6 +8,13 @@
 void sched_halt(void);
 
 /*
+    This function invalidate the time slide of a process
+*/
+
+void invalidate_env_ts( struct env * e){
+    e->time_slice = TS_DEFAULT *2;
+}
+/*
     This function calculates the delta to subtract to a env time slice
 */
 uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){

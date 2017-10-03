@@ -909,7 +909,7 @@ int page_dedup(struct env * e, void * va){
 
         //decrement ref count
         pg->pp_ref--;
-        cprintf("page_dedup: old pte ref: %d va: %08x\n", pg->pp_ref, va);
+        cprintf("[KERN]page_dedup: old pte ref: %d va: %08x\n", pg->pp_ref, va);
         //If it's a huge page alloc a huge page,
         if(*pte & PTE_PS){
             pgn = page_alloc(CREATE_HUGE);
@@ -925,11 +925,11 @@ int page_dedup(struct env * e, void * va){
         // Copy the content of the old page
         memcpy(KADDR(page2pa(pgn)), KADDR(page2pa(pg)),PGSIZE);
 
+        //Insert the new page in pte
         *pte = page2pa(pgn) | v->perm | PTE_P;
         pgn->pp_ref++;
-        //set the new page phy address with the old flags
-
         
+        //set the new page phy address with the old flags     
         cprintf("[KERN]page_dedup after: pte: %08x, pte content: %08x\n",pte, *pte);
     }else{
         panic("[KERN PANIC]page_dedup: page info ref is 0 or less!\n");

@@ -283,100 +283,10 @@ int env_cpy_vmas(struct env *child, struct env *parent){
     }
     return 1;
 }
+
 /*
-    Create a second level page table in the child and copy the present pte COW
-
-    Return 1 if success, 0 if errors
-
-    //cprintf("pte_p:%08x i:%d pte_p + i:%08x\n",pte_p ,i , pte_p + i);
-//cprintf("before pa2page entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
-
+    Print all the memory of a vma 
 */
-int cp_pte(pde_t *p_pgdir, pde_t *c_pgdir, int idx){
-
-    //bookkeeping 
-    pte_t * pte_p, *pte_c;
-    struct page_info * pg, *pg1;
-    int i;
-
-    /*  FIRST we allocate a new pte for the child   */
-    pg = page_alloc( ALLOC_ZERO );             
-    // If the allocation fails return NULL
-    if(!pg){
-         cprintf("[KERN]env_cpy_pgdir_cow() cp_pte(): page alloc failed\n");
-        return 0;
-    }
-    // Set the page in pgdir with present, write and user flags set
-    c_pgdir[idx] = page2pa(pg) | PTE_P | PTE_W | PTE_U;
-    // Increment the reference count
-    pg->pp_ref += 1;
-
-    /*  get the pte address for child and parent*/
-    pte_p = KADDR(PTE_ADDR( p_pgdir[idx]));
-    pte_c = KADDR(PTE_ADDR( c_pgdir[idx]));
-
-    /*  copy all the present entries COW*/
-    for(i=0; i<NPTENTRIES; i++){
-        //cprintf("%08x\n",(void *)(((idx+1)*PGSIZE*1024) + i*PGSIZE) );
-        struct vma* v = vma_lookup(curenv, (void *)(((idx)*PGSIZE*1024) + i*PGSIZE) );
-            if((pte_p[i] & PTE_P) ){
-                if(v->type != VMA_BINARY){
-                    pte_p[i] &= ~PTE_W;
-                    pte_c[i] = pte_p[i];
-                // cprintf("PTE ENTRY: entry:%d addr + perm:%08x, addr:%08x\n",i, *(pte_p + i),PTE_ADDR(*(pte_p + i)));
-                //increase ref_count
-                    pg1 = pa2page(PTE_ADDR(pte_p[i]));
-                    pg1->pp_ref++;
-                }else{
-                    pte_c[i] = 0; 
-                }
-            }
-    }
-    return 1;
-}
-/*
-    This function copies pgdir of two environments
-    it also mark the allocated entries of both copy on write
-
-    Returns 1, 0 if failure
-*/
-/*
-int env_cpy_pgdir_cow(struct env *child, struct env *parent){
-
-    pde_t * p_pgdir =  parent->env_pgdir;
-    pde_t * c_pgdir = child->env_pgdir;
-    struct page_info *pg;
-    int i = 0;
-    //first iterate over 1st pgdir
-
-    for(i = 0; i<NPDENTRIES && ((i)*PGSIZE*1024) <= UTOP; i++){
-    // cprintf("UTOP: %08x size%08x\n", UTOP, ((i)*PGSIZE*1024));      
-        //if the entry is present cpy the range of the virtual addresses
-        if( *(p_pgdir + i) & PTE_P){
-            cprintf(" PDE ENTRY: %d, from: %08x to %08x\n",i, ((i)*PGSIZE*1024), ((i+1)*PGSIZE*1024));
-            //if it's a huge page copy the entry directly
-            if(*(p_pgdir + i) & PTE_PS){
-                //if write flag is set remove it (COW)
-                *(p_pgdir + i) &= ~PTE_W;
-                *(c_pgdir + i) = *(p_pgdir + i);
-
-                //increase ref count
-                pg = pa2page(PTE_ADDR(*(p_pgdir + i)));
-                pg->pp_ref++;                
-            }else{
-                //copy the second level pt from the parent to the child
-                if(!cp_pte( p_pgdir, c_pgdir, i)){
-                    return 0;
-                }
-            }
-        }       
-    }
-    cprintf("pgdir copy done %08x %08x \n",((i)*PGSIZE*1024), UTOP);
-    return 1;
-
-}
-*/
-
 void print_vma_pages(struct env * e, struct vma * v){
 
     void *va;
@@ -393,6 +303,13 @@ void print_vma_pages(struct env * e, struct vma * v){
             }
     }
 }
+
+/*
+    This function copies pgdir of two environments
+    it also mark the allocated entries of both copy on write
+
+    Returns 1, 0 if failure
+*/
 int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
     struct vma * vp = parent->alloc_vma_list;
@@ -404,8 +321,6 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
 
     while(vp){
         if(vp->type == VMA_ANON || vp->type == VMA_BINARY){
-            //cprintf("VMA from %08x to %08x\n",vp->va, vp->va + vp->len);
-            //print_vma_pages(parent, vp);
             // Copy the present entries
             for(va = vp->va; va < (vp->va + vp->len); va += PGSIZE){
                 //Find the pte
@@ -416,17 +331,12 @@ int env_cpy_pgdir_cow(struct env *child, struct env *parent){
                     if(!pte_c){
                         return 0;
                     }
-                    //cprintf("[KERN] env_cpy_pgdir_cow():copying entry at va: %08x \n",va);
                     if(*pte_p & PTE_W){
-                        //cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
                         *pte_p &= ~PTE_W;
-                        //cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
                     }
-                    cprintf("pte: %08x %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)));
                     *pte_c = *pte_p;
                     pg = pa2page(PTE_ADDR(*pte_p));
                     pg->pp_ref++;   
-                    cprintf("pte: %08x %08x ref:%d va: %08x\n",*pte_p, *(char *)KADDR(PTE_ADDR(*pte_p)), pg->pp_ref, va);
                 }
             }
         }
@@ -465,6 +375,7 @@ int env_dup(struct env * parent){
     env_cpy_tf(child, parent);
 
     cprintf("[KERN] env_dup(): tf copied\n");
+
     //set the eax register with the return value for parent and child
     child->env_tf.tf_regs.reg_eax = 0;
     parent->env_tf.tf_regs.reg_eax = child->env_id;
@@ -477,7 +388,7 @@ int env_dup(struct env * parent){
     cprintf("[KERN] env_dup(): pgdir copied COW\n");
 
     //Sched the child
-    parent->time_slice = TS_DEFAULT *2;
+    invalidate_env_ts(parent);
     sched_yield();
     
     return child->env_id;
