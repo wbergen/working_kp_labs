@@ -77,6 +77,8 @@ int envid2env(envid_t envid, struct env **env_store, bool checkperm)
 {
     struct env *e;
 
+    assert_lock_env();
+
     /* If envid is zero, return the current environment. */
     if (envid == 0) {
         *env_store = curenv;
@@ -426,6 +428,7 @@ void env_free(struct env *e)
  */
 void env_destroy(struct env *e)
 {
+    assert_lock_env();
     /* If e is currently running on other CPUs, we change its state to
      * ENV_DYING. A zombie environment will be freed the next time
      * it traps to the kernel. */

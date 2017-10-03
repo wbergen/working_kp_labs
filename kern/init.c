@@ -45,6 +45,12 @@ void i386_init(void)
     /* Lab 5 multitasking initialization functions */
     pic_init();
 
+    /* Acquire the big kernel lock before waking up APs.
+     * LAB 6: Your code here: */
+
+    /* Starting non-boot CPUs */
+    boot_aps();
+
 #if defined(TEST)
     /* Don't touch -- used by grading script! */
     ENV_CREATE(TEST, ENV_TYPE_USER);
@@ -106,6 +112,15 @@ void mp_main(void)
     trap_init_percpu();
     xchg(&thiscpu->cpu_status, CPU_STARTED); /* tell boot_aps() we're up */
 
+    /*
+     * Now that we have finished some basic setup, call sched_yield()
+     * to start running processes on this CPU.  But make sure that
+     * only one CPU can enter the scheduler at a time!
+     *
+     * LAB 6: Your code here:
+     */
+
+    /* Remove this after you initialize per-CPU trap information */
     for (;;);
 }
 
