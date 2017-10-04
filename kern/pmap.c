@@ -428,7 +428,6 @@ static void mem_init_mp(void)
     for(i=0; i < NCPU; i++){
         boot_map_region(kern_pgdir, ktop - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
         ktop -= (KSTKGAP + KSTKSIZE) ;
-
     }
 }
 
