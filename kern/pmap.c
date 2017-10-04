@@ -56,6 +56,8 @@ static void i386_detect_memory(void)
 /***************************************************************
  * Set up memory mappings above UTOP.
  ***************************************************************/
+
+static void mem_init_mp(void);
 static void boot_map_region(pde_t *pgdir, uintptr_t va, size_t size,
         physaddr_t pa, int perm);
 static void check_page_free_list(bool only_low_memory);
@@ -234,6 +236,10 @@ void mem_init(void)
      *       overwrite memory.  Known as a "guard page".
      *     Permissions: kernel RW, user NONE
      * Your code goes here:
+     *
+     * LAB 6 Update:
+     * We now move to initializing kernel stacks in mem_init_mp().
+     * So, we must remove this bootstack initialization from here.
      */
 
     boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
@@ -258,6 +264,9 @@ void mem_init(void)
 
     /* Enable Page Size Extensions for huge page support */
     lcr4(rcr4() | CR4_PSE);
+
+    /* Initialize the SMP-related parts of the memory map. */
+    mem_init_mp();
 
     /* Check that the initial page directory has been set up correctly. */
     check_kern_pgdir();
@@ -385,6 +394,33 @@ void add_head_pfl(struct page_info * pp){
 
 }
 
+/*
+ * Modify mappings in kern_pgdir to support SMP
+ *   - Map the per-CPU stacks in the region [KSTACKTOP-PTSIZE, KSTACKTOP)
+ */
+static void mem_init_mp(void)
+{
+    /*
+     * Map per-CPU stacks starting at KSTACKTOP, for up to 'NCPU' CPUs.
+     *
+     * For CPU i, use the physical memory that 'percpu_kstacks[i]' refers
+     * to as its kernel stack. CPU i's kernel stack grows down from virtual
+     * address kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP), and is
+     * divided into two pieces, just like the single stack you set up in
+     * mem_init:
+     *     * [kstacktop_i - KSTKSIZE, kstacktop_i)
+     *          -- backed by physical memory
+     *     * [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
+     *          -- not backed; so if the kernel overflows its stack,
+     *             it will fault rather than overwrite another CPU's stack.
+     *             Known as a "guard page".
+     *     Permissions: kernel RW, user NONE
+     *
+     * LAB 6: Your code here:
+     */
+
+}
+
 /***************************************************************
  * Tracking of physical pages.
  * The 'pages' array has one 'struct page_info' entry per physical page.
@@ -416,6 +452,10 @@ void page_init(void)
      * Change the code to reflect this.
      * NB: DO NOT actually touch the physical memory corresponding to free
      *     pages! */
+
+    /* LAB 6: Change your code to mark the physical page at MPENTRY_PADDR as
+     *       in-use. */
+
     size_t i;
 
     // Page 0 not in use, it won't be added to the free list   
@@ -1043,7 +1083,6 @@ void *mmio_map_region(physaddr_t pa, size_t size)
      * value will be preserved between calls to mmio_map_region
      * (just like nextfree in boot_alloc).
      */
-
     static uintptr_t base = MMIOBASE;
     uintptr_t base_ret = base;
 
@@ -1389,9 +1428,15 @@ static void check_kern_pgdir(void)
         assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
     /* check kernel stack */
-    for (i = 0; i < KSTKSIZE; i += PGSIZE)
-        assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-    assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
+    /* (updated in LAB 6 to check per-CPU kernel stacks) */
+    for (n = 0; n < NCPU; n++) {
+        uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
+        for (i = 0; i < KSTKSIZE; i += PGSIZE)
+            assert(check_va2pa(pgdir, base + KSTKGAP + i)
+                == PADDR(percpu_kstacks[n]) + i);
+        for (i = 0; i < KSTKGAP; i += PGSIZE)
+            assert(check_va2pa(pgdir, base + i) == ~0);
+    }
 
     /* check PDE permissions */
     for (i = 0; i < NPDENTRIES; i++) {
@@ -1427,14 +1472,11 @@ static physaddr_t check_va2pa(pde_t *pgdir, uintptr_t va)
 
     // get the pde:
     pgdir = &pgdir[PDX(va)];
-    if (!(*pgdir & PTE_P)){
+    if (!(*pgdir & PTE_P))
         return ~0;
-    }
-
     p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
-    if (!(p[PTX(va)] & PTE_P)) {
+    if (!(p[PTX(va)] & PTE_P))
         return ~0;
-    }
     return PTE_ADDR(p[PTX(va)]);
 }
 
@@ -1602,7 +1644,6 @@ static void check_page(void)
     /* check that they're page-aligned */
     assert(mm1 % PGSIZE == 0 && mm2 % PGSIZE == 0);
     /* check that they don't overlap */
-
     assert(mm1 + 8096 <= mm2);
     /* check page mappings */
     assert(check_va2pa(kern_pgdir, mm1) == 0);
