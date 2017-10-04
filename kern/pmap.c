@@ -242,7 +242,7 @@ void mem_init(void)
      * So, we must remove this bootstack initialization from here.
      */
 
-    boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
+    //boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 
     /* Note: Dont map anything between KSTACKTOP - PTSIZE and KSTACKTOP - KTSIZE
      * leaving this as guard region.
@@ -311,6 +311,9 @@ int is_allocated_init(struct page_info *pp){
     }
     if(page_a >= EXTPHYSMEM && page_a < PADDR(boot_alloc(0))){
         return 1;
+    }
+    if( page_a == MPENTRY_PADDR){
+        return 0;
     }
     return 0;
 }
@@ -419,6 +422,14 @@ static void mem_init_mp(void)
      * LAB 6: Your code here:
      */
 
+    int i;
+    uint32_t ktop = KSTACKTOP;
+
+    for(i=0; i < NCPU; i++){
+        boot_map_region(kern_pgdir, ktop - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+        ktop -= (KSTKGAP + KSTKSIZE) ;
+
+    }
 }
 
 /***************************************************************
