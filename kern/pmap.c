@@ -804,10 +804,6 @@ static void check_kern_pgdir(void)
         assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
     /* check kernel stack */
-    for (i = 0; i < KSTKSIZE; i += PGSIZE)
-        assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-    assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
-
     /* (updated in LAB 6 to check per-CPU kernel stacks) */
     for (n = 0; n < NCPU; n++) {
         uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
