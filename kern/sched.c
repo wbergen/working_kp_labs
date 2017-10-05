@@ -62,7 +62,7 @@ int runnable_env_lookup(int i){
         }
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
         if (envs[i].env_id == envs[last_idx].env_id) {
-            if (envs[i].env_status == ENV_RUNNING){
+            if (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum()){
                 return i;
             } else {
                 return -1;
@@ -72,6 +72,16 @@ int runnable_env_lookup(int i){
     return -1;
 }
 
+int env2id(envid_t id){
+    int i;
+
+    for(i=0; i< NENV;i++){
+        if(envs[i].env_id == id){
+            return i;
+        }
+    }
+    return -1;
+}
 /*
  * Choose a user environment to run and run it.
  */
@@ -115,14 +125,20 @@ void sched_yield(void)
 
     int i, last_idx;
     uint64_t tick = read_tsc();
-    int e_run;
+    int e_run, order;
     assert_lock_env();
     // At first call, curenv hasn't been setup
     if (curenv) {
-        cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
         // Set next:
-        i = (int)curenv->env_id - ENV_IDX_MIN + 1;  // Convert id to index + 1
-
+        order = ROUNDDOWN(curenv->env_id, PGSIZE);
+        // cprintf("order = %08x\n", order);
+        i = (int)curenv->env_id - order + 1;  // Convert id to index + 1
+        //i = env2id(curenv->env_id);
+        if(i < 0){
+            panic("[SCHED] PROBLEM!\n");
+        }
+        //i = (int)curenv->env_id - ENV_IDX_MIN + 1;  // Convert id to index + 1
+        cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum());
         if(curenv->env_status != ENV_SLEEPING){
             //Update the current env time slice
             curenv->time_slice -= calulate_delta(tick, last_tick);
@@ -162,22 +178,26 @@ void sched_yield(void)
 void sched_halt(void)
 {
     int i;
-
     assert_lock_env();
     /* For debugging and testing purposes, if there are no runnable
      * environments in the system, then drop into the kernel monitor. */
     for (i = 0; i < NENV; i++) {
         if ((envs[i].env_status == ENV_RUNNABLE ||
              envs[i].env_status == ENV_RUNNING ||
-             envs[i].env_status == ENV_DYING))
+             envs[i].env_status == ENV_DYING)){
+            if(envs[i].env_status == ENV_RUNNING)
+            cprintf("%x\n",envs[i].env_id);
             break;
+        }
+
     }
+    cprintf("halting...\n");
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         while (1)
             monitor(NULL);
     }
-
+   
     /* Mark that no environment is running on this CPU */
     curenv = NULL;
     lcr3(PADDR(kern_pgdir));
@@ -185,6 +205,7 @@ void sched_halt(void)
     /* Mark that this CPU is in the HALT state, so that when
      * timer interupts come in, we know we should re-acquire the
      * big kernel lock */
+
     xchg(&thiscpu->cpu_status, CPU_HALTED);
 
     /* Release the big kernel lock as if we were "leaving" the kernel */
