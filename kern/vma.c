@@ -9,7 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/trap.h>
 #include <kern/monitor.h>
-
+#include <kern/spinlock.h>
 #include <kern/vma.h>
 #include <kern/pmap.h>
 
@@ -371,6 +371,7 @@ int vma_size_check(void * va, size_t size, struct vma * v){
 */
 struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remove){
 
+    assert_lock_env();
     //lookup
     struct vma * vmad = vma_lookup(curenv, va);
 
@@ -408,11 +409,14 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
 
     if(vma_remove){
         // Since we've saved the bookkeeping, remove now:
+        lock_pagealloc();
         if (vma_remove_alloced(e, vmad, 1) < 1){
+            unlock_pagealloc();
             cprintf("[VMA] vma_split_lookup(): vma removal failed!\n");
             // print_all_vmas(e);
             // return NULL;
         }
+        unlock_pagealloc();
     }
 
     // Case 1: if "va" is greater than "vmad->va" split the first part of the vma

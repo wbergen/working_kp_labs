@@ -349,7 +349,7 @@ static void trap_dispatch(struct trapframe *tf)
         panic("unhandled trap in kernel");
     } else {
         // Make Grade Happy:
-        print_trapframe(tf);        
+        print_trapframe(tf);       
         lock_env();
         env_destroy(curenv);
         unlock_env();

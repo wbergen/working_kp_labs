@@ -391,6 +391,7 @@ int env_dup(struct env * parent){
 
     //Sched the child
     invalidate_env_ts(parent);
+
     sched_yield();
     
     return child->env_id;

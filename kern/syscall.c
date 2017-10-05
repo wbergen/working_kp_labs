@@ -32,6 +32,7 @@ static void sys_cputs(const char *s, size_t len)
     /* LAB 3: Your code here. */
     // void user_mem_assert(struct env *env, const void *va, size_t len, int perm)
     // Ensure the memory access is user accessible:
+
     user_mem_assert(curenv, s, len, PTE_U);
 
     /* Print the string supplied by the user. */
@@ -45,14 +46,20 @@ static void sys_cputs(const char *s, size_t len)
 static int sys_cgetc(void)
 {
     cprintf("[KERN] sys_cgetc(): called\n");
-    return cons_getc();
+    lock_console();
+    int ret = cons_getc();
+    unlock_console();
+    return ret;
 }
 
 /* Returns the current environment's envid. */
 static envid_t sys_getenvid(void)
 {
     cprintf("[KERN] sys_getenvid(): called\n");
-    return curenv->env_id;
+    lock_env();
+    envid_t ret = curenv->env_id;
+    unlock_env();
+    return ret;
 }
 
 /*
@@ -68,8 +75,10 @@ static int sys_env_destroy(envid_t envid)
     int r;
     struct env *e;
     lock_env();
-    if ((r = envid2env(envid, &e, 1)) < 0)
+    if ((r = envid2env(envid, &e, 1)) < 0){
+        unlock_env();
         return r;
+    }
     if (e == curenv)
         cprintf("[%08x] exiting gracefully\n", curenv->env_id);
     else
@@ -160,6 +169,7 @@ void * vma_find_spot(uint32_t size, int * vma_at_zero, uint32_t * total_area){
  */
 static void *sys_vma_create(uint32_t size, int perm, int flags)
 {
+    lock_env();
     cprintf("[KERN] sys_vma_create(): called w/ size ==  %u, perm == %u, flags == %u\n", size, perm, flags);
 
    /* Virtual Memory Area allocation */
@@ -180,6 +190,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
         if (size % (PGSIZE * 1024) != 0){
             // Size is NOT 4mb aligned:
             cprintf("[KERN] sys_vma_create(): MAP_HUGEPAGES, but size is not 4mb aligned!\n");
+            unlock_env();
             return (void *)-1;
         }
     }
@@ -187,6 +198,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     // Try to find a spot in the vma area where we can fit our new alloc at, or return if one can't be found
     spot = vma_find_spot(size, &vma_at_zero, &total_area);
     if (spot < 0){
+        unlock_env();
         return (void *)-1;
     }
 
@@ -197,21 +209,29 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
     struct vma * new;
     if (vma_new(curenv, spot, size, VMA_ANON, NULL, 0, 0, perm | PTE_U, &new) < 1) {
         cprintf("[KERN] sys_vma_create(): failed to create the vma!\n");
+        unlock_env();
         return (void *)-1;
     }
 
     // MAP_POPULATE support - allocate pages now:
     if (flags & 0x1 && !(flags & 0x2)) { // MAP_POPULATE
+        lock_pagealloc();
         cprintf("[KERN] sys_vma_create(): MAP_POPULATE %x\n",curenv);
         if(!vma_populate(spot, size, perm, 0)){
+            unlock_pagealloc();
+            unlock_env();
             return (void *)-1;
         }
+        unlock_pagealloc();
     } else if (flags & 0x1 & 0x2){ // MAP_POPULATE + MAP_HUGEPAGES
         cprintf("[KERN] sys_vma_create(): MAP_POPULATE + MAP_HUGEPAGES %x\n",curenv);
+        lock_pagealloc();
         if(!vma_populate(spot, size, perm, 1)){
-
+            unlock_pagealloc();
+            unlock_env();
             return (void *)-1;
         }
+        unlock_pagealloc();
         new->hps = 1;
     } else if (flags & 0x2) { // MAP_HUGEPAGES
         cprintf("[KERN] sys_vma_create(): MAP_HUGEPAGES %x\n",curenv);
@@ -220,7 +240,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 
     cprintf("[KERN] sys_vma_create(): VMAs after create:\n");
     print_all_vmas(curenv);
-
+    unlock_env();
    return spot;
 }
 
@@ -231,7 +251,7 @@ static void *sys_vma_create(uint32_t size, int perm, int flags)
 static int sys_vma_destroy(void *va, uint32_t size)
 {
    /* Virtual Memory Area deallocation */
-
+    lock_env();
     cprintf("[KERN] sys_vma_destroy(): va ==  0x%08x, size == %u\n", va, size);
 
     struct vma * v = vma_lookup(curenv, va);
@@ -239,6 +259,7 @@ static int sys_vma_destroy(void *va, uint32_t size)
         if (v->len != size || v->va != va){
             // huge problem
             cprintf("[KERN] sys_vma_destroy(): vma marked as huge, but destroy params don't span whole area!\n");
+            unlock_env();
             return -1;
         }
     }
@@ -262,12 +283,13 @@ static int sys_vma_destroy(void *va, uint32_t size)
 
     if(vma_split_lookup(curenv, va, size, 1) == NULL){
         cprintf("[KERN]sys_vma_destroy: failed\n");
+        unlock_env();
         return -1;
     }
     // cprintf("[KERN] sys_vma_destroy(): vma found w/ va %x\n", vmad->va);
     cprintf("[KERN] sys_vma_destroy(): VMAs after destory:\n");
     print_all_vmas(curenv);
-
+    unlock_env();
    /* LAB 4: Your code here. */
    return 0;
 }
@@ -279,6 +301,7 @@ static void sys_yield(void)
 {
     cprintf("[KERN] sys_yield() called!\n");
     //if the a process invoke sys yield tamper it's time slice to schedule another process
+    lock_env();
     invalidate_env_ts(curenv);
     sched_yield();
 }
@@ -289,11 +312,13 @@ static int sys_wait(envid_t envid)
     cprintf("[KERN]sys_wait() called\n");
     struct env *e;
 
+    lock_env();
     // Look up the env
     envid2env(envid, &e, 0);
 
     if(!e){
         cprintf("[KERN]sys_wait(): no env with that id!\n");
+        unlock_env();
         return -1;
     }
 
@@ -308,9 +333,11 @@ static int sys_fork(void)
 {
     /* fork() that follows COW semantics */
     /* LAB 5: Your code here */
+    lock_env();
     int32_t child_id = env_dup(curenv);
     if(!child_id){
         cprintf("sys_fork(): fork failed\n");
+        unlock_env();
         return -1;
     }
     else return child_id;
@@ -321,15 +348,18 @@ static int sys_fork(void)
 */
 static int sys_vma_protect(void *va, size_t size, int perm){
 
+    lock_env();
     struct vma * v = vma_lookup(curenv, va);
 
     // if the vma doesn't exit return
     if(!v){
         cprintf("[KERN]sys_vma_protect: vma not found\n");
+        unlock_env();
         return 0;
     }
     //if the permission are the same nothing to do, return
     if(v->perm == perm){
+        unlock_env();
         return 1;
     }
 
@@ -338,21 +368,24 @@ static int sys_vma_protect(void *va, size_t size, int perm){
 
     //return in case of split failure
     if(!v){
-        cprintf("[KERN]sys_vma_protect: vma split failure\n");        
+        cprintf("[KERN]sys_vma_protect: vma split failure\n");
+        unlock_env();        
         return 0;
     }
     //change the vma permission
     if(!vma_change_perm(v, perm)){
         cprintf("[KERN]sys_vma_protect: vma change perm failure\n");
+        unlock_env();
         return 0;
     }
 
     //merge vma if required
     if(vma_list_merge(curenv) != 0){
         cprintf("[KERN]sys_vma_protect: vma merge failure\n");
+        unlock_env();
         return 0;
     }
-
+    unlock_env();
     return 1;
 }
 /*
@@ -367,6 +400,7 @@ static int sys_vma_protect(void *va, size_t size, int perm){
 */
 int32_t sys_vma_advise(void *va, size_t size, int attr){
 
+    lock_env();
     struct vma * v = vma_lookup(curenv, va);
 
     //check if the va is mapped in the vma
@@ -378,19 +412,26 @@ int32_t sys_vma_advise(void *va, size_t size, int attr){
     //check if the va and size specified are correct
     if(!vma_size_check(va,size,v)){
         cprintf("[KERN] sys_vma_advise: va + size spans multiple vmas\n");
+        unlock_env();
         return 0;
     }
 
     //if MADV_DONTNEED remove the allocated pages
     if(attr == MADV_DONTNEED){
         if (!v->hps){
+            lock_pagealloc();
             vma_remove_pages(curenv, va, size);
+            unlock_pagealloc();
         }
     }
     //if MADV_WILLNEED populate the pages
     if (attr == MADV_WILLNEED){
+        lock_pagealloc();
         vma_populate(va, size, v->perm, v->hps);
+        unlock_pagealloc();
     }
+
+    unlock_env();
     return 1;
 }
 /* Dispatches to the correct kernel function, passing the arguments. */

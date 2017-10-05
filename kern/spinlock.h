@@ -20,6 +20,7 @@ struct spinlock {
 
 
 
+
 #ifdef DEBUG_SPINLOCK
     /* For debugging: */
     char *name;            /* Name of lock. */
