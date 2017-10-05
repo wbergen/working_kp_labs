@@ -9,7 +9,7 @@
 #include <kern/pmap.h>
 #include <kern/kclock.h>
 #include <kern/env.h>
-
+#include <kern/spinlock.h>
 /* These variables are set by i386_detect_memory() */
 size_t npages;                  /* Amount of physical memory (in pages) */
 size_t PREMAPPED_FLAG;
@@ -940,6 +940,7 @@ int page_dedup(struct env * e, void * va){
     // Look up the vma
     struct vma * v = vma_lookup(e ,va);
 
+    assert_lock_pagealloc();
     // Look up the pte
     pte_t * pte = pgdir_walk(e->env_pgdir, va, 1);
 

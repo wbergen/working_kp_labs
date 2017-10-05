@@ -48,7 +48,8 @@ void i386_init(void)
     /* Acquire the big kernel lock before waking up APs.
      * LAB 6: Your code here: */
     lock_kernel();
-
+    lock_env();
+    lock_pagealloc();
     /* Starting non-boot CPUs */
     boot_aps();
 
@@ -63,6 +64,7 @@ void i386_init(void)
     ENV_CREATE(user_yield, ENV_TYPE_USER);
 #endif
 
+    unlock_pagealloc();
     /* Schedule and run the first user environment! */
     sched_yield();
 }
@@ -124,6 +126,7 @@ void mp_main(void)
      * LAB 6: Your code here:
      */
     lock_kernel();
+    lock_env();
     sched_yield();
     /* Remove this after you initialize per-CPU trap information */
 }

@@ -12,6 +12,8 @@
 #include <kern/console.h>
 #include <kern/sched.h>
 
+#include <kern/spinlock.h>
+
 #include <kern/vma.h>
 #include <kern/pmap.h>
 /*
@@ -65,7 +67,7 @@ static int sys_env_destroy(envid_t envid)
     cprintf("[KERN] sys_env_destroy(): called on %08x\n", envid);
     int r;
     struct env *e;
-
+    lock_env();
     if ((r = envid2env(envid, &e, 1)) < 0)
         return r;
     if (e == curenv)
@@ -73,6 +75,7 @@ static int sys_env_destroy(envid_t envid)
     else
         cprintf("[%08x] destroying %08x\n", curenv->env_id, e->env_id);
     env_destroy(e);
+    unlock_env();
     return 0;
 }
 

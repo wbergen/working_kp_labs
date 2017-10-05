@@ -684,6 +684,8 @@ void env_free(struct env *e)
     uint32_t pdeno, pteno;
     physaddr_t pa;
 
+    assert_lock_env();
+    assert_lock_pagealloc();
     /* If freeing the current environment, switch to kern_pgdir
      * before freeing the page directory, just in case the page
      * gets reused. */
@@ -738,7 +740,6 @@ void env_free(struct env *e)
     pa = PADDR(&e->env_vmas);
     e->env_vmas = 0;
     page_decref(pa2page(pa));
-
     /* return the environment to the free list */
     e->env_status = ENV_FREE;
     e->env_link = env_free_list;
@@ -760,9 +761,9 @@ void env_destroy(struct env *e)
         e->env_status = ENV_DYING;
         return;
     }
-
+    lock_pagealloc();
     env_free(e);
-
+    unlock_pagealloc();
     if (curenv == e) {
         curenv = NULL;
         sched_yield();
@@ -816,6 +817,7 @@ void env_run(struct env *e){
      *  e->env_tf to sensible values.
      */
 
+    assert_lock_env();
     /* LAB 3: Your code here. */
     if(curenv != e){
         /*
@@ -834,7 +836,9 @@ void env_run(struct env *e){
             }
             //if the current env it's dying free it.
             if(curenv->env_status == ENV_DYING){
+                lock_pagealloc();
                 env_free(curenv);
+                unlock_pagealloc();
             }
         }
         //2. Set 'curenv' to the new environment
@@ -846,7 +850,7 @@ void env_run(struct env *e){
         //5. Use lcr3() to switch to its address space.
         lcr3(PADDR(curenv->env_pgdir));
     }
-
+    unlock_env();
     // Step2
     env_pop_tf(&e->env_tf);
 }

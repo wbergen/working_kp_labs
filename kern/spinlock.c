@@ -63,6 +63,11 @@ static int holding(struct spinlock *lock)
 }
 #endif
 
+int holding_l(struct spinlock *lock)
+{
+    return lock->locked && lock->cpu == thiscpu;
+}
+
 void __spin_initlock(struct spinlock *lk, char *name)
 {
     lk->locked = 0;

@@ -290,8 +290,10 @@ static void trap_dispatch(struct trapframe *tf)
 
     // Forward page faults to page_fault_handler:
     if (tf->tf_trapno == T_PGFLT){
-        // print_trapframe(tf);
+        // print_trapframe(tf)
+        lock_env();
         page_fault_handler(tf);
+        unlock_env();
         return;
     }
 
@@ -337,6 +339,7 @@ static void trap_dispatch(struct trapframe *tf)
         }
         cprintf("[KERN] got a timer interrupt!\n");
         lapic_eoi();
+        lock_env();
         sched_yield();
     }
 
@@ -346,8 +349,10 @@ static void trap_dispatch(struct trapframe *tf)
         panic("unhandled trap in kernel");
     } else {
         // Make Grade Happy:
-        print_trapframe(tf);
+        print_trapframe(tf);        
+        lock_env();
         env_destroy(curenv);
+        unlock_env();
         return;
     }
 }
@@ -378,12 +383,18 @@ void trap(struct trapframe *tf)
         /* Trapped from user mode. */
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 6: Your code here. */
+        if ( !lock_env_holding() )
+            lock_env();
 
         assert(curenv);
 
         /* Garbage collect if current enviroment is a zombie. */
         if (curenv->env_status == ENV_DYING) {
+            if (!lock_pagealloc_holding())
+                lock_pagealloc();
+
             env_free(curenv);
+            unlock_pagealloc();
             curenv = NULL;
             sched_yield();
         }
@@ -394,6 +405,7 @@ void trap(struct trapframe *tf)
         curenv->env_tf = *tf;
         /* The trapframe on the stack should be ignored from here on. */
         tf = &curenv->env_tf;
+        unlock_env();       
     }
 
     /* Record that tf is the last real trapframe so print_trapframe can print
@@ -405,6 +417,7 @@ void trap(struct trapframe *tf)
 
     /* If we made it to this point, then no other environment was scheduled, so
      * we should return to the current environment if doing so makes sense. */
+    lock_env();
     if (curenv && curenv->env_status == ENV_RUNNING)
         env_run(curenv);
     else
@@ -457,6 +470,7 @@ static void region_alloc(void *va, size_t len, int perm)
 void kill_env(uint32_t fault_va, struct trapframe *tf){
     cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
     print_trapframe(tf);
+    assert_lock_env();
     env_destroy(curenv);
 }
 
@@ -470,6 +484,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     cprintf("\n");
 
 
+    lock_pagealloc();
 
     vma_el = vma_lookup(curenv, (void *)fault_va);
     
@@ -513,6 +528,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
                 // If Failure:
                 cprintf("[KERN] page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+                unlock_pagealloc();
                 kill_env(fault_va, tf);
             }
         }
@@ -520,8 +536,10 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
         // No vma covering addr:
         cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        unlock_pagealloc();
         kill_env(fault_va, tf);
     }
+    unlock_pagealloc();
 }
 
 
@@ -529,6 +547,7 @@ void page_fault_handler(struct trapframe *tf)
 {
     uint32_t fault_va;
 
+    assert_lock_env();
     /* Read processor's CR2 register to find the faulting address */
     fault_va = rcr2();
 
@@ -570,9 +589,11 @@ void page_fault_handler(struct trapframe *tf)
         struct vma* v = vma_lookup(curenv, (void *)fault_va);
         // if vma permission write we have a COW
         if(v && (v->perm & PTE_W)){
+            lock_pagealloc();
             if(!page_dedup(curenv, (void *)fault_va)){
                 cprintf("[KERN]page_fault_handler: page dedup failed\n");
             }
+            unlock_pagealloc();
             //alloc_page_after_fault(fault_va, tf);
         }else{
             cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);

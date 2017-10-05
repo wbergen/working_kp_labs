@@ -116,7 +116,7 @@ void sched_yield(void)
     int i, last_idx;
     uint64_t tick = read_tsc();
     int e_run;
-
+    assert_lock_env();
     // At first call, curenv hasn't been setup
     if (curenv) {
         cprintf("[SCHED] curenv id: %08x\n", curenv->env_id);
@@ -163,6 +163,7 @@ void sched_halt(void)
 {
     int i;
 
+    assert_lock_env();
     /* For debugging and testing purposes, if there are no runnable
      * environments in the system, then drop into the kernel monitor. */
     for (i = 0; i < NENV; i++) {
@@ -187,6 +188,7 @@ void sched_halt(void)
     xchg(&thiscpu->cpu_status, CPU_HALTED);
 
     /* Release the big kernel lock as if we were "leaving" the kernel */
+    unlock_env();
     unlock_kernel();
 
     /* Reset stack pointer, enable interrupts and then halt. */
