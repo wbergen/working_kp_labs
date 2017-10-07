@@ -82,11 +82,12 @@ void i386_init(void)
     }
     #endif
 
-    unlock_pagealloc();
+
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][UNLOCK][PAGE]\n",cpunum());
     #endif
-    
+    unlock_pagealloc();
+
     //lock_env();
     /* Schedule and run the first user environment! */
     sched_yield();
@@ -148,10 +149,10 @@ void mp_main(void)
      * LAB 6: Your code here:
      */
     lock_kernel();
+    lock_env();
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][LOCK][ENV]\n",cpunum());
     #endif
-    lock_env();
     sched_yield();
     /* Remove this after you initialize per-CPU trap information */
 }

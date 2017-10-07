@@ -12,29 +12,29 @@
 #ifdef USE_BIG_KERNEL_LOCK
 /* The big kernel lock */
 struct spinlock kernel_lock = {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     .name = "kernel_lock"
 #endif
 };
 #else
 struct spinlock pagealloc_lock = {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     .name = "pagealloc_lock"
 #endif
 };
 struct spinlock env_lock = {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     .name = "env_lock"
 #endif
 };
 struct spinlock console_lock = {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     .name = "console_lock"
 #endif
 };
 #endif /* USE_BIG_KERNEL_LOCK */
 
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
 /*
  * Record the current call stack in pcs[] by following the %ebp chain.
  */
@@ -66,7 +66,7 @@ static int holding(struct spinlock *lock)
 void __spin_initlock(struct spinlock *lk, char *name)
 {
     lk->locked = 0;
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     lk->name = name;
     lk->cpu = 0;
 #endif
@@ -84,7 +84,7 @@ int holding_l(struct spinlock *lock)
  */
 void spin_lock(struct spinlock *lk)
 {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     if (holding(lk))
         panic("CPU %d cannot acquire %s: already holding", cpunum(), lk->name);
 #endif
@@ -96,7 +96,7 @@ void spin_lock(struct spinlock *lk)
         asm volatile ("pause");
 
     /* Record info about lock acquisition for debugging. */
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     lk->cpu = thiscpu;
     get_caller_pcs(lk->pcs);
 #endif
@@ -107,7 +107,7 @@ void spin_lock(struct spinlock *lk)
  */
 void spin_unlock(struct spinlock *lk)
 {
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     if (!holding(lk)) {
         int i;
         uint32_t pcs[10];

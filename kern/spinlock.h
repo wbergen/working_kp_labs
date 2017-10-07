@@ -6,7 +6,8 @@
 #include <kern/cpu.h>
 
 /* Comment this to disable spinlock debugging */
-#define DEBUG_SPINLOCK
+//#define DEBUG_SPINLOCK
+#define DEBUG_SPINLOCK_1
 /* Disable big kernel lock
  *
  * LAB 6: Comment out the following macro definition
@@ -21,7 +22,7 @@ struct spinlock {
 
 
 
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
     /* For debugging: */
     char *name;            /* Name of lock. */
     struct cpuinfo *cpu;   /* The CPU holding the lock. */
@@ -88,7 +89,7 @@ static inline int lock_pagealloc_holding(void) { return holding_l(&pagealloc_loc
 static inline void lock_kernel(void) { }
 static inline void unlock_kernel(void) { }
 static inline int lock_kernel_holding(void) { return 0; }
-#ifdef DEBUG_SPINLOCK
+#ifdef DEBUG_SPINLOCK_1
 static __always_inline void assert_lock_env(void)
 {
     assert(env_lock.locked && env_lock.cpu == thiscpu);

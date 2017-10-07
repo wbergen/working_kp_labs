@@ -384,12 +384,15 @@ static void trap_dispatch(struct trapframe *tf)
 void trap(struct trapframe *tf)
 {   
 	#ifdef USE_BIG_KERNEL_LOCK
-	    if(lock_kernel_holding()){
+	    if(lock_kernel_holding() ){
 	        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());
 	    }else{
 	        cprintf("TRAP: UNLOCKED CPU:%d\n",cpunum());
 	    }
-        lock_kernel();
+	    if(lock_kernel_holding() && tf->tf_trapno == IRQ_OFFSET){
+	    	cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum());
+	    }else
+        	lock_kernel();
 
 	#endif
 
@@ -418,11 +421,14 @@ void trap(struct trapframe *tf)
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 6: Your code here. */
         //if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
-			lock_env();
-
-        #ifdef DEBUG_SPINLOCK
-        	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
-    	#endif
+	    if(lock_env_holding() && tf->tf_trapno == IRQ_OFFSET){
+	    	cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum());
+	    }else{
+        	lock_env();
+	        #ifdef DEBUG_SPINLOCK
+	        	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+	    	#endif
+        }
         assert(curenv);
 
         /* Garbage collect if current enviroment is a zombie. */
@@ -460,9 +466,6 @@ void trap(struct trapframe *tf)
     last_tf = tf;
     if(lock_env_holding()){
     	cprintf("HOLDING BEFORE TRAP DISP CPU:%d",cpunum());
-    	if(tf->tf_trapno == IRQ_OFFSET){
-    		cprintf("TIMER INTERRUPT\n");
-    	}
     }
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
@@ -470,9 +473,6 @@ void trap(struct trapframe *tf)
     /* If we made it to this point, then no other environment was scheduled, so
      * we should return to the current environment if doing so makes sense. */
     lock_env();
-    #ifdef DEBUG_SPINLOCK
-    	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
-    #endif
 
     if (curenv && curenv->env_status == ENV_RUNNING){
         env_run(curenv);

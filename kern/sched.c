@@ -185,8 +185,6 @@ void sched_halt(void)
         if ((envs[i].env_status == ENV_RUNNABLE ||
              envs[i].env_status == ENV_RUNNING ||
              envs[i].env_status == ENV_DYING)){
-            if(envs[i].env_status == ENV_RUNNING)
-            cprintf("%x\n",envs[i].env_id);
             break;
         }
 
