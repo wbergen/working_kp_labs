@@ -67,10 +67,17 @@ enum {
     ENV_NOT_RUNNABLE
 };
 
+/* Tasklet */
+struct tasklet {
+    int id;
+    uint32_t *fptr;
+};
+
 /* Special environment types */
 enum env_type {
     ENV_TYPE_USER = 0,
     ENV_TYPE_IDLE,
+    ENV_TYPE_KERNEL
 };
 
 struct env {

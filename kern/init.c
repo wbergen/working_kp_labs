@@ -82,6 +82,9 @@ void i386_init(void)
     }
     #endif
 
+    // create k envs:
+    ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+
 
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][UNLOCK][PAGE]\n",cpunum());

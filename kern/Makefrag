@@ -68,7 +68,8 @@ KERN_BINFILES +=	user/idle \
 			user/spin \
 			user/forktree \
                         user/cowforktest \
-                        user/mcorefork
+                        user/mcorefork \
+                        user/ktask
 
 KERN_OBJFILES := $(patsubst %.c, $(OBJDIR)/%.o, $(KERN_SRCFILES))
 KERN_OBJFILES := $(patsubst %.S, $(OBJDIR)/%.o, $(KERN_OBJFILES))
