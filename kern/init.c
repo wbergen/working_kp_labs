@@ -17,6 +17,7 @@
 
 static void boot_aps(void);
 
+//#define BUSY_WAIT
 
 void i386_init(void)
 {
@@ -48,6 +49,10 @@ void i386_init(void)
     /* Acquire the big kernel lock before waking up APs.
      * LAB 6: Your code here: */
     lock_kernel();
+    lock_env();
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][LOCK][ENV]\n",cpunum());
+    #endif
     /* Starting non-boot CPUs */
     boot_aps();
 
@@ -55,8 +60,10 @@ void i386_init(void)
     //lock_env();
     //cprintf(STRINGIFY(TEST)"\n");
     cprintf("[%d] CPUS:  %d \n", cpunum(), ncpu);
-    lock_env();
     lock_pagealloc();
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][LOCK][PAGE]\n",cpunum());
+    #endif
 
 #if defined(TEST)
     /* Don't touch -- used by grading script! */
@@ -69,12 +76,16 @@ void i386_init(void)
     ENV_CREATE(user_yield, ENV_TYPE_USER);
 #endif
     //create ncpu - 1 idle processes
+    #ifdef BUSY_WAIT
     for (i=0; i < (ncpu - 1); i++){
         ENV_CREATE(user_idle, ENV_TYPE_IDLE);
     }
+    #endif
 
     unlock_pagealloc();
-    //unlock_kernel();
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][UNLOCK][PAGE]\n",cpunum());
+    #endif
     
     //lock_env();
     /* Schedule and run the first user environment! */
@@ -137,6 +148,9 @@ void mp_main(void)
      * LAB 6: Your code here:
      */
     lock_kernel();
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][LOCK][ENV]\n",cpunum());
+    #endif
     lock_env();
     sched_yield();
     /* Remove this after you initialize per-CPU trap information */

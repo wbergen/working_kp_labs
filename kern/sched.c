@@ -87,7 +87,6 @@ int env2id(envid_t id){
  */
 void sched_yield(void)
 {
-    struct env *idle;
     static uint64_t last_tick;
     cprintf("[SCHED] sched_yield() called!\n");
 
@@ -126,7 +125,7 @@ void sched_yield(void)
     int i, last_idx;
     uint64_t tick = read_tsc();
     int e_run, order;
-   // assert_lock_env();
+    assert_lock_env();
     // At first call, curenv hasn't been setup
     //cprintf("[SCHED] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx CPU %d\n", cpunum());
     if (curenv) {
@@ -210,9 +209,14 @@ void sched_halt(void)
     xchg(&thiscpu->cpu_status, CPU_HALTED);
 
     /* Release the big kernel lock as if we were "leaving" the kernel */
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][UNLOCK][ENV]\n",cpunum());
+    #endif
     unlock_env();
 
-    cprintf("Unlocking kernel halt.........\n");
+    #ifdef USE_BIG_KERNEL_LOCK
+        cprintf("Unlocking kernel halt.........\n");    
+    #endif
     unlock_kernel();
     /* Reset stack pointer, enable interrupts and then halt. */
     asm volatile (

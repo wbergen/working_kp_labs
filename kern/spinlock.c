@@ -9,7 +9,6 @@
 #include <kern/spinlock.h>
 #include <kern/kdebug.h>
 
-const int * ncpus = &ncpu;
 #ifdef USE_BIG_KERNEL_LOCK
 /* The big kernel lock */
 struct spinlock kernel_lock = {

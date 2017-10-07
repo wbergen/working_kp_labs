@@ -763,7 +763,13 @@ void env_destroy(struct env *e)
         return;
     }
     lock_pagealloc();
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+    #endif
     env_free(e);
+    #ifdef DEBUG_SPINLOCK
+        cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+    #endif
     unlock_pagealloc();
     if (curenv == e) {
         curenv = NULL;
@@ -817,11 +823,13 @@ void env_run(struct env *e){
      *  and make sure you have set the relevant parts of
      *  e->env_tf to sensible values.
      */
-    if(lock_kernel_holding()){
-        cprintf("ENV_RUN: LOCKED CPU:%d\n",cpunum());
-    }else{
-        cprintf("ENV_RUN: UNLOCKED CPU:%d\n",cpunum());
-    }
+    #ifdef USE_BIG_KERNEL_LOCK
+        if(lock_kernel_holding()){
+            cprintf("ENV_RUN: LOCKED CPU:%d\n",cpunum());
+        }else{
+            cprintf("ENV_RUN: UNLOCKED CPU:%d\n",cpunum());
+        }
+    #endif
     assert_lock_env();
     /* LAB 3: Your code here. */
     if(curenv != e){
@@ -842,7 +850,13 @@ void env_run(struct env *e){
             //if the current env it's dying free it.
             if(curenv->env_status == ENV_DYING){
                 lock_pagealloc();
+                #ifdef DEBUG_SPINLOCK
+                    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+                #endif
                 env_free(curenv);
+                #ifdef DEBUG_SPINLOCK
+                    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+                #endif
                 unlock_pagealloc();
             }
         }
@@ -855,8 +869,11 @@ void env_run(struct env *e){
         //5. Use lcr3() to switch to its address space.
         lcr3(PADDR(curenv->env_pgdir));
     }
+    #ifdef DEBUG_SPINLOCK
+        cprintf("----------------------------env_run[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
+    #endif
     unlock_env();
-    cprintf("Unlocking env_run.........\n");
+    
     unlock_kernel();
     // Step2
     env_pop_tf(&e->env_tf);

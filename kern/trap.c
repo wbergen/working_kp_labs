@@ -292,7 +292,13 @@ static void trap_dispatch(struct trapframe *tf)
     if (tf->tf_trapno == T_PGFLT){
         // print_trapframe(tf)
         lock_env();
+		#ifdef DEBUG_SPINLOCK
+		    cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+		#endif
         page_fault_handler(tf);
+		#ifdef DEBUG_SPINLOCK
+		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
+		#endif
         unlock_env();
         return;
     }
@@ -334,12 +340,20 @@ static void trap_dispatch(struct trapframe *tf)
      */
 
     else if (tf->tf_trapno == IRQ_OFFSET) {
+    	// send an ack to the interrupt
+        lapic_eoi();
+        //check if the int comes from the kernel, in this case do nothing
         if(tf->tf_cs == GD_KT){
             return;
         }
+
         cprintf("[KERN] got a timer interrupt!\n");
-        lapic_eoi();
+
         lock_env();
+        #ifdef DEBUG_SPINLOCK
+        	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+    	#endif
+        
         sched_yield();
     }
 
@@ -349,22 +363,35 @@ static void trap_dispatch(struct trapframe *tf)
         panic("unhandled trap in kernel");
     } else {
         // Make Grade Happy:
-        print_trapframe(tf);       
+        print_trapframe(tf);
+
         lock_env();
+        #ifdef DEBUG_SPINLOCK
+        	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+    	#endif
+
         env_destroy(curenv);
+
+        #ifdef DEBUG_SPINLOCK
+        	cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
+    	#endif
         unlock_env();
+
         return;
     }
 }
 
 void trap(struct trapframe *tf)
 {   
-    if(lock_kernel_holding()){
-        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());
-    }else{
-        cprintf("TRAP: UNLOCKED CPU:%d\n",cpunum());
-    }
+	#ifdef USE_BIG_KERNEL_LOCK
+	    if(lock_kernel_holding()){
+	        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());
+	    }else{
+	        cprintf("TRAP: UNLOCKED CPU:%d\n",cpunum());
+	    }
         lock_kernel();
+
+	#endif
 
     /* The environment may have set DF and some versions of GCC rely on DF being
      * clear. */
@@ -390,17 +417,26 @@ void trap(struct trapframe *tf)
         /* Trapped from user mode. */
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 6: Your code here. */
-        if ( !lock_env_holding() )
-            lock_env();
+        //if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
+			lock_env();
 
+        #ifdef DEBUG_SPINLOCK
+        	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+    	#endif
         assert(curenv);
 
         /* Garbage collect if current enviroment is a zombie. */
         if (curenv->env_status == ENV_DYING) {
-            if (!lock_pagealloc_holding())
+            //if (!lock_pagealloc_holding())
                 lock_pagealloc();
+				#ifdef DEBUG_SPINLOCK
+				    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+				#endif
 
             env_free(curenv);
+			#ifdef DEBUG_SPINLOCK
+			    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+			#endif
             unlock_pagealloc();
             curenv = NULL;
             //unlock_env();
@@ -413,20 +449,31 @@ void trap(struct trapframe *tf)
         curenv->env_tf = *tf;
         /* The trapframe on the stack should be ignored from here on. */
         tf = &curenv->env_tf;
+        #ifdef DEBUG_SPINLOCK
+        	cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
+    	#endif
         unlock_env();       
     }
 
     /* Record that tf is the last real trapframe so print_trapframe can print
      * some additional information. */
     last_tf = tf;
-
+    if(lock_env_holding()){
+    	cprintf("HOLDING BEFORE TRAP DISP CPU:%d",cpunum());
+    	if(tf->tf_trapno == IRQ_OFFSET){
+    		cprintf("TIMER INTERRUPT\n");
+    	}
+    }
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
 
     /* If we made it to this point, then no other environment was scheduled, so
      * we should return to the current environment if doing so makes sense. */
     lock_env();
-    
+    #ifdef DEBUG_SPINLOCK
+    	cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
+    #endif
+
     if (curenv && curenv->env_status == ENV_RUNNING){
         env_run(curenv);
     }else
@@ -495,7 +542,9 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
 
     lock_pagealloc();
-
+    #ifdef DEBUG_SPINLOCK
+       	cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+   	#endif
     vma_el = vma_lookup(curenv, (void *)fault_va);
     
     // Check for presence of a vma covering the faulting addr:
@@ -538,7 +587,11 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
                 // If Failure:
                 cprintf("[KERN] page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
-                unlock_pagealloc();
+                
+		        #ifdef DEBUG_SPINLOCK
+		        	cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+		    	#endif
+		       	unlock_pagealloc();
                 kill_env(fault_va, tf);
             }
         }
@@ -546,9 +599,15 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
         // No vma covering addr:
         cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+		#ifdef DEBUG_SPINLOCK
+		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+		#endif
         unlock_pagealloc();
         kill_env(fault_va, tf);
     }
+	#ifdef DEBUG_SPINLOCK
+	    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+	#endif
     unlock_pagealloc();
 }
 
@@ -600,9 +659,15 @@ void page_fault_handler(struct trapframe *tf)
         // if vma permission write we have a COW
         if(v && (v->perm & PTE_W)){
             lock_pagealloc();
+			#ifdef DEBUG_SPINLOCK
+			    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+			#endif
             if(!page_dedup(curenv, (void *)fault_va)){
                 cprintf("[KERN]page_fault_handler: page dedup failed\n");
             }
+			#ifdef DEBUG_SPINLOCK
+			    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+			#endif
             unlock_pagealloc();
             //alloc_page_after_fault(fault_va, tf);
         }else{
