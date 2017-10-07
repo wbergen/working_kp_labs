@@ -70,6 +70,7 @@ static inline void assert_lock_env(void) { }
 static inline void assert_lock_pagealloc(void) { }
 static inline int lock_env_holding(void) { return 0; }
 static inline int lock_pagealloc_holding(void) { return 0; }
+static inline int lock_kernel_holding(void) { return holding_l(&kernel_lock); }
 #else /* USE_BIG_KERNEL_LOCK */
 
 extern struct spinlock pagealloc_lock;
@@ -86,7 +87,7 @@ static inline int lock_env_holding(void) { return holding_l(&env_lock); }
 static inline int lock_pagealloc_holding(void) { return holding_l(&pagealloc_lock); }
 static inline void lock_kernel(void) { }
 static inline void unlock_kernel(void) { }
-
+static inline int lock_kernel_holding(void) { return 0; }
 #ifdef DEBUG_SPINLOCK
 static __always_inline void assert_lock_env(void)
 {
@@ -103,3 +104,5 @@ static inline void assert_lock_pagealloc(void) { }
 #endif /* USE_BIG_KERNEL_LOCK */
 
 #endif
+
+//extern const int *ncpus;

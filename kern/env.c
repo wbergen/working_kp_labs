@@ -817,7 +817,11 @@ void env_run(struct env *e){
      *  and make sure you have set the relevant parts of
      *  e->env_tf to sensible values.
      */
-
+    if(lock_kernel_holding()){
+        cprintf("ENV_RUN: LOCKED CPU:%d\n",cpunum());
+    }else{
+        cprintf("ENV_RUN: UNLOCKED CPU:%d\n",cpunum());
+    }
     assert_lock_env();
     /* LAB 3: Your code here. */
     if(curenv != e){
@@ -852,7 +856,8 @@ void env_run(struct env *e){
         lcr3(PADDR(curenv->env_pgdir));
     }
     unlock_env();
-    
+    cprintf("Unlocking env_run.........\n");
+    unlock_kernel();
     // Step2
     env_pop_tf(&e->env_tf);
 }

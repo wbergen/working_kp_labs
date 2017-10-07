@@ -358,7 +358,14 @@ static void trap_dispatch(struct trapframe *tf)
 }
 
 void trap(struct trapframe *tf)
-{
+{   
+    if(lock_kernel_holding()){
+        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());
+    }else{
+        cprintf("TRAP: UNLOCKED CPU:%d\n",cpunum());
+    }
+        lock_kernel();
+
     /* The environment may have set DF and some versions of GCC rely on DF being
      * clear. */
     asm volatile("cld" ::: "cc");
@@ -367,17 +374,17 @@ void trap(struct trapframe *tf)
     extern char *panicstr;
     if (panicstr)
         asm volatile("hlt");
-
+    //cprintf("[SCHED] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx CPU %d\n", cpunum());
     /* Re-acqurie the big kernel lock if we were halted in sched_yield(). */
-    if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
-        lock_kernel();
+    //if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
+    //    lock_kernel();
 
     /* Check that interrupts are disabled.
      * If this assertion fails, DO NOT be tempted to fix it by inserting a "cli"
      * in the interrupt path. */
     assert(!(read_eflags() & FL_IF));
 
-    cprintf("Incoming TRAP frame at %p\n", tf);
+    cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
 
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
@@ -396,6 +403,7 @@ void trap(struct trapframe *tf)
             env_free(curenv);
             unlock_pagealloc();
             curenv = NULL;
+            //unlock_env();
             sched_yield();
         }
 
@@ -418,9 +426,11 @@ void trap(struct trapframe *tf)
     /* If we made it to this point, then no other environment was scheduled, so
      * we should return to the current environment if doing so makes sense. */
     lock_env();
-    if (curenv && curenv->env_status == ENV_RUNNING)
+    
+    if (curenv && curenv->env_status == ENV_RUNNING){
         env_run(curenv);
-    else
+    }else
+
         sched_yield();
 }
 

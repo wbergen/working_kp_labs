@@ -13,7 +13,7 @@
 struct cpuinfo cpus[NCPU];
 struct cpuinfo *bootcpu;
 int ismp;
-int ncpu;
+int ncpu = 0;
 
 /* Per-CPU kernel stacks */
 unsigned char percpu_kstacks[NCPU][KSTKSIZE]
@@ -222,4 +222,5 @@ void mp_init(void)
         outb(0x22, 0x70);   /* Select IMCR */
         outb(0x23, inb(0x23) | 1);  /* Mask external interrupts. */
     }
+
 }

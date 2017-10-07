@@ -9,6 +9,8 @@
 
 /* Maximum number of CPUs */
 #define NCPU  8
+#define _STRINGIFY(s) #s
+#define STRINGIFY(s) _STRINGIFY(s)
 
 /* Values of status in struct cpuinfo */
 enum {

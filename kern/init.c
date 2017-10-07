@@ -21,7 +21,7 @@ static void boot_aps(void);
 void i386_init(void)
 {
     extern char edata[], end[];
-
+    int i;
     /* Before doing anything else, complete the ELF loading process.
      * Clear the uninitialized global data (BSS) section of our program.
      * This ensures that all static/global variables start out zero. */
@@ -48,10 +48,15 @@ void i386_init(void)
     /* Acquire the big kernel lock before waking up APs.
      * LAB 6: Your code here: */
     lock_kernel();
-    lock_env();
-    lock_pagealloc();
     /* Starting non-boot CPUs */
     boot_aps();
+
+    //lock_kernel();
+    //lock_env();
+    //cprintf(STRINGIFY(TEST)"\n");
+    cprintf("[%d] CPUS:  %d \n", cpunum(), ncpu);
+    lock_env();
+    lock_pagealloc();
 
 #if defined(TEST)
     /* Don't touch -- used by grading script! */
@@ -63,8 +68,15 @@ void i386_init(void)
     ENV_CREATE(user_yield, ENV_TYPE_USER);
     ENV_CREATE(user_yield, ENV_TYPE_USER);
 #endif
+    //create ncpu - 1 idle processes
+    for (i=0; i < (ncpu - 1); i++){
+        ENV_CREATE(user_idle, ENV_TYPE_USER);
+    }
 
     unlock_pagealloc();
+    //unlock_kernel();
+    
+    //lock_env();
     /* Schedule and run the first user environment! */
     sched_yield();
 }
@@ -117,7 +129,6 @@ void mp_main(void)
     env_init_percpu();
     trap_init_percpu();
     xchg(&thiscpu->cpu_status, CPU_STARTED); /* tell boot_aps() we're up */
-
     /*
      * Now that we have finished some basic setup, call sched_yield()
      * to start running processes on this CPU.  But make sure that

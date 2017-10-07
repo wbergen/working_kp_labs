@@ -126,8 +126,9 @@ void sched_yield(void)
     int i, last_idx;
     uint64_t tick = read_tsc();
     int e_run, order;
-    assert_lock_env();
+   // assert_lock_env();
     // At first call, curenv hasn't been setup
+    //cprintf("[SCHED] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx CPU %d\n", cpunum());
     if (curenv) {
         // Set next:
         order = ROUNDDOWN(curenv->env_id, PGSIZE);
@@ -191,7 +192,7 @@ void sched_halt(void)
         }
 
     }
-    cprintf("halting...\n");
+    cprintf("halting... cpu %d\n",cpunum());
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         while (1)
@@ -210,8 +211,9 @@ void sched_halt(void)
 
     /* Release the big kernel lock as if we were "leaving" the kernel */
     unlock_env();
-    unlock_kernel();
 
+    cprintf("Unlocking kernel halt.........\n");
+    unlock_kernel();
     /* Reset stack pointer, enable interrupts and then halt. */
     asm volatile (
         "movl $0, %%ebp\n"
@@ -221,5 +223,8 @@ void sched_halt(void)
         "sti\n"
         "hlt\n"
     : : "a" (thiscpu->cpu_ts.ts_esp0));
+
+
 }
+
 

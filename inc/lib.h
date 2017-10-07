@@ -20,6 +20,7 @@
 #include <inc/syscall.h>
 #include <inc/trap.h>
 
+
 #define USED(x)     (void)(x)
 
 /* main user program */
@@ -30,6 +31,8 @@ extern const char *binaryname;
 extern const volatile struct env *thisenv;
 extern const volatile struct env envs[NENV];
 extern const volatile struct page_info pages[];
+//extern const volatile int ncpu;
+//extern const volatile int ncpus;
 
 /* exit.c */
 void    exit(void);

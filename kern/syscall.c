@@ -71,7 +71,7 @@ static envid_t sys_getenvid(void)
  */
 static int sys_env_destroy(envid_t envid)
 {
-    cprintf("[KERN] sys_env_destroy(): called on %08x\n", envid);
+    cprintf("[KERN] sys_env_destroy(): called on %x\n", envid);
     int r;
     struct env *e;
     lock_env();
@@ -300,8 +300,17 @@ static int sys_vma_destroy(void *va, uint32_t size)
 static void sys_yield(void)
 {
     cprintf("[KERN] sys_yield() called!\n");
+
+    if(lock_kernel_holding()){
+        cprintf("SYS_YIELD: LOCKED CPU:%d\n",cpunum());
+    }else{
+        cprintf("SYS_YIELD: UNLOCKED CPU:%d\n",cpunum());
+        lock_kernel();
+    }
+
     //if the a process invoke sys yield tamper it's time slice to schedule another process
     lock_env();
+
     invalidate_env_ts(curenv);
     sched_yield();
 }
@@ -324,7 +333,7 @@ static int sys_wait(envid_t envid)
 
     curenv->wait_id = envid;
     curenv->env_status = ENV_SLEEPING;
-
+    unlock_env();
     sched_yield();
     return 0;
 }
