@@ -70,6 +70,7 @@ enum {
 /* Special environment types */
 enum env_type {
     ENV_TYPE_USER = 0,
+    ENV_TYPE_IDLE,
 };
 
 struct env {

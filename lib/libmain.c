@@ -10,6 +10,7 @@ extern void umain(int argc, char **argv);
 const volatile struct env *thisenv;
 const char *binaryname = "<unknown>";
 
+
 void libmain(int argc, char **argv)
 {
     /* Set thisenv to point at our env structure in envs[].

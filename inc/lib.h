@@ -27,6 +27,7 @@
 void    umain(int argc, char **argv);
 
 /* libmain.c or entry.S */
+
 extern const char *binaryname;
 extern const volatile struct env *thisenv;
 extern const volatile struct env envs[NENV];

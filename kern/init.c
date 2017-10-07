@@ -70,7 +70,7 @@ void i386_init(void)
 #endif
     //create ncpu - 1 idle processes
     for (i=0; i < (ncpu - 1); i++){
-        ENV_CREATE(user_idle, ENV_TYPE_USER);
+        ENV_CREATE(user_idle, ENV_TYPE_IDLE);
     }
 
     unlock_pagealloc();

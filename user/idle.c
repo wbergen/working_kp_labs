@@ -4,19 +4,17 @@
 #include <inc/lib.h>
 //#include <kern/spinlock.h>
 
-int ncpu = 0;
+
 int only_program(){
 	int i, count = 0;
-	if(thisenv->env_cpunum > ncpu){
-		ncpu = thisenv->env_cpunum;
-	}
+
 	for(i = 0; i < NENV; i++){
-		if(envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_RUNNING){
+		if((envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_RUNNING)
+         && envs[i].env_type != ENV_TYPE_IDLE){
 			count++;
 		}
 	}
-	//cprintf("count = %d/%d\n",count, ncpu);
-	if(count <= ncpu){
+	if(count < 1){
 		return 1;
 	}else{
 		return 0;
@@ -34,8 +32,9 @@ void umain(int argc, char **argv)
      * until the next interrupt - doing so allows the processor to conserve
      * power more effectively. */
     while (1) {
+
     	if(only_program()){
-    		cprintf(" No user programs running, killing the Idle process %d\n", thisenv->env_id);
+    		cprintf(" No user programs running, killing the Idle process [%x]\n", thisenv->env_id);
     		sys_env_destroy(thisenv->env_id);
     	}
        sys_yield();
