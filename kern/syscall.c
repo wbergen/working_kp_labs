@@ -324,7 +324,7 @@ static int sys_wait(envid_t envid)
 
     curenv->wait_id = envid;
     curenv->env_status = ENV_SLEEPING;
-    // unlock_env();
+    
     sched_yield();
     return 0;
 }

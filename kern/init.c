@@ -83,6 +83,7 @@ void i386_init(void)
     #endif
 
     // create k envs:
+    // test ktask, only making 1
     ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
 
 

@@ -121,6 +121,26 @@ void sched_yield(void)
     // }
     // cprintf("\n");
 
+    /*
+        need simple concept of cpu affinity
+            - env property cpu, so that ktask is forced to schedule on same core
+
+        if task required by:
+            - new tasklet in list with run > 0 (if bookkeeping in tasklet)
+            - passed from syscall/kern space on tasklet operations
+        save the context of curenv (trap frame)
+        ktask calls the function pointed to by the tasklet, a long function
+        ktask has the core until the process is completed
+            - ktask must be run only on cpu which scheduled (this cpu)
+        schedule task
+            - prioritize k threads?
+        on ktask exit:
+            - reset tf to original scheduler
+            - run original env
+                - w/e operation the process needed has no been completed
+        
+    */
+
 
     int i, last_idx;
     uint64_t tick = read_tsc();

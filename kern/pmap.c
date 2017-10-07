@@ -18,6 +18,7 @@ static size_t npages_basemem;   /* Amount of base memory (in pages) */
 /* These variables are set in mem_init() */
 pde_t *kern_pgdir;                       /* Kernel's initial page directory */
 struct page_info *pages;                 /* Physical page state array */
+struct tasklet *t_list;
 static struct page_info *page_free_list; /* Free list of physical pages */
 
 
@@ -176,6 +177,8 @@ void mem_init(void)
 
 
     envs = boot_alloc(sizeof(struct env) * NENV);
+
+    t_list = boot_alloc(sizeof(struct tasklet) * 16);
    
 
 
@@ -225,6 +228,7 @@ void mem_init(void)
 
     boot_map_region(kern_pgdir, UENVS, sizeof(struct env)*NENV, PADDR(envs), PTE_U);
 
+
     /*********************************************************************
      * Use the physical memory that 'bootstack' refers to as the kernel
      * stack.  The kernel stack grows down from virtual address KSTACKTOP.
@@ -261,6 +265,44 @@ void mem_init(void)
     uint32_t t = 0 - KERNBASE;
 
     boot_map_region(kern_pgdir, KERNBASE, t, 0, PTE_W);
+
+    // How to go about this... 
+    //  - commenting the kernpgdir check seems to have no obvious bad side effects but...
+    //  - but can't allocate anything there.. im overwriting something...
+    // Bootmap t_list:
+    // boot_map_region(kern_pgdir, ROUNDDOWN(UENVS - sizeof(struct env)*NENV, PGSIZE), ROUNDUP(sizeof(struct tasklet) * 16, PGSIZE), PADDR(t_list), 0);
+    // boot_map_region(kern_pgdir, KERNBASE - PGSIZE, ROUNDUP(sizeof(struct tasklet) * 2, PGSIZE), PADDR(t_list), 0);
+
+    // Need some knowledge of the kernel pgdir at this point:
+    // int i;
+    // uint32_t * va;
+    // for (i = 0; i < PGSIZE; ++i)
+    // {
+    //     // Get the pte:
+    //     // uint32_t * va;
+    //     va = (uint32_t *)(PGSIZE * i);
+    //     cprintf("[0x%08x] kern_pgdir entry: 0x%08x\n", va, (pde_t *)kern_pgdir[i]);
+    //     // *va += (PGSIZE * 1024);
+    // }
+
+        /*
+            we need a pageish for a tasklet list
+            globals defined at va in entry.S
+             - couple of different va's naively in both entry.S and here have same effect of breaking kern_pgdir
+            Initialize tasks
+
+            Could also be done dynamically at first trap?
+             - alloc a page in kern_pgdir if a specific va isn't present @ t_list
+             - still need to choose empty addr in entry.S...
+        */
+
+    // allocate tasklets:
+    // int k;
+    // for (k = 0; k < 16; ++k)
+    // {
+    //     t_list[k].id = k;
+    //     t_list[k].fptr = (uint32_t *)0xdeadbeef;
+    // }
 
     /* Enable Page Size Extensions for huge page support */
     lcr4(rcr4() | CR4_PSE);

@@ -7,12 +7,13 @@
 #include <kern/cpu.h>
 
 extern struct env *envs;            /* All environments */
+// extern struct tasklet *t_list;
 #define curenv (thiscpu->cpu_env)   /* Current environment */
 extern struct segdesc gdt[];
 
 void env_init(void);
 void env_init_percpu(void);
-int  env_alloc(struct env **e, envid_t parent_id);
+int  env_alloc(struct env **e, envid_t parent_id, int type);
 void env_free(struct env *e);
 void env_create(uint8_t *binary, enum env_type type);
 void env_destroy(struct env *e); /* Does not return if e == curenv */

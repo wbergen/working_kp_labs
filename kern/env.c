@@ -223,8 +223,6 @@ static int env_setup_vm(struct env *e)
         e->env_pgdir[i] = kern_pgdir[i];
     }
 
-
-
     /* UVPT maps the env's own page table read-only.
      * Permissions: kernel R, user R */
     e->env_pgdir[PDX(UVPT)] = PADDR(e->env_pgdir) | PTE_P | PTE_U;
@@ -359,7 +357,7 @@ int env_dup(struct env * parent){
     struct env * child;
 
     //Allocate a new enviroment
-    if(env_alloc(&child, parent->env_id) < 0){
+    if(env_alloc(&child, parent->env_id, parent->env_type) < 0){
         cprintf("[KERN]env_dup(): Impossible to allocate a new env\n");
         return 0;
     }
@@ -406,7 +404,7 @@ int env_dup(struct env * parent){
  *  -E_NO_FREE_ENV if all NENVS environments are allocated
  *  -E_NO_MEM on memory exhaustion
  */
-int env_alloc(struct env **newenv_store, envid_t parent_id)
+int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
 {
 
     cprintf("env_alloc called!\n");
@@ -429,7 +427,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id)
 
     /* Set the basic status variables. */
     e->env_parent_id = parent_id;
-    e->env_type = ENV_TYPE_USER;
+    e->env_type = type;
     e->env_status = ENV_RUNNABLE;
     e->env_runs = 0;
 
@@ -450,17 +448,32 @@ int env_alloc(struct env **newenv_store, envid_t parent_id)
      * checks involving the RPL and the Descriptor Privilege Level
      * (DPL) stored in the descriptors themselves.
      */
-    e->env_tf.tf_ds = GD_UD | 3;
-    e->env_tf.tf_es = GD_UD | 3;
-    e->env_tf.tf_ss = GD_UD | 3;
-    e->env_tf.tf_esp = USTACKTOP;
-    e->env_tf.tf_cs = GD_UT | 3;
+
+    // if (e->env_type == ENV_TYPE_KERNEL) {
+    //     cprintf("ktask setup\n\n\n");
+    //     e->env_tf.tf_ds = GD_UD | 3;
+    //     e->env_tf.tf_es = GD_UD | 3;
+    //     e->env_tf.tf_ss = GD_UD | 3;
+    //     e->env_tf.tf_esp = USTACKTOP;
+    //     e->env_tf.tf_cs = GD_UT | 0x0;
+    // } else {
+        e->env_tf.tf_ds = GD_UD | 3;
+        e->env_tf.tf_es = GD_UD | 3;
+        e->env_tf.tf_ss = GD_UD | 3;
+        e->env_tf.tf_esp = USTACKTOP;
+        e->env_tf.tf_cs = GD_UT | 3;
+        e->env_tf.tf_eflags |= FL_IF;
+    // }
     /* You will set e->env_tf.tf_eip later. */
+
+        // We need to set the low to bits in the cs, but naievly doing it as above doesn't work
+        // also tried with variation of GD_KD etc.
+        // are these changes carried somewhere?
 
     /* Enable interrupts while in user mode.
      * LAB 5: Your code here. */
     
-    e->env_tf.tf_eflags |= FL_IF;
+    // e->env_tf.tf_eflags |= FL_IF;
 
 
     /* commit the allocation */
@@ -660,7 +673,7 @@ void env_create(uint8_t *binary, enum env_type type)
 {
     /* LAB 3: Your code here. */
     struct env *e;
-    int ret = env_alloc(&e,0);
+    int ret = env_alloc(&e,0, type);
 
     if(ret == -E_NO_MEM ){
         panic("env_create: OUT OF MEMORY\n");
@@ -671,7 +684,7 @@ void env_create(uint8_t *binary, enum env_type type)
 
     load_icode(e,binary);
 
-    e->env_type = type;
+    // e->env_type = type;
 
 }
 
@@ -785,6 +798,23 @@ void env_destroy(struct env *e)
  */
 void env_pop_tf(struct trapframe *tf)
 {
+
+    /*
+    #define GD_KT     0x08     kernel text
+    #define GD_KD     0x10     kernel data
+    #define GD_UT     0x18     user text
+    #define GD_UD     0x20     user data
+    #define GD_TSS0   0x28     Task segment selector for CPU 0
+    */
+
+    // cprintf("tf's cs: 0x%08x\n", tf->tf_cs);
+    // cprintf("tf's ss: 0x%08x\n", tf->tf_ss);
+    // if (tf->tf_cs == GD_KT){
+    //     cprintf("tf: ss == GD_KT\n");
+    // }
+    // if (tf->tf_cs == GD_UT){
+    //     cprintf("tf: ss == GD_UT\n");
+    // }
     /* Record the CPU we are running on for user-space debugging */
     curenv->env_cpunum = cpunum();
 
@@ -867,6 +897,7 @@ void env_run(struct env *e){
         //4. Update its 'env_runs' counter
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
+        cprintf("0x%08x", curenv->env_pgdir);
         lcr3(PADDR(curenv->env_pgdir));
     }
     #ifdef DEBUG_SPINLOCK

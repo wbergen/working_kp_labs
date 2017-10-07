@@ -32,6 +32,7 @@ extern const char *binaryname;
 extern const volatile struct env *thisenv;
 extern const volatile struct env envs[NENV];
 extern const volatile struct page_info pages[];
+extern const volatile struct tasklet t_list[];
 //extern const volatile int ncpu;
 //extern const volatile int ncpus;
 

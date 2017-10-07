@@ -8,6 +8,8 @@
     .set envs, UENVS
     .globl pages
     .set pages, UPAGES
+    .globl t_list
+    .set t_list, KERNBASE-PGSIZE
     .globl uvpt
     .set uvpt, UVPT
     .globl uvpd
