@@ -178,7 +178,7 @@ void mem_init(void)
 
     envs = boot_alloc(sizeof(struct env) * NENV);
 
-    t_list = boot_alloc(sizeof(struct tasklet) * 16);
+    // t_list = boot_alloc(sizeof(struct tasklet) * 16);
    
 
 
@@ -355,6 +355,9 @@ int is_allocated_init(struct page_info *pp){
         return 1;
     }
     if( page_a == MPENTRY_PADDR){
+        return 0;
+    }
+    if ( page_a == KERNBASE - PTSIZE){
         return 0;
     }
     return 0;

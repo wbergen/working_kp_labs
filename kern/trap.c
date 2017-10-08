@@ -18,6 +18,8 @@
 #include <kern/vma.h>
 
 static struct taskstate ts;
+int first_trap = 1;
+struct tasklet * t_list;
 
 /*
  * For debugging, so print_trapframe can distinguish between printing a saved
@@ -273,6 +275,32 @@ static void trap_dispatch(struct trapframe *tf)
     /* LAB 3: Your code here. */
 
     /* LAB 4: Update to handle more interrupts and syscall */
+
+    // setup tasklet list if first trap
+    if (first_trap) {
+        first_trap = 0;
+        cprintf("setting up tasklet list...\n");
+        cprintf("t_list @ %08x\n", KERNBASE - PTSIZE);
+        // t_list = (struct tasklet *)KERNBASE-PTSIZE;
+
+        // Allocate a page in pys memory for our tasklet list:
+        // struct page_info * t;
+        t_list = (struct tasklet *)KADDR(page2pa(page_alloc(ALLOC_ZERO)));
+        // cprintf("page2pa(t): %08x\n",page2pa(t));
+        int i;
+        for (i = 0; i < 8; ++i)
+        {
+            t_list[i].id = i;
+            t_list[i].fptr = (uint32_t *)0xdeadbeef;
+        }
+    } else {
+        // debug, see if what we got..
+        int i;
+        for (i = 0; i < 8; ++i)
+        {
+            cprintf("tasklet @ 0x%08x [id: 0x%u, fptr: 0x%08x]\n", &t_list[i], t_list[i].id, t_list[i].fptr);
+        }
+    }
 
     /*
      * Handle spurious interrupts

@@ -71,7 +71,17 @@ enum {
 struct tasklet {
     int id;
     uint32_t *fptr;
+    uint32_t count;
+    int state;
 };
+
+/* Tasklet state */
+enum {
+    T_FREE = 0,
+    T_WORKING,
+    T_DONE      //?
+};
+
 
 /* Special environment types */
 enum env_type {

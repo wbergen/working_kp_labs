@@ -141,6 +141,9 @@ void sched_yield(void)
         
     */
 
+    // Need access to the t_list..
+    cprintf("t_list @ 0x%08x\n", t_list);
+
 
     int i, last_idx;
     uint64_t tick = read_tsc();
