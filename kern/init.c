@@ -65,6 +65,9 @@ void i386_init(void)
         cprintf("-----------------------------------[cpu:%d][LOCK][PAGE]\n",cpunum());
     #endif
 
+    ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+
+
 #if defined(TEST)
     /* Don't touch -- used by grading script! */
     ENV_CREATE(TEST, ENV_TYPE_USER);
@@ -84,7 +87,7 @@ void i386_init(void)
 
     // create k envs:
     // test ktask, only making 1
-    ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+    // ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
 
 
     #ifdef DEBUG_SPINLOCK

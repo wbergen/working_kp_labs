@@ -389,8 +389,10 @@ static void trap_dispatch(struct trapframe *tf)
     /* Unexpected trap: The user process or the kernel has a bug. */
     else if (tf->tf_cs == GD_KT) {
         print_trapframe(tf);
+        // lock_env();
+        // sched_yield();
         panic("unhandled trap in kernel");
-        // cprintf("trap form kernel land!\n");
+        cprintf("trap form kernel land!\n");
         // return;
     } else {
         // Make Grade Happy:

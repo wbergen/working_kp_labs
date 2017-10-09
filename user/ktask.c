@@ -31,5 +31,6 @@ void umain(int argc, char **argv)
 
 
     cprintf("ktask printing...\n");
+    sys_yield();
 }
 

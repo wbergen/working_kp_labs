@@ -450,11 +450,11 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
      */
 
     if (e->env_type == ENV_TYPE_KERNEL) {
-        cprintf("ktask setup\n\n\n");
+        cprintf("ktask setup\n");
         e->env_tf.tf_ds = GD_KD;
         e->env_tf.tf_es = GD_KD;
         e->env_tf.tf_ss = GD_KD;
-        e->env_tf.tf_esp = KSTACKTOP;
+        e->env_tf.tf_esp = USTACKTOP;
         e->env_tf.tf_cs = GD_KT;
         // e->env_tf.tf_eflags |= FL_IF;
     } else {
@@ -858,8 +858,8 @@ void env_run(struct env *e){
      *  e->env_tf to sensible values.
      */
 
-    cprintf("[ENV] env_run running [%08x]\n", e->env_id)
-;
+    cprintf("[ENV] env_run called: running [%08x]\n", e->env_id);
+
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){
             cprintf("ENV_RUN: LOCKED CPU:%d\n",cpunum());
@@ -868,13 +868,16 @@ void env_run(struct env *e){
         }
     #endif
     assert_lock_env();
+
     /* LAB 3: Your code here. */
     if(curenv != e){
-        /*
+    
+    /*
      *     1. Set the current environment (if any) back to
      *        ENV_RUNNABLE if it is ENV_RUNNING (think about
      *        what other states it can be in)
      */
+    
         if(curenv != NULL){
             if(curenv->env_status == ENV_RUNNABLE ||
                 curenv->env_status == ENV_FREE ||
@@ -897,8 +900,11 @@ void env_run(struct env *e){
                 unlock_pagealloc();
             }
         }
+
+
         //2. Set 'curenv' to the new environment
         curenv = e;
+
         //3. Set its status to ENV_RUNNING
         curenv->env_status = ENV_RUNNING;
         //4. Update its 'env_runs' counter
