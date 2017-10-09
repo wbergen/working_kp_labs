@@ -31,7 +31,7 @@ typedef int32_t envid_t;
 #define NENV            (1 << LOG2NENV)
 #define ENVX(envid)     ((envid) & (NENV - 1))
 #define NVMA            110        // preallocated vmas why 124? because they fit 
-
+#define NKTHREADS   1
 //Default Time Slice
 #define TS_DEFAULT 100000000
 #define ENV_IDX_MIN 0x1000
@@ -73,6 +73,7 @@ struct tasklet {
     uint32_t *fptr;
     uint32_t count;
     int state;
+    struct tasklet *t_next;
 };
 
 /* Tasklet state */

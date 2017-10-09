@@ -64,8 +64,11 @@ void i386_init(void)
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][LOCK][PAGE]\n",cpunum());
     #endif
-
-    ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+    
+    //create Kernel task threds
+    for (i=0; i < NKTHREADS; i++){
+        ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+    }
 
 
 #if defined(TEST)

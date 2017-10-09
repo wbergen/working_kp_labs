@@ -51,10 +51,14 @@ int runnable_env_lookup(int i){
     // Save current index:
     int last_idx = i - 1;
 
+    if(last_idx == 0){
+        last_idx = NENV - 1;
+    }
+
     for (i; i <= NENV; ++i){
         // If end of list found, set i to beginning:
         if (i == NENV){
-            i = 0;
+            i = NKTHREADS;
         }
         // If runnable, run the new one:
         if (envs[i].env_status == ENV_RUNNABLE){
@@ -81,6 +85,20 @@ int env2id(envid_t id){
         }
     }
     return -1;
+}
+void check_work(){
+
+    struct tasklet * t = t_list;
+    int i;
+
+    if(t_list){
+        for(i = 0; i < NKTHREADS; i++){
+            if (envs[i].env_status == ENV_RUNNABLE){
+                env_run(&envs[i]);
+            }
+        }
+    }
+
 }
 /*
  * Choose a user environment to run and run it.
@@ -142,15 +160,15 @@ void sched_yield(void)
     */
 
     // Need access to the t_list..
-    cprintf("t_list @ 0x%08x\n", t_list);
+    //cprintf("t_list @ 0x%08x\n", t_list);
 
 
     int i, last_idx;
     uint64_t tick = read_tsc();
     int e_run, order;
     assert_lock_env();
+
     // At first call, curenv hasn't been setup
-    //cprintf("[SCHED] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx CPU %d\n", cpunum());
     if (curenv) {
         // Set next:
         order = ROUNDDOWN(curenv->env_id, PGSIZE);
@@ -176,15 +194,20 @@ void sched_yield(void)
     } else {
         // No curenv, set iteratior to 1:
         cprintf("[SCHED] first scheduling, setting env next index to 1.\n");
-        i = 1;
+        i = NKTHREADS;
         //initialize last tick
         last_tick = read_tsc();
     }
+    if(curenv){
+        check_work();
+    }
     //keep the last index
     last_idx = i - 1;
+    if(last_idx == 0){
+        last_idx = NENV - 1;
+    }
     //look for a runnable env
     e_run = runnable_env_lookup(i);
-
     if(e_run >= 0){
         cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id);
         envs[e_run].time_slice = TS_DEFAULT;
@@ -204,7 +227,7 @@ void sched_halt(void)
     assert_lock_env();
     /* For debugging and testing purposes, if there are no runnable
      * environments in the system, then drop into the kernel monitor. */
-    for (i = 0; i < NENV; i++) {
+    for (i = NKTHREADS; i < NENV; i++) {
         if ((envs[i].env_status == ENV_RUNNABLE ||
              envs[i].env_status == ENV_RUNNING ||
              envs[i].env_status == ENV_DYING)){

@@ -18,7 +18,7 @@ static size_t npages_basemem;   /* Amount of base memory (in pages) */
 /* These variables are set in mem_init() */
 pde_t *kern_pgdir;                       /* Kernel's initial page directory */
 struct page_info *pages;                 /* Physical page state array */
-struct tasklet *t_list;
+struct tasklet *t_list, *t_flist;
 static struct page_info *page_free_list; /* Free list of physical pages */
 
 
@@ -344,7 +344,7 @@ This funtion is used only in the first part of the mem_init and will return true
 int is_allocated_init(struct page_info *pp){
     physaddr_t page_a;
     page_a = page2pa(pp);
-
+    //cprintf("[INIT] pa: %x\n",npages_basemem);
     if(page_a < npages_basemem * PGSIZE){
         return 0;
     }
@@ -355,9 +355,6 @@ int is_allocated_init(struct page_info *pp){
         return 1;
     }
     if( page_a == MPENTRY_PADDR){
-        return 0;
-    }
-    if ( page_a == KERNBASE - PTSIZE){
         return 0;
     }
     return 0;
@@ -476,6 +473,21 @@ static void mem_init_mp(void)
     }
 }
 
+/*
+    add a task to the free list
+*/
+void task_add_free(struct tasklet *t){
+        
+        struct tasklet *t_s = t_flist;
+        t->fptr = (uint32_t *)0xdeadbeef;
+        t->state = T_FREE;
+        t->count = 0;
+
+        t_flist = t;
+        t->t_next = t_s;
+
+}
+
 /***************************************************************
  * Tracking of physical pages.
  * The 'pages' array has one 'struct page_info' entry per physical page.
@@ -518,7 +530,31 @@ void page_init(void)
     pages[0].pp_link = NULL;
     pages[0].page_flags = 0;
 
-    for (i = 1; i < npages; i++) {
+    // Page 1 for task list
+    pages[1].pp_ref = 0;
+    pages[1].pp_link = NULL;
+    pages[1].page_flags = 0;  
+
+    cprintf("[INIT] Task list init \n");
+    t_flist = page2kva(&pages[1]);
+    t_list = NULL;
+    int idx;
+    for (idx = 0; idx < NTASKS; ++idx)
+    {
+        t_flist[idx].id = idx;
+        t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
+        t_flist[idx].state = T_FREE;
+        t_flist[idx].count = 0;
+        if(idx == NTASKS - 1){
+            t_flist[idx].t_next = NULL;
+        }else{
+            t_flist[idx].t_next = &t_flist[idx + 1];
+        }
+    }
+
+    cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
+
+    for (i = 2; i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;

@@ -18,8 +18,8 @@
 #include <kern/vma.h>
 
 static struct taskstate ts;
-int first_trap = 1;
-struct tasklet * t_list;
+//int first_trap = 1;
+//struct tasklet * t_list;
 
 /*
  * For debugging, so print_trapframe can distinguish between printing a saved
@@ -277,7 +277,7 @@ static void trap_dispatch(struct trapframe *tf)
     /* LAB 4: Update to handle more interrupts and syscall */
 
     // setup tasklet list if first trap
-    if (first_trap) {
+   /* if (first_trap) {
         first_trap = 0;
         cprintf("setting up tasklet list...\n");
         cprintf("t_list @ %08x\n", KERNBASE - PTSIZE);
@@ -292,8 +292,10 @@ static void trap_dispatch(struct trapframe *tf)
         {
             t_list[i].id = i;
             t_list[i].fptr = (uint32_t *)0xdeadbeef;
+            t_list[i].state = T_FREE;
+            t_list[i].count = 0;
         }
-    }
+    }*/
     // } else {
     //     // debug, see if what we got..
     //     int i;

@@ -3,7 +3,6 @@
 #include <inc/x86.h>
 #include <inc/lib.h>
 
-
 /*
 1. runs in the kernel context
 2. Checks global task list for run ct > 0 on current cpu
@@ -15,16 +14,20 @@
 */
 
 
+
+
 void umain(int argc, char **argv)
 {
     binaryname = "ktask";
 
+    cprintf("%x\n",t_list);
     // // }
     // if(tf->tf_cs == GD_KT){
     //     cprintf("ktask running in kernel mode!");
     // } else {
     //     cprintf("ktask not running kernel mode!");
     // }
+
 
 
 

@@ -9,13 +9,14 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
+#define NTASKS 8
 struct env;
 
 extern char bootstacktop[], bootstack[];
 
 extern struct page_info *pages;
 extern size_t npages;
-
+extern struct tasklet *t_list, *t_flist;
 extern pde_t *kern_pgdir;
 
 /* This macro takes a kernel virtual address -- an address that points above
@@ -82,6 +83,8 @@ void user_mem_assert(struct env *env, const void *va, size_t len, int perm);
     Returns 1 if succes, 0 if failure
 */
 int page_dedup(struct env * e, void * va);
+
+void task_add_free(struct tasklet *t);
 
 static inline physaddr_t page2pa(struct page_info *pp)
 {
