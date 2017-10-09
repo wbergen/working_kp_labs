@@ -90,10 +90,12 @@ void check_work(){
 
     struct tasklet * t = t_list;
     int i;
-
+    cprintf("[SCHED] CHECK WORK\n");
     if(t_list){
+        cprintf("[SCHED] WORK FOUND!\n");
         for(i = 0; i < NKTHREADS; i++){
             if (envs[i].env_status == ENV_RUNNABLE){
+                cprintf("[SCHED] RUNNING KERN THREAD\n");
                 env_run(&envs[i]);
             }
         }
@@ -198,9 +200,11 @@ void sched_yield(void)
         //initialize last tick
         last_tick = read_tsc();
     }
+
     if(curenv){
         check_work();
     }
+    
     //keep the last index
     last_idx = i - 1;
     if(last_idx == 0){

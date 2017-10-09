@@ -14,24 +14,17 @@
 */
 
 
-
-
 void umain(int argc, char **argv)
 {
     binaryname = "ktask";
 
-    cprintf("%x\n",t_list);
+    cprintf("t_list: %x\n",t_list);
     // // }
     // if(tf->tf_cs == GD_KT){
     //     cprintf("ktask running in kernel mode!");
     // } else {
     //     cprintf("ktask not running kernel mode!");
     // }
-
-
-
-
-
 
     cprintf("ktask printing...\n");
     sys_yield();
