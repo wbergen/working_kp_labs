@@ -449,21 +449,22 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
      * (DPL) stored in the descriptors themselves.
      */
 
-    // if (e->env_type == ENV_TYPE_KERNEL) {
-    //     cprintf("ktask setup\n\n\n");
-    //     e->env_tf.tf_ds = GD_UD | 3;
-    //     e->env_tf.tf_es = GD_UD | 3;
-    //     e->env_tf.tf_ss = GD_UD | 3;
-    //     e->env_tf.tf_esp = USTACKTOP;
-    //     e->env_tf.tf_cs = GD_UT | 0x0;
-    // } else {
+    if (e->env_type == ENV_TYPE_KERNEL) {
+        cprintf("ktask setup\n\n\n");
+        e->env_tf.tf_ds = GD_KD;
+        e->env_tf.tf_es = GD_KD;
+        e->env_tf.tf_ss = GD_KD;
+        e->env_tf.tf_esp = KSTACKTOP;
+        e->env_tf.tf_cs = GD_KT;
+        // e->env_tf.tf_eflags |= FL_IF;
+    } else {
         e->env_tf.tf_ds = GD_UD | 3;
         e->env_tf.tf_es = GD_UD | 3;
         e->env_tf.tf_ss = GD_UD | 3;
         e->env_tf.tf_esp = USTACKTOP;
         e->env_tf.tf_cs = GD_UT | 3;
         e->env_tf.tf_eflags |= FL_IF;
-    // }
+    }
     /* You will set e->env_tf.tf_eip later. */
 
         // We need to set the low to bits in the cs, but naievly doing it as above doesn't work
@@ -672,6 +673,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 void env_create(uint8_t *binary, enum env_type type)
 {
     /* LAB 3: Your code here. */
+
     struct env *e;
     int ret = env_alloc(&e,0, type);
 
@@ -681,6 +683,8 @@ void env_create(uint8_t *binary, enum env_type type)
     if(ret == -E_NO_FREE_ENV ){
         panic("env_create: NO FREE ENV\n");
     }
+
+    cprintf("[ENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
 
     load_icode(e,binary);
 
@@ -853,6 +857,9 @@ void env_run(struct env *e){
      *  and make sure you have set the relevant parts of
      *  e->env_tf to sensible values.
      */
+
+    cprintf("[ENV] env_run running [%08x]\n", e->env_id)
+;
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){
             cprintf("ENV_RUN: LOCKED CPU:%d\n",cpunum());
@@ -897,7 +904,7 @@ void env_run(struct env *e){
         //4. Update its 'env_runs' counter
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
-        cprintf("0x%08x", curenv->env_pgdir);
+        cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
         lcr3(PADDR(curenv->env_pgdir));
     }
     #ifdef DEBUG_SPINLOCK

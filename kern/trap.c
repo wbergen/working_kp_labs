@@ -293,14 +293,15 @@ static void trap_dispatch(struct trapframe *tf)
             t_list[i].id = i;
             t_list[i].fptr = (uint32_t *)0xdeadbeef;
         }
-    } else {
-        // debug, see if what we got..
-        int i;
-        for (i = 0; i < 8; ++i)
-        {
-            cprintf("tasklet @ 0x%08x [id: 0x%u, fptr: 0x%08x]\n", &t_list[i], t_list[i].id, t_list[i].fptr);
-        }
     }
+    // } else {
+    //     // debug, see if what we got..
+    //     int i;
+    //     for (i = 0; i < 8; ++i)
+    //     {
+    //         cprintf("tasklet @ 0x%08x [id: 0x%u, fptr: 0x%08x]\n", &t_list[i], t_list[i].id, t_list[i].fptr);
+    //     }
+    // }
 
     /*
      * Handle spurious interrupts
@@ -389,6 +390,8 @@ static void trap_dispatch(struct trapframe *tf)
     else if (tf->tf_cs == GD_KT) {
         print_trapframe(tf);
         panic("unhandled trap in kernel");
+        // cprintf("trap form kernel land!\n");
+        // return;
     } else {
         // Make Grade Happy:
         print_trapframe(tf);
@@ -448,7 +451,7 @@ void trap(struct trapframe *tf)
         /* Trapped from user mode. */
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 6: Your code here. */
-        //if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
+        // if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
 	    if(lock_env_holding() && tf->tf_trapno == IRQ_OFFSET){
 	    	cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum());
 	    }else{
@@ -487,7 +490,7 @@ void trap(struct trapframe *tf)
         	cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
     	#endif
         unlock_env();       
-    }
+    } 
 
     /* Record that tf is the last real trapframe so print_trapframe can print
      * some additional information. */
