@@ -476,15 +476,30 @@ static void mem_init_mp(void)
 /*
     add a task to the free list
 */
-void task_add_free(struct tasklet *t){
+void task_add(struct tasklet *t, struct tasklet **list, int free){
         
-        struct tasklet *t_s = t_flist;
-        t->fptr = (uint32_t *)0xdeadbeef;
-        t->state = T_FREE;
-        t->count = 0;
+        struct tasklet *t_s = *list;
+        if(free){
+            t->fptr = (uint32_t *)0xdeadbeef;
+            t->state = T_FREE;
+            t->count = 0;
+        }
 
-        t_flist = t;
+        *list = t;
         t->t_next = t_s;
+}
+
+/*
+    get a task to the free list
+*/
+struct tasklet * task_get(struct tasklet ** list){
+        
+        struct tasklet *t_s = *list;
+        if(list){
+            *list = t_s->t_next;
+            return t_s;
+        }
+        return NULL;
 
 }
 
@@ -524,7 +539,7 @@ void page_init(void)
      *       in-use. */
 
     size_t i;
-
+    struct tasklet *t;
     // Page 0 not in use, it won't be added to the free list   
     pages[0].pp_ref = 0;
     pages[0].pp_link = NULL;
@@ -550,6 +565,11 @@ void page_init(void)
         }else{
             t_flist[idx].t_next = &t_flist[idx + 1];
         }
+    }
+    t = task_get(&t_flist);
+    if(t){
+        t->state = T_WORK;
+        task_add(t, &t_list, 0);
     }
 
     // make a fake:

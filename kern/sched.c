@@ -62,14 +62,11 @@ int runnable_env_lookup(int i){
         }
         // If runnable, run the new one:
         if (envs[i].env_status == ENV_RUNNABLE){
-            cprintf("[SCHED] found a *NEW* RUNNABLE env. Switching from %08x -> %08x\n", envs[last_idx].env_id, envs[i].env_id);
-
             return i;
         }
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
         if (envs[i].env_id == envs[last_idx].env_id) {
             if (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum()){
-                cprintf("[SCHED] RESCHEDULING *THIS* RUNNABLE env. Switching from %08x -> %08x\n", envs[last_idx].env_id, envs[i].env_id);
                 return i;
             } else {
                 return -1;
@@ -91,21 +88,17 @@ int env2id(envid_t id){
 }
 void check_work(){
 
-    cprintf("check work called\n");
-
     struct tasklet * t = t_list;
     int i;
-
+    cprintf("[SCHED] CHECK WORK\n");
     if(t_list){
+        cprintf("[SCHED] WORK FOUND!\n");
         for(i = 0; i < NKTHREADS; i++){
-            cprintf("env type... %08x\n",envs[i].env_type);
             if (envs[i].env_status == ENV_RUNNABLE){
-                cprintf("should run k...\n");
+                cprintf("[SCHED] RUNNING KERN THREAD\n");
                 env_run(&envs[i]);
             }
         }
-    } else {
-        cprintf("No tlist to look for work in!\n");
     }
 
 }

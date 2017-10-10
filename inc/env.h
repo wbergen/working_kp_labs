@@ -79,7 +79,7 @@ struct tasklet {
 /* Tasklet state */
 enum {
     T_FREE = 0,
-    T_WORKING,
+    T_WORK,
     T_DONE      //?
 };
 
