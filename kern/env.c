@@ -449,12 +449,20 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
      * (DPL) stored in the descriptors themselves.
      */
 
+    /*
+        #define GD_KT     0x08     kernel text
+        #define GD_KD     0x10     kernel data
+        #define GD_UT     0x18     user text
+        #define GD_UD     0x20     user data
+        #define GD_TSS0   0x28     Task segment selector for CPU 0
+    */
+
     if (e->env_type == ENV_TYPE_KERNEL) {
         cprintf("ktask setup\n");
         e->env_tf.tf_ds = GD_KD;
         e->env_tf.tf_es = GD_KD;
         e->env_tf.tf_ss = GD_KD;
-        e->env_tf.tf_esp = USTACKTOP;
+        e->env_tf.tf_esp = KSTACKTOP;
         e->env_tf.tf_cs = GD_KT;
         // e->env_tf.tf_eflags |= FL_IF;
     } else {
@@ -859,6 +867,12 @@ void env_run(struct env *e){
      */
 
     cprintf("[ENV] env_run called: running [%08x]\n", e->env_id);
+    cprintf("[ENV] env_run type: %08x\n", e->env_type);
+    if (e->env_type == ENV_TYPE_KERNEL){
+        cprintf("[ENV] RUNNING KERNEL THREAD\n");
+    } else {
+        cprintf("[ENV] RUNNING USER THREAD\n");
+    }
 
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){

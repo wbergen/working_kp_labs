@@ -374,9 +374,10 @@ static void trap_dispatch(struct trapframe *tf)
     	// send an ack to the interrupt
         lapic_eoi();
         //check if the int comes from the kernel, in this case do nothing
-        if(tf->tf_cs == GD_KT){
-            return;
-        }
+        // if(tf->tf_cs == GD_KT){
+            // cprintf("")
+            // return;
+        // }
 
         cprintf("[KERN] got a timer interrupt!\n");
 
@@ -418,6 +419,8 @@ static void trap_dispatch(struct trapframe *tf)
 
 void trap(struct trapframe *tf)
 {   
+
+    // print_trapframe(tf);
 	#ifdef USE_BIG_KERNEL_LOCK
 	    if(lock_kernel_holding() ){
 	        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());

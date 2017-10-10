@@ -552,6 +552,11 @@ void page_init(void)
         }
     }
 
+    // make a fake:
+    t_flist[0].state = T_WORKING;
+    t_list = &t_flist[0];
+    
+
     cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
 
     for (i = 2; i < npages; i++) {
