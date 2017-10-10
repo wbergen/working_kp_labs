@@ -462,7 +462,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
         e->env_tf.tf_ds = GD_KD;
         e->env_tf.tf_es = GD_KD;
         e->env_tf.tf_ss = GD_KD;
-        e->env_tf.tf_esp = KSTACKTOP;
+        //e->env_tf.tf_esp = KSTACKTOP;
         e->env_tf.tf_cs = GD_KT;
         // e->env_tf.tf_eflags |= FL_IF;
     } else {
@@ -670,7 +670,49 @@ static void load_icode(struct env *e, uint8_t *binary)
     // cprintf("load_icode(): returning...\n");
 
 }
+/*
+    Kernel Thread code
+*/
+void ktask(){
+    
+    struct tasklet * t = t_list;
+    int i;
 
+    while(1){
+        // Get task info
+        while(t){
+            if(t->state == T_WORK){
+                break;
+            }
+            t = t->t_next;
+        }
+        // Call task func
+        cprintf("[%x]KTASK FAKE TASK CALL EXECUTION\n",curenv->env_id);        
+        // Mark task as T_DONW
+        task_add(t, &t_flist, 1);
+        // Call sched
+        lock_env();
+        lock_kernel();
+
+        sched_yield();
+    }
+
+}
+
+static void load_kthread(struct env *e, void (*binary)()){
+
+    //  Allocating a page for the stack
+    struct page_info * pp = page_alloc(ALLOC_ZERO);
+    // set the entry point to the 
+    e->env_tf.tf_eip = (uintptr_t)binary;
+
+    if(pp){
+        e->env_tf.tf_esp = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
+    }else{
+        panic("[INIT] FAILURE ALLOCATING KERNEL THREAD STACK\n");
+    }
+
+}
 /*
  * Allocates a new env with env_alloc, loads the named elf binary into it with
  * load_icode, and sets its env_type.
@@ -696,10 +738,27 @@ void env_create(uint8_t *binary, enum env_type type)
 
     load_icode(e,binary);
 
-    // e->env_type = type;
-
 }
 
+void kenv_create(void (*binary)(), enum env_type type)
+{
+    /* LAB 3: Your code here. */
+
+    struct env *e;
+    int ret = env_alloc(&e,0, type);
+
+    if(ret == -E_NO_MEM ){
+        panic("env_create: OUT OF MEMORY\n");
+    }
+    if(ret == -E_NO_FREE_ENV ){
+        panic("env_create: NO FREE ENV\n");
+    }
+
+    cprintf("[ENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
+
+    load_kthread(e,binary);
+
+}
 /*
  * Frees env e and all memory it uses.
  */
@@ -830,7 +889,8 @@ void env_pop_tf(struct trapframe *tf)
     /* Record the CPU we are running on for user-space debugging */
     curenv->env_cpunum = cpunum();
 
-    __asm __volatile("movl %0,%%esp\n"
+    __asm __volatile(
+        "movl %0,%%esp\n"
         "\tpopal\n"
         "\tpopl %%es\n"
         "\tpopl %%ds\n"
@@ -866,12 +926,12 @@ void env_run(struct env *e){
      *  e->env_tf to sensible values.
      */
 
-    cprintf("[ENV] env_run called: running [%08x]\n", e->env_id);
-    cprintf("[ENV] env_run type: %08x\n", e->env_type);
+    //cprintf("[ENV] env_run type: %08x\n", e->env_type);
+    struct env * old_e = curenv;
     if (e->env_type == ENV_TYPE_KERNEL){
-        cprintf("[ENV] RUNNING KERNEL THREAD\n");
+        cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
     } else {
-        cprintf("[ENV] RUNNING USER THREAD\n");
+        cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
     }
 
     #ifdef USE_BIG_KERNEL_LOCK
@@ -934,6 +994,16 @@ void env_run(struct env *e){
     
     unlock_kernel();
     // Step2
+    /*if(e->env_type == ENV_TYPE_KERNEL || old_e->env_type == ENV_TYPE_KERNEL){
+        cprintf("MOVING FROM KERNEL TO KERNEL. new esp:%x old esp:\n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
+    }*/
+    //if(e->env_tf.tf_cs == GD_KT && old_e->env_tf.tf_cs == GD_KT){ || old_e->env_type == ENV_TYPE_KERNEL
+    /*if(e && e->env_type == ENV_TYPE_KERNEL ){
+        cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
+        //e->env_tf.tf_esp = old_e->env_tf.tf_esp;
+        e->env_tf.tf_eip = (uintptr_t)ktask;
+    }*/
     env_pop_tf(&e->env_tf);
+    
 }
 

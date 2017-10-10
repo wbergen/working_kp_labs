@@ -18,7 +18,19 @@ void umain(int argc, char **argv)
 {
     binaryname = "ktask";
 
-    cprintf("t_list: %x\n",t_list);
+    while(1){
+	    cprintf("t_list: %x\n", t_list);
+	    cprintf("ktask printing...\n");
+    	// Get task info
+
+    	// Call task func
+
+    	// Mark task as T_DONW
+
+    	// Call sched
+	    sys_yield();
+    }
+
     // // }
     // if(tf->tf_cs == GD_KT){
     //     cprintf("ktask running in kernel mode!");
@@ -26,7 +38,8 @@ void umain(int argc, char **argv)
     //     cprintf("ktask not running kernel mode!");
     // }
 
-    cprintf("ktask printing...\n");
-    sys_yield();
+
+
+
 }
 

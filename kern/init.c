@@ -67,7 +67,7 @@ void i386_init(void)
     
     //create Kernel task threds
     for (i=0; i < NKTHREADS; i++){
-        ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
+        kenv_create(ktask, ENV_TYPE_KERNEL);
     }
 
 

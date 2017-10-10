@@ -77,6 +77,8 @@ void *mmio_map_region(physaddr_t pa, size_t size);
 int  user_mem_check(struct env *env, const void *va, size_t len, int perm);
 void user_mem_assert(struct env *env, const void *va, size_t len, int perm);
 
+void task_add(struct tasklet *t, struct tasklet **list, int free);
+struct tasklet * task_get(struct tasklet ** list);
 /*
     This function deduplicate if needed a physical page
 

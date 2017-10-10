@@ -91,14 +91,18 @@ void check_work(){
     struct tasklet * t = t_list;
     int i;
     cprintf("[SCHED] CHECK WORK\n");
-    if(t_list){
-        cprintf("[SCHED] WORK FOUND!\n");
-        for(i = 0; i < NKTHREADS; i++){
-            if (envs[i].env_status == ENV_RUNNABLE){
-                cprintf("[SCHED] RUNNING KERN THREAD\n");
-                env_run(&envs[i]);
+    while(t){
+        if(t->state == T_WORK){
+            cprintf("[SCHED] WORK FOUND!\n");
+            for(i = 0; i < NKTHREADS; i++){
+                if (envs[i].env_status == ENV_RUNNABLE){
+                    cprintf("[SCHED] RUNNING KERN THREAD\n");
+                    env_run(&envs[i]);
+                }
             }
+            break;
         }
+        t = t->t_next;
     }
 
 }

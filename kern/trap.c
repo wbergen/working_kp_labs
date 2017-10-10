@@ -668,7 +668,10 @@ void page_fault_handler(struct trapframe *tf)
             //If  the kernel error is due to a print syscall must be checked
             panic("[KERN ]page_fault_handler(): kernel page fault!\n");
         }
-        alloc_page_after_fault(fault_va, tf);
+        if(!(tf->tf_err & 1)){
+        	alloc_page_after_fault(fault_va, tf);
+     	   return;
+    	}
     }
 
     /* We've already handled kernel-mode exceptions, so if we get here, the page
