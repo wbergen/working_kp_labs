@@ -343,7 +343,6 @@ static void load_icode(struct env *e, uint8_t *binary)
 
     /* LAB 3: Your code here. */
 
-
     /* vmatest binary uses the following */
     /* 1. Map one RO page of VMA for UTEMP at virtual address UTEMP.
      * 2. Map one RW page of VMA for UTEMP+PGSIZE at virtual address UTEMP. */

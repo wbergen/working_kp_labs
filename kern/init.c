@@ -14,6 +14,7 @@
 #include <kern/picirq.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/ide.h>
 
 static void boot_aps(void);
 
@@ -44,6 +45,8 @@ void i386_init(void)
 
     /* Lab 5 multitasking initialization functions */
     pic_init();
+
+    ide_init();
 
     /* Acquire the big kernel lock before waking up APs.
      * LAB 6: Your code here: */
