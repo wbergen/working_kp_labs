@@ -20,6 +20,8 @@
 struct env *envs = NULL;            /* All environments */
 static struct env *env_free_list;   /* Free environment list */
                                     /* (linked by env->env_link) */
+uintptr_t kesp; 
+struct trapframe ktf;
 
 #define ENVGENSHIFT 12      /* >= LOGNENV */
 
@@ -229,6 +231,32 @@ static int env_setup_vm(struct env *e)
 
     return 0;
 }
+
+/*
+    This function copies the trapframe of 1 environments and a tf
+*/
+void kenv_cpy_tf(struct trapframe *tfs, struct trapframe *tf){
+
+    tf->tf_regs.reg_edi = tfs->tf_regs.reg_edi ;
+    tf->tf_regs.reg_esi = tfs->tf_regs.reg_esi ;
+    tf->tf_regs.reg_ebp = tfs->tf_regs.reg_ebp ;
+    tf->tf_regs.reg_oesp = tfs->tf_regs.reg_oesp ;
+    tf->tf_regs.reg_ebx = tfs->tf_regs.reg_ebx ;
+    tf->tf_regs.reg_edx = tfs->tf_regs.reg_edx ;
+    tf->tf_regs.reg_ecx = tfs->tf_regs.reg_ecx ;
+    tf->tf_regs.reg_eax = tfs->tf_regs.reg_eax ;
+
+    tf->tf_es = tfs->tf_es ;
+    tf->tf_ds = tfs->tf_ds ;
+    tf->tf_trapno = tfs->tf_trapno ;
+    tf->tf_err = tfs->tf_err ;
+    tf->tf_eip = tfs->tf_eip ;
+    tf->tf_cs = tfs->tf_cs ;
+    tf->tf_eflags = tfs->tf_eflags ;
+    tf->tf_esp = tfs->tf_esp ;
+    tf->tf_ss = tfs->tf_ss ;
+}
+   
 
 /*
     This function copies the trapframe of 2 environments
@@ -674,11 +702,13 @@ static void load_icode(struct env *e, uint8_t *binary)
     Kernel Thread code
 */
 void ktask(){
-    
+    asm ("movl %%esp, %0;" : "=r" ( kesp ));
+
     struct tasklet * t = t_list;
     int i;
 
     while(1){
+
         // Get task info
         while(t){
             if(t->state == T_WORK){
@@ -707,7 +737,10 @@ static void load_kthread(struct env *e, void (*binary)()){
     e->env_tf.tf_eip = (uintptr_t)binary;
 
     if(pp){
-        e->env_tf.tf_esp = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
+        kesp = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
+        e->env_tf.tf_esp = kesp;
+        kenv_cpy_tf(&e->env_tf,&ktf);
+
     }else{
         panic("[INIT] FAILURE ALLOCATING KERNEL THREAD STACK\n");
     }
@@ -894,7 +927,7 @@ void env_pop_tf(struct trapframe *tf)
         "\tpopal\n"
         "\tpopl %%es\n"
         "\tpopl %%ds\n"
-        "\taddl $0x8,%%esp\n" /* skip tf_trapno and tf_errcode */
+        "\taddl $0x8,%%esp\n" /* skip tf_+trapno and tf_errcode */
         "\tiret"
         : : "g" (tf) : "memory");
     panic("iret failed");  /* mostly to placate the compiler */
@@ -993,16 +1026,12 @@ void env_run(struct env *e){
     unlock_env();
     
     unlock_kernel();
-    // Step2
-    /*if(e->env_type == ENV_TYPE_KERNEL || old_e->env_type == ENV_TYPE_KERNEL){
-        cprintf("MOVING FROM KERNEL TO KERNEL. new esp:%x old esp:\n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
-    }*/
-    //if(e->env_tf.tf_cs == GD_KT && old_e->env_tf.tf_cs == GD_KT){ || old_e->env_type == ENV_TYPE_KERNEL
-    /*if(e && e->env_type == ENV_TYPE_KERNEL ){
+
+    if(old_e && old_e->env_type == ENV_TYPE_KERNEL ){
         cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
-        //e->env_tf.tf_esp = old_e->env_tf.tf_esp;
-        e->env_tf.tf_eip = (uintptr_t)ktask;
-    }*/
+        kenv_cpy_tf(&ktf,&old_e->env_tf);
+    }
+
     env_pop_tf(&e->env_tf);
     
 }
