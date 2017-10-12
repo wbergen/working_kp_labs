@@ -69,7 +69,6 @@ struct pseudodesc gdt_pd = {
     sizeof(gdt) - 1, (unsigned long) gdt
 };
 
-
 /*
  * Converts an envid to an env pointer.
  * If checkperm is set, the specified environment must be either the
@@ -404,7 +403,7 @@ int env_dup(struct env * parent){
  *  -E_NO_FREE_ENV if all NENVS environments are allocated
  *  -E_NO_MEM on memory exhaustion
  */
-int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
+int env_alloc(struct env **newenv_store, envid_t parent_id)
 {
 
     cprintf("env_alloc called!\n");
@@ -475,14 +474,8 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     }
     /* You will set e->env_tf.tf_eip later. */
 
-        // We need to set the low to bits in the cs, but naievly doing it as above doesn't work
-        // also tried with variation of GD_KD etc.
-        // are these changes carried somewhere?
-
     /* Enable interrupts while in user mode.
      * LAB 5: Your code here. */
-    
-    // e->env_tf.tf_eflags |= FL_IF;
 
 
     /* commit the allocation */
@@ -493,7 +486,25 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     return 0;
 }
 
-
+/*
+ * Allocate len bytes of physical memory for environment env, and map it at
+ * virtual address va in the environment's address space.
+ * Does not zero or otherwise initialize the mapped pages in any way.
+ * Pages should be writable by user and kernel.
+ * Panic if any allocation attempt fails.
+ */
+static void region_alloc(struct env *e, void *va, size_t len)
+{
+    /*
+     * LAB 3: Your code here.
+     * (But only if you need it for load_icode.)
+     *
+     * Hint: It is easier to use region_alloc if the caller can pass
+     *   'va' and 'len' values that are not page-aligned.
+     *   You should round va down, and round (va + len) up.
+     *   (Watch out for corner-cases!)
+     */
+}
 
 /*
  * Set up the initial program binary, stack, and processor flags for a user
@@ -825,6 +836,7 @@ void env_free(struct env *e)
     pa = PADDR(&e->env_vmas);
     e->env_vmas = 0;
     page_decref(pa2page(pa));
+
     /* return the environment to the free list */
     e->env_status = ENV_FREE;
     e->env_link = env_free_list;
@@ -889,8 +901,7 @@ void env_pop_tf(struct trapframe *tf)
     /* Record the CPU we are running on for user-space debugging */
     curenv->env_cpunum = cpunum();
 
-    __asm __volatile(
-        "movl %0,%%esp\n"
+    __asm __volatile("movl %0,%%esp\n"
         "\tpopal\n"
         "\tpopl %%es\n"
         "\tpopl %%ds\n"

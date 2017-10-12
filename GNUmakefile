@@ -148,6 +148,8 @@ QEMUOPTS += $(shell if $(QEMU) -nographic -help | grep -q '^-D '; then echo '-D 
 QEMUOPTS += -d cpu_reset -D /dev/stdout
 IMAGES = $(OBJDIR)/kern/kernel.img
 QEMUOPTS += -smp $(CPUS)
+QEMUOPTS += -hdb $(OBJDIR)/kern/swap.img
+IMAGES += $(OBJDIR)/kern/swap.img
 QEMUOPTS += $(QEMUEXTRA)
 
 .gdbrc: .gdbrc.tmpl
