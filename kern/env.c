@@ -431,7 +431,7 @@ int env_dup(struct env * parent){
  *  -E_NO_FREE_ENV if all NENVS environments are allocated
  *  -E_NO_MEM on memory exhaustion
  */
-int env_alloc(struct env **newenv_store, envid_t parent_id)
+int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
 {
 
     cprintf("env_alloc called!\n");
