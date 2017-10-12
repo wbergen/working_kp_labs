@@ -548,14 +548,16 @@ static void region_alloc(void *va, size_t len, int perm)
     {
         // allocate a phy page
         p = page_alloc(0);
+
         //if the page cannot be allocated panic
         if (p){
             //insert the page in the env_pgdir, if fails panic
             if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), perm)){
                 panic("region_alloc(): page_insert failure\n");
             }
+            curenv->env_alloc_pages++;
         } else {
-            panic("region_alloc(): page_alloc failure\n");
+            panic("region_alloc(): page_alloc failure, out of memory\n");
 
         }
     }
@@ -613,8 +615,10 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             struct page_info * demand_page;
             if (vma_el->hps) {
                 demand_page = page_alloc(ALLOC_ZERO | ALLOC_HUGE);
+                if(demand_page) curenv->env_alloc_pages += 1024;
             } else {
                 demand_page = page_alloc(ALLOC_ZERO);
+            	if(demand_page) curenv->env_alloc_pages++;
             }
             if(!demand_page){
                 panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");

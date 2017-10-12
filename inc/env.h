@@ -30,7 +30,7 @@ typedef int32_t envid_t;
 #define LOG2NENV        10
 #define NENV            (1 << LOG2NENV)
 #define ENVX(envid)     ((envid) & (NENV - 1))
-#define NVMA            110        // preallocated vmas why 124? because they fit 
+#define NVMA            105        // preallocated vmas why 124? because they fit 
 #define NKTHREADS   1
 //Default Time Slice
 #define TS_DEFAULT 100000000
@@ -105,6 +105,10 @@ struct env {
     struct vma vmas[NVMA];       /* Array of preallocated VMAs */
     struct vma *free_vma_list;  /* List of free vmas */
     struct vma *alloc_vma_list; /* List of allocated VMAs */
+
+    /* alloc pages Bookeeping   */
+
+    uint32_t env_alloc_pages;
     /* Address space */
     pde_t *env_pgdir;           /* Kernel virtual address of page dir */
     struct vma *env_vmas;       /* Virtual memory areas of this env. */

@@ -21,6 +21,8 @@ struct page_info *pages;                 /* Physical page state array */
 struct tasklet *t_list, *t_flist;
 static struct page_info *page_free_list; /* Free list of physical pages */
 
+uint32_t free_pages_count = 0;
+
 
 /***************************************************************
  * Detect machine's physical memory setup.
@@ -374,6 +376,10 @@ struct page_info * remove_head_pfl(){
     if(pp->pp_ref != 0){
         panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
     }
+
+    assert(free_pages_count > 0);
+    free_pages_count--;
+    
     return pp;
 }
 
@@ -389,12 +395,20 @@ void remove_element_pfl(struct page_info * pp){
     if(page_free_list == pp){
         page_free_list = pp->pp_link;
         pp->pp_link = NULL;
+
+        assert(free_pages_count > 0);
+        free_pages_count --;
+
         return; 
     }
     while(pp_c){
         if(pp_c == pp){
             pp_old->pp_link = pp_c->pp_link;
             pp->pp_link = NULL;
+            
+            assert(free_pages_count > 0);
+            free_pages_count --;
+
             return;
         }
         pp_old = pp_c;
@@ -420,6 +434,10 @@ struct page_info * remove_element_4MB_pfl(){
         if(page2pa(pp) < 0x400000){
             pp_old->pp_link = pp->pp_link;
             pp->pp_link = NULL;
+
+            assert(free_pages_count > 0);
+            free_pages_count--;
+
             return pp;
         }
         pp_old = pp;
@@ -436,6 +454,8 @@ void add_head_pfl(struct page_info * pp){
 
     pp->pp_link = page_free_list;
     page_free_list = pp;
+
+    free_pages_count++;
 
 }
 

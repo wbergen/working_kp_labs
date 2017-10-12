@@ -285,6 +285,13 @@ void vma_remove_pages(struct env *e, void * va, size_t size){
         // Only remove PTE_P pages:
         if (*pte & PTE_P) {
             page_remove(e->env_pgdir, va+i*PGSIZE);
+            if(*pte & PTE_PS){
+                e->env_alloc_pages -= 1024;
+                assert(e->env_alloc_pages > 0);
+            }else{
+                e->env_alloc_pages--;
+                assert(e->env_alloc_pages > 0);
+            }
         }
     }
 }
@@ -482,8 +489,10 @@ int vma_populate(void * va, size_t size, int perm, int hp){
     {
         if (hp){
             struct page_info * populate_page = page_alloc(ALLOC_HUGE);
+            curenv->env_alloc_pages+= 1024;
         } else {
             struct page_info * populate_page = page_alloc(0);
+            curenv->env_alloc_pages++;
         }
 
         if(!populate_page){

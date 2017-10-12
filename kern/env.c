@@ -139,7 +139,7 @@ void env_init(void)
     for (i = NENV; i >= 0; i--) {
 
         envs[i].env_id = 0;
-
+        envs[i].env_alloc_pages = 0;
         //Initialize the env vmas
         vma_proc_init(&envs[i]);
         envs[i].wait_id = -1;
@@ -388,6 +388,8 @@ int env_dup(struct env * parent){
         cprintf("[KERN]env_dup(): Impossible to allocate a new env\n");
         return 0;
     }
+    child->env_alloc_pages = parent->env_alloc_pages;
+    
     cprintf("[KERN] env_dup(): env allocated\n");
 
     cprintf("[KERN] env_dup(): eax modified\n");
@@ -857,6 +859,7 @@ void env_free(struct env *e)
 
     /*  reinizialize the vma    */
     vma_proc_init(e);
+    e->env_alloc_pages = 0;
 
     /* Free the page directory */
     pa = PADDR(e->env_pgdir);
