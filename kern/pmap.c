@@ -532,7 +532,7 @@ void lru_insert_head(struct page_info * pp, struct page_info **head, struct page
         return;
     }
 
-    if(*head){
+    if(!*head){
         *tail = pp;
     }
 
@@ -547,9 +547,7 @@ void lru_ha_insert(struct page_info * pp){
 void lru_hi_insert(struct page_info * pp){
     lru_insert_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
 }
-void lru_hz_insert(struct page_info * pp){
-    lru_insert_head(pp, &lru_lists.h_zswap, &lru_lists.t_zswap);
-}
+
 
 /*  Insert an element in the tail of a lru list  */
 
@@ -573,8 +571,111 @@ void lru_ta_insert(struct page_info * pp){
 void lru_ti_insert(struct page_info * pp){
     lru_insert_tail(pp, &lru_lists.t_inactive);
 }
-void lru_tz_insert(struct page_info * pp){
-    lru_insert_tail(pp, &lru_lists.t_zswap);
+
+
+/*  remove an element in the head of a lru list  */
+void lru_remove_head(struct page_info **pp, struct page_info **head, struct page_info **tail){
+
+    struct page_info * p;
+    if(!head || !tail){
+        return;
+    }
+
+    if(*head == *tail){
+        *tail = NULL;
+    }
+
+    p = *head;
+    *head = (*head)->lru_link;
+
+    if(pp){
+        *pp = p;
+    }
+
+}
+/*  Specific lists - head remove- wrappers */
+void lru_ha_remove(struct page_info **pp){
+    lru_remove_head(pp, &lru_lists.h_active, &lru_lists.t_active);
+}
+void lru_hi_remove(struct page_info **pp){
+    lru_remove_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
+}
+
+
+/*  remove an element in the tail of a lru list  */
+
+void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page_info **tail){
+
+    struct page_info * p;
+    if(!head || !tail){
+        return;
+    }
+
+    if(*head == *tail){
+        *head = NULL;
+    }
+
+    p = *tail;
+
+    if(pp){
+        *pp = p;
+    }
+
+    //find the new tail
+    p = *head;
+    while(p){
+        if(!p->lru_link){
+            break;
+        }
+        p = p->lru_link;
+    }
+    *tail = p;
+
+}
+/*  Specific lists - tail remove - wrappers */
+void lru_ta_remove(struct page_info ** pp){
+    lru_remove_tail(pp, &lru_lists.h_active, &lru_lists.t_active);
+}
+void lru_ti_remove(struct page_info ** pp){
+    lru_remove_tail(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
+}
+
+int lru_remove_el(struct page_info *pp, struct page_info **head, struct page_info **tail){
+    
+    struct page_info * p;
+    if(!pp || !head || !tail){
+        return 0;
+    }
+
+    p = *head;
+    while(p){
+        if(p == pp){
+            break;
+        }
+        p = p->lru_link;
+    }
+
+    if(p){
+        return 1;        
+    }else{
+        return 0;
+    }
+
+}
+int lru_remove_el_list(struct page_info *pp){
+
+    if(!pp){
+        return 0;
+    }
+
+    if(lru_remove_el(pp, &lru_lists.h_active, &lru_lists.t_active)){
+        return 1;
+    }
+    if(lru_remove_el(pp, &lru_lists.h_inactive, &lru_lists.t_inactive)){
+        return 1;
+    }
+
+    return 0;
 }
 /***************************************************************
  * Tracking of physical pages.
@@ -1255,7 +1356,8 @@ void page_remove(pde_t *pgdir, void *va)
 
     // iI ref count is 0 free the page
     if(pp->pp_ref == 0){
-        cprintf("[PMAP] freeing page %08x\n",va);
+        if(lru_remove_el_list(pp))  cprintf("page removed from lru\n");
+        cprintf("free page %08x\n",va);
         page_free(pp);
     }
 

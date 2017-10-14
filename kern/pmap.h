@@ -35,6 +35,23 @@ struct lru {
 };
 
 extern struct lru lru_lists;
+/* LRU lists functions */
+
+
+/*  Specific lists - tail insert- wrappers */
+void lru_ta_insert(struct page_info * pp);
+void lru_ti_insert(struct page_info * pp);
+
+void lru_ha_insert(struct page_info * pp);
+void lru_hi_insert(struct page_info * pp);
+
+void lru_ta_remove(struct page_info ** pp);
+void lru_ti_remove(struct page_info ** pp);
+
+void lru_ha_remove(struct page_info ** pp);
+void lru_hi_remove(struct page_info ** pp);
+
+int lru_remove_el_list(struct page_info *pp);
 
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
