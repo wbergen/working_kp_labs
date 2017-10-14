@@ -21,8 +21,11 @@ struct page_info *pages;                 /* Physical page state array */
 struct tasklet *t_list, *t_flist;
 static struct page_info *page_free_list; /* Free list of physical pages */
 
+/* Total number of free pages   */
 uint32_t free_pages_count = 0;
 
+/* LRU lists */
+struct lru lru_lists;
 
 /***************************************************************
  * Detect machine's physical memory setup.
@@ -522,7 +525,57 @@ struct tasklet * task_get(struct tasklet ** list){
         return NULL;
 
 }
+/*  Insert an element in the head of a lru list, set the tail if the list is empty  */
+void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
+    if(!pp || !head || !tail){
+        return;
+    }
+
+    if(*head){
+        *tail = pp;
+    }
+
+    pp->lru_link = *head;
+    *head = pp;
+
+}
+/*  Specific lists - head insert- wrappers */
+void lru_ha_insert(struct page_info * pp){
+    lru_insert_head(pp, &lru_lists.h_active, &lru_lists.t_active);
+}
+void lru_hi_insert(struct page_info * pp){
+    lru_insert_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
+}
+void lru_hz_insert(struct page_info * pp){
+    lru_insert_head(pp, &lru_lists.h_zswap, &lru_lists.t_zswap);
+}
+
+/*  Insert an element in the tail of a lru list  */
+
+void lru_insert_tail(struct page_info * pp, struct page_info **tail){
+
+    if(!pp || !tail){
+        return;
+    }
+    assert((**tail).lru_link == NULL);
+
+    (**tail).lru_link = pp;
+    *tail = pp;
+
+    pp->lru_link = NULL;
+
+}
+/*  Specific lists - tail insert- wrappers */
+void lru_ta_insert(struct page_info * pp){
+    lru_insert_tail(pp, &lru_lists.t_active);
+}
+void lru_ti_insert(struct page_info * pp){
+    lru_insert_tail(pp, &lru_lists.t_inactive);
+}
+void lru_tz_insert(struct page_info * pp){
+    lru_insert_tail(pp, &lru_lists.t_zswap);
+}
 /***************************************************************
  * Tracking of physical pages.
  * The 'pages' array has one 'struct page_info' entry per physical page.
@@ -592,9 +645,24 @@ void page_init(void)
         task_add(t, &t_list, 0);
     }
 
+    /* Initializwe zswap cache  */
+    lru_lists.h_active = NULL;
+    lru_lists.t_active = NULL;
+    lru_lists.h_inactive = NULL;
+    lru_lists.t_inactive = NULL;
+    lru_lists.h_zswap = NULL;
+    lru_lists.t_zswap = NULL;
+    for(i = 2; i < (2 + CPR_LRU_SZ); i++){
+        if(i == 2){
+            lru_lists.t_zswap = &pages[i];
+        }
+        pages[i].lru_link = lru_lists.h_zswap;
+        lru_lists.h_zswap = &pages[i];
+    }
+
     cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
 
-    for (i = 2; i < npages; i++) {
+    for (i = (2 + CPR_LRU_SZ); i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;

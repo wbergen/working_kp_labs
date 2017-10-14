@@ -10,6 +10,7 @@
 #include <inc/assert.h>
 
 #define NTASKS 8
+#define CPR_LRU_SZ 0
 struct env;
 
 extern char bootstacktop[], bootstack[];
@@ -19,8 +20,21 @@ extern size_t npages;
 extern struct tasklet *t_list, *t_flist;
 extern pde_t *kern_pgdir;
 
-
 extern uint32_t free_pages_count;
+
+struct lru {
+    struct page_info * h_active;
+    struct page_info * t_active;
+
+    struct page_info * h_inactive;
+    struct page_info * t_inactive;
+
+    struct page_info * h_zswap; 
+    struct page_info * t_zswap; 
+
+};
+
+extern struct lru lru_lists;
 
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
