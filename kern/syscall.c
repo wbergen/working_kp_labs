@@ -303,6 +303,7 @@ static void sys_yield(void)
     //if the a process invoke sys yield tamper it's time slice to schedule another process
     //lock_env();
     invalidate_env_ts(curenv);
+    lock_env();
     sched_yield();
 }
 

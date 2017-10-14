@@ -621,7 +621,18 @@ void page_init(void)
     // Page 1 for task list
     pages[1].pp_ref = 0;
     pages[1].pp_link = NULL;
-    pages[1].page_flags = 0;  
+    pages[1].page_flags = 0;
+
+    // Page 2/3/4 for read write tests:
+    int z;
+    for (z = 2; z < 5; ++z)
+    {
+        cprintf("creating rw test page @pages[%x]\n", z);
+        pages[z].pp_ref = 0;
+        pages[z].pp_link = NULL;
+        pages[z].page_flags = 0;
+        /* code */
+    }
 
     cprintf("[INIT] Task list init \n");
     t_flist = page2kva(&pages[1]);
@@ -652,8 +663,8 @@ void page_init(void)
     lru_lists.t_inactive = NULL;
     lru_lists.h_zswap = NULL;
     lru_lists.t_zswap = NULL;
-    for(i = 2; i < (2 + CPR_LRU_SZ); i++){
-        if(i == 2){
+    for(i = 5; i < (5 + CPR_LRU_SZ); i++){
+        if(i == 5){
             lru_lists.t_zswap = &pages[i];
         }
         pages[i].lru_link = lru_lists.h_zswap;
@@ -662,7 +673,7 @@ void page_init(void)
 
     cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
 
-    for (i = (2 + CPR_LRU_SZ); i < npages; i++) {
+    for (i = (5 + CPR_LRU_SZ); i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;
@@ -1244,7 +1255,7 @@ void page_remove(pde_t *pgdir, void *va)
 
     // iI ref count is 0 free the page
     if(pp->pp_ref == 0){
-        cprintf("free page %08x\n",va);
+        cprintf("[PMAP] freeing page %08x\n",va);
         page_free(pp);
     }
 
