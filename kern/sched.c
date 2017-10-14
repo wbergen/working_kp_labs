@@ -104,6 +104,8 @@ void check_work(){
             if (SCHED_DEBUG)
                 cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
+                if (SCHED_DEBUG)
+                    cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
                 if (envs[i].env_status == ENV_RUNNABLE){
                     if (SCHED_DEBUG)
                         cprintf("[SCHED] RUNNING KERN THREAD\n");
@@ -146,15 +148,15 @@ void sched_yield(void)
      */
 
     // DEBUG:
-    // int j = 0;
-    // cprintf("\nENVS:\n");
-    // for (j; j < NENV; ++j)
-    // {
-    //     if (envs[j].env_status != ENV_FREE){
-    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].env_ts);
-    //     }
-    // }
-    // cprintf("\n");
+    int j = 0;
+    cprintf("\nENVS:\n");
+    for (j; j < NENV; ++j)
+    {
+        if (envs[j].env_status != ENV_FREE){
+            cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].time_slice);
+        }
+    }
+    cprintf("\n");
 
     /*
         need simple concept of cpu affinity
@@ -218,9 +220,9 @@ void sched_yield(void)
         last_tick = read_tsc();
     }
     if(curenv){
-        cprintf("asdf\n");
         check_work();
     }
+
     //keep the last index
     last_idx = i - 1;
     if(last_idx == 0){

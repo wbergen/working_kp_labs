@@ -10,6 +10,10 @@
 #include <kern/kclock.h>
 #include <kern/env.h>
 #include <kern/spinlock.h>
+
+// Here so that i can create a tasklet with pointers to the funcs in this file
+// This won't be needed later when tasklet gets set dynamically, ie. at PF
+#include <kern/mm_pres.h>
 /* These variables are set by i386_detect_memory() */
 size_t npages;                  /* Amount of physical memory (in pages) */
 size_t PREMAPPED_FLAG;
@@ -754,7 +758,13 @@ void page_init(void)
     t = task_get(&t_flist);
     if(t){
         t->state = T_WORK;
+
+        // Setup Function Pointer:
+        void (*page_out_ptr)(struct page_info * , struct tasklet *);
+        page_out_ptr = &page_out;
+        t->fptr = (uint32_t *)page_out_ptr;
         task_add(t, &t_list, 0);
+        cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
     }
 
     /* Initializwe zswap cache  */

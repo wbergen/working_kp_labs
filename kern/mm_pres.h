@@ -9,11 +9,11 @@ int oom_kill(struct env *e);
 /*
 	This function swap in a page from the disk
 */
-void page_out(struct page_info* pg_out);
+// void page_out(struct page_info* pg_out);
 /*
 	This function swaps out a page from the disk
 */
-void page_out();
+void page_out(struct page_info* pg_out, struct tasklet* t);
 /*
 	This function manage the active and inactive LRU lists 
 */

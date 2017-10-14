@@ -14,7 +14,9 @@
 #include <kern/sched.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/ide.h>
 
+#include <kern/mm_pres.h>
 #include <kern/vma.h>
 
 struct env *envs = NULL;            /* All environments */
@@ -711,6 +713,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // cprintf("load_icode(): returning...\n");
 
 }
+
 /*
     Kernel Thread code
 */
@@ -730,26 +733,44 @@ void ktask(){
             t = t->t_next;
         }
 
-        // if something (eventually if !disk_ready())
-        // increment t's count
-        // yield
+        cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
-        // test will inc to 6, where 6 == done:
-        if (t->count < 6)
-        {
-            ++t->count;   
-        } else {
-            task_add(t, &t_flist, 1);
-        }
 
-        // Call task func
-        cprintf("[%x] KTASK FAKE TASK CALL EXECUTION \n",curenv->env_id);        
-        // Mark task as T_DONW
-        task_add(t, &t_flist, 1);
-        // Call sched
+        /* Needs to be moved into a function pointed to by the tasklet! */
+        /* Non-Blocking Write */
+        // int nsectors = PGSIZE/SECTSIZE;
+        // char buf[PGSIZE];
+
+
+        /* How the fuck ... do you do this?! */
+        struct page_info * tmp;
+        // (*t->fptr)(tmp, t);
+        // t->fptr(tmp, t);
+
+
+        // // First invocation:
+        // if (t->count == 0){
+        //     ide_start_write(1, nsectors);
+        // }
+
+        // // If the disk is ready, call another write:
+        // if (t->count < nsectors){
+        //     if (ide_is_ready()){
+        //         cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
+        //         ide_write_sector(buf + t->count * SECTSIZE);
+        //         ++t->count;
+        //     } else {
+        //         cprintf("[KTASK] Disk Not ready, yielding...\n");
+        //     }
+        // } else {
+        //     // Done, can dequeue tasklet
+        //     cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        //     task_add(t, &t_flist, 1);
+        // }
+
         lock_env();
         lock_kernel();
-
+        // curenv->env_status = ENV_RUNNABLE;
         sched_yield();
     }
 
@@ -988,11 +1009,12 @@ void env_run(struct env *e){
 
     //cprintf("[ENV] env_run type: %08x\n", e->env_type);
     struct env * old_e = curenv;
-    // if (e->env_type == ENV_TYPE_KERNEL){
-        // cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
-    // } else {
-        // cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
-    // }
+    if (e->env_type == ENV_TYPE_KERNEL){
+        cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
+        cprintf("\t curenv: %08x\n", curenv);
+    } else {
+        cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
+    }
 
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){
@@ -1020,6 +1042,8 @@ void env_run(struct env *e){
             }
             if(curenv->env_status == ENV_RUNNING){
                 curenv->env_status = ENV_RUNNABLE;
+                cprintf("should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status);
+
             }
             //if the current env it's dying free it.
             if(curenv->env_status == ENV_DYING){
@@ -1057,6 +1081,7 @@ void env_run(struct env *e){
     if(old_e && old_e->env_type == ENV_TYPE_KERNEL ){
         // cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
         kenv_cpy_tf(&ktf,&old_e->env_tf);
+
     }
 
     env_pop_tf(&e->env_tf);

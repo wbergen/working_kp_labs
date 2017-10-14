@@ -83,7 +83,7 @@ void page_in(struct page_info *pg_in){
 /*
 	This function swaps out a page from the disk
 */
-void page_out(struct page_info* pg_out){
+void page_out(struct page_info* pg_out, struct tasklet* t){
 
 	/* Code me */
 	/*
@@ -92,7 +92,32 @@ void page_out(struct page_info* pg_out){
 		
 		COW pages? 
 	*/
-	return;
+
+        int nsectors = PGSIZE/SECTSIZE;
+        char buf[PGSIZE]; // get page backing pg_out
+
+        // First invocation:
+        if (t->count == 0){
+            ide_start_write(1, nsectors);
+        }
+
+        // If the disk is ready, call another write:
+        if (t->count < nsectors){
+            if (ide_is_ready()){
+                cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
+                ide_write_sector(buf + t->count * SECTSIZE);
+                ++t->count;
+            } else {
+                cprintf("[KTASK] Disk Not ready, yielding...\n");
+            }
+        } else {
+            // Done, can dequeue tasklet
+            cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+            task_add(t, &t_flist, 1);
+        }
+
+
+	// return 0;
 }
 /*
 	This function manage the active and inactive LRU lists
