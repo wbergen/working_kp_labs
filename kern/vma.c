@@ -471,12 +471,7 @@ struct vma * vma_split_lookup(struct env *e, void *va, size_t size, int vma_remo
 
 int vma_populate(void * va, size_t size, int perm, int hp){
 
-    struct page_info * populate_page = page_alloc(0);
-
-    if(!populate_page){
-        cprintf("[KERN]vma_populate(): out of memory\n");
-    }
-    page_free(populate_page);
+    struct page_info * populate_page = NULL;
     int hp_factor;
     if (hp){
         hp_factor = 1024;
@@ -489,10 +484,21 @@ int vma_populate(void * va, size_t size, int perm, int hp){
     {
         if (hp){
             struct page_info * populate_page = page_alloc(ALLOC_HUGE);
-            curenv->env_alloc_pages+= 1024;
+            if(populate_page){
+                curenv->env_alloc_pages+= 1024;
+            }else{
+                cprintf("[KERN]vma_populate(): HUGE out of memory\n");
+                return 0;
+            }
         } else {
             struct page_info * populate_page = page_alloc(0);
-            curenv->env_alloc_pages++;
+            if(populate_page){
+                lru_ha_insert(populate_page);
+                curenv->env_alloc_pages++;
+            }else{
+                cprintf("[KERN]vma_populate(): out of memory\n");
+                return 0;                
+            }
         }
 
         if(!populate_page){

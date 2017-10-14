@@ -555,7 +555,11 @@ static void region_alloc(void *va, size_t len, int perm)
             if(page_insert(e->env_pgdir, p, (va_ptr + (i*PGSIZE)), perm)){
                 panic("region_alloc(): page_insert failure\n");
             }
+
+            // Insert the page to the lru and increase the alloc pages
+            lru_ha_insert(p);
             curenv->env_alloc_pages++;
+        
         } else {
             panic("region_alloc(): page_alloc failure, out of memory\n");
 
@@ -618,7 +622,12 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                 if(demand_page) curenv->env_alloc_pages += 1024;
             } else {
                 demand_page = page_alloc(ALLOC_ZERO);
-            	if(demand_page) curenv->env_alloc_pages++;
+            	if(demand_page){
+                	// Insert the page to the lru and increase the alloc pages
+            		lru_ha_insert(demand_page);
+            		curenv->env_alloc_pages++;
+            	} 
+
             }
             if(!demand_page){
                 panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
