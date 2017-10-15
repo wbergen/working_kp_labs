@@ -136,8 +136,19 @@ void lru_manager(){
 			how to set them?
 			SC bit set the first time we try to replace a page (MAYBE NOT)
 			READ bit.... set by the MMU?
-
 	*/
+	// if the active list is 
+	if(lru_active_count >= MIN_ALRU_SZ){
+
+		struct page_info * p;
+		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/MIN_ALRU_SZ)){
+			/*	if p access bit  0	*/
+			/*	move the element to the iactive list*/
+			lru_ta_remove(&p);
+			lru_ti_insert(p);
+		}
+
+	}
 	return;
 }
 /*

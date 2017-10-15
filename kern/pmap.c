@@ -26,7 +26,8 @@ uint32_t free_pages_count = 0;
 
 /* LRU lists */
 struct lru lru_lists;
-
+uint32_t lru_active_count = 0; 
+uint32_t lru_inactive_count = 0;
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/
@@ -525,6 +526,7 @@ struct tasklet * task_get(struct tasklet ** list){
         return NULL;
 
 }
+
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
@@ -543,9 +545,11 @@ void lru_insert_head(struct page_info * pp, struct page_info **head, struct page
 /*  Specific lists - head insert- wrappers */
 void lru_ha_insert(struct page_info * pp){
     lru_insert_head(pp, &lru_lists.h_active, &lru_lists.t_active);
+    lru_active_count++;
 }
 void lru_hi_insert(struct page_info * pp){
     lru_insert_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
+    lru_inactive_count++;
 }
 
 
@@ -556,7 +560,14 @@ void lru_insert_tail(struct page_info * pp, struct page_info **tail){
     if(!pp || !tail){
         return;
     }
+    if(!*tail){
+        *head = *tail = pp;
+        pp->lru_link = NULL;
+        return;        
+    }
+    
     assert((**tail).lru_link == NULL);
+
 
     (**tail).lru_link = pp;
     *tail = pp;
@@ -567,9 +578,11 @@ void lru_insert_tail(struct page_info * pp, struct page_info **tail){
 /*  Specific lists - tail insert- wrappers */
 void lru_ta_insert(struct page_info * pp){
     lru_insert_tail(pp, &lru_lists.t_active);
+    lru_active_count++;
 }
 void lru_ti_insert(struct page_info * pp){
     lru_insert_tail(pp, &lru_lists.t_inactive);
+    lru_inactive_count++;
 }
 
 
@@ -596,9 +609,11 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
 /*  Specific lists - head remove- wrappers */
 void lru_ha_remove(struct page_info **pp){
     lru_remove_head(pp, &lru_lists.h_active, &lru_lists.t_active);
+    lru_active_count--;
 }
 void lru_hi_remove(struct page_info **pp){
     lru_remove_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
+    lru_inactive_count--;
 }
 
 
@@ -634,9 +649,11 @@ void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page
 }
 /*  Specific lists - tail remove - wrappers */
 void lru_ta_remove(struct page_info ** pp){
+    lru_active_count--;
     lru_remove_tail(pp, &lru_lists.h_active, &lru_lists.t_active);
 }
 void lru_ti_remove(struct page_info ** pp){
+    lru_inactive_count--;
     lru_remove_tail(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
 }
 
@@ -669,9 +686,11 @@ int lru_remove_el_list(struct page_info *pp){
     }
 
     if(lru_remove_el(pp, &lru_lists.h_active, &lru_lists.t_active)){
+        lru_active_count--;
         return 1;
     }
     if(lru_remove_el(pp, &lru_lists.h_inactive, &lru_lists.t_inactive)){
+        lru_inactive_count--;
         return 1;
     }
 

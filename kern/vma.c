@@ -493,6 +493,7 @@ int vma_populate(void * va, size_t size, int perm, int hp){
         } else {
             struct page_info * populate_page = page_alloc(0);
             if(populate_page){
+                cprintf("Inserting new page in lru\n");
                 lru_ha_insert(populate_page);
                 curenv->env_alloc_pages++;
             }else{

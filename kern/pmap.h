@@ -35,6 +35,9 @@ struct lru {
 };
 
 extern struct lru lru_lists;
+extern uint32_t lru_active_count;
+extern uint32_t lru_inactive_count;
+
 /* LRU lists functions */
 
 
