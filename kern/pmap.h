@@ -9,6 +9,7 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
+#define RESPGS 2 
 #define NTASKS 8
 #define CPR_LRU_SZ 0
 struct env;

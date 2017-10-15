@@ -14,7 +14,7 @@
 #include <kern/spinlock.h>
 
 #include <kern/vma.h>
-
+#include <kern/mm_pres.h>
 int bad[NENV];
 
 /*
@@ -67,7 +67,7 @@ int oom_kill(struct env *e, int pgs_r){
 /*
 	This function swap in a page from the disk
 */
-void page_in(struct page_info *pg_in){
+int page_in(struct page_info *pg_in){
 
 	/* Code me */
 
@@ -78,13 +78,13 @@ void page_in(struct page_info *pg_in){
 
 		COW pages?
 	*/
-	return;
+	return 1;
 }
 /*
 	This function swaps out a page from the disk
 */
 // void page_out(struct page_info* pg_out, struct tasklet* t){
-void page_out(){
+int page_out(){
 
 	/* Code me */
 	/*
@@ -119,7 +119,7 @@ void page_out(){
         //     task_add(t, &t_flist, 1);
         // }
 
-	// return;
+	 return 1;
 }
 /*
 	This function manage the active and inactive LRU lists
@@ -131,7 +131,7 @@ void page_out(){
 	};
 	lru_lists is the structure tu use
 */
-void lru_manager(){
+int lru_manager(){
 
 	/* Code me */
 
@@ -176,7 +176,7 @@ void lru_manager(){
 		}
 
 	}
-	return;
+	return 1;
 }
 /*
 	This function tries to reclaim a n amount of pages

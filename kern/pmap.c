@@ -559,7 +559,7 @@ void lru_hi_insert(struct page_info * pp){
 
 /*  Insert an element in the tail of a lru list  */
 
-void lru_insert_tail(struct page_info * pp, struct page_info **tail){
+void lru_insert_tail(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
     if(!pp || !tail){
         return;
@@ -581,11 +581,11 @@ void lru_insert_tail(struct page_info * pp, struct page_info **tail){
 }
 /*  Specific lists - tail insert- wrappers */
 void lru_ta_insert(struct page_info * pp){
-    lru_insert_tail(pp, &lru_lists.t_active);
+    lru_insert_tail(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
     lru_active_count++;
 }
 void lru_ti_insert(struct page_info * pp){
-    lru_insert_tail(pp, &lru_lists.t_inactive);
+    lru_insert_tail(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
     lru_inactive_count++;
 }
 
@@ -706,6 +706,60 @@ int lru_remove_el_list(struct page_info *pp){
  * Pages are reference counted, and free pages are kept on a linked list.
  ***************************************************************/
 
+void task_init(struct page_info * pp){
+
+    struct tasklet *t;
+
+    cprintf("[INIT] Task list init \n");
+    t_flist = page2kva(pp);
+    t_list = NULL;
+
+    int idx;
+    for (idx = 0; idx < NTASKS; ++idx)
+    {
+        t_flist[idx].id = idx;
+        t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
+        t_flist[idx].state = T_FREE;
+        t_flist[idx].count = 0;
+        if(idx == NTASKS - 1){
+            t_flist[idx].t_next = NULL;
+        }else{
+            t_flist[idx].t_next = &t_flist[idx + 1];
+        }
+    }
+    t = task_get(&t_flist);
+    if(t){
+        t->state = T_WORK;
+
+        // Setup Function Pointer:
+        t->fptr=(uint32_t *)page_out;
+        
+        task_add(t, &t_list, 0);
+        cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
+    }
+    cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
+}
+
+void lru_init(){
+
+    int i;
+
+    /* Initializwe zswap cache  */
+    lru_lists.h_active = NULL;
+    lru_lists.t_active = NULL;
+    lru_lists.h_inactive = NULL;
+    lru_lists.t_inactive = NULL;
+    lru_lists.h_zswap = NULL;
+    lru_lists.t_zswap = NULL;
+    for(i = RESPGS; i < (RESPGS + CPR_LRU_SZ); i++){
+        if(i == RESPGS){
+            lru_lists.t_zswap = &pages[i];
+        }
+        pages[i].lru_link = lru_lists.h_zswap;
+        lru_lists.h_zswap = &pages[i];
+    }
+
+}
 /*
  * Initialize page structure and memory free list.
  * After this is done, NEVER use boot_alloc again.  ONLY use the page
@@ -736,7 +790,7 @@ void page_init(void)
      *       in-use. */
 
     size_t i;
-    struct tasklet *t;
+
     // Page 0 not in use, it won't be added to the free list   
     pages[0].pp_ref = 0;
     pages[0].pp_link = NULL;
@@ -747,64 +801,11 @@ void page_init(void)
     pages[1].pp_link = NULL;
     pages[1].page_flags = 0;
 
-    // Page 2/3/4 for read write tests:
-    // int z;
-    // for (z = 2; z < 5; ++z)
-    // {
-    //     cprintf("creating rw test page @pages[%x]\n", z);
-    //     pages[z].pp_ref = 0;
-    //     pages[z].pp_link = NULL;
-    //     pages[z].page_flags = 0;
-    //     /* code */
-    // }
+    task_init(&pages[1]);
 
-    cprintf("[INIT] Task list init \n");
-    t_flist = page2kva(&pages[1]);
-    t_list = NULL;
-    int idx;
-    for (idx = 0; idx < NTASKS; ++idx)
-    {
-        t_flist[idx].id = idx;
-        t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
-        t_flist[idx].state = T_FREE;
-        t_flist[idx].count = 0;
-        if(idx == NTASKS - 1){
-            t_flist[idx].t_next = NULL;
-        }else{
-            t_flist[idx].t_next = &t_flist[idx + 1];
-        }
-    }
-    t = task_get(&t_flist);
-    if(t){
-        t->state = T_WORK;
+    lru_init();
 
-        // Setup Function Pointer:
-        void (*f)();
-        f = &page_out;
-        // t->fptr = (uint32_t *)page_out_ptr;
-        // t->fptr=(uint32_t *)f;
-        task_add(t, &t_list, 0);
-        cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
-    }
-
-    /* Initializwe zswap cache  */
-    lru_lists.h_active = NULL;
-    lru_lists.t_active = NULL;
-    lru_lists.h_inactive = NULL;
-    lru_lists.t_inactive = NULL;
-    lru_lists.h_zswap = NULL;
-    lru_lists.t_zswap = NULL;
-    for(i = 2; i < (2 + CPR_LRU_SZ); i++){
-        if(i == 2){
-            lru_lists.t_zswap = &pages[i];
-        }
-        pages[i].lru_link = lru_lists.h_zswap;
-        lru_lists.h_zswap = &pages[i];
-    }
-
-    cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
-
-    for (i = (2 + CPR_LRU_SZ); i < npages; i++) {
+    for (i = (RESPGS + CPR_LRU_SZ); i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;

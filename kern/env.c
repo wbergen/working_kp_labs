@@ -721,65 +721,49 @@ void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp ));
 
     struct tasklet * t = t_list;
-    int i;
+    int i, t_id, status;
 
-    while(1){
-
-        // Get task info
-        while(t){
-            if(t->state == T_WORK){
-                break;
-            }
-            t = t->t_next;
+    // Get task info
+    while(t){
+        if(t->state == T_WORK){
+            t->state = T_WORKING;
+            t_id = t->id;
+            break;
         }
-
-        cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
-
-
-        /* Needs to be moved into a function pointed to by the tasklet! */
-        /* Non-Blocking Write */
-        // int nsectors = PGSIZE/SECTSIZE;
-        // char buf[PGSIZE];
-
-
-        /* How the fuck ... do you do this?! */
-        // struct page_info * tmp;
-        cprintf("[KTASK] Calling tasklet's function...\n");
-        // uint32_t * f = t->fptr;
-        // (*f);
-        (*t->fptr);
-
-        cprintf("[KTASK] Should have called...\n");
-        // t->fptr(tmp, t);
-
-
-        // First invocation:
-        // if (t->count == 0){
-        //     ide_start_write(1, nsectors);
-        // }
-
-        // // If the disk is ready, call another write:
-        // if (t->count < nsectors){
-        //     if (ide_is_ready()){
-        //         cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
-        //         ide_write_sector(buf + t->count * SECTSIZE);
-        //         ++t->count;
-        //     } else {
-        //         cprintf("[KTASK] Disk Not ready, yielding...\n");
-        //     }
-        // } else {
-        //     // Done, can dequeue tasklet
-        //     cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
-        //     task_add(t, &t_flist, 1);
-        // }
-
-        lock_env();
-        lock_kernel();
-        // curenv->env_status = ENV_RUNNABLE;
-        sched_yield();
-        // return;
-
+        t = t->t_next;
     }
+
+    cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
+
+    cprintf("[KTASK] Calling tasklet's function...\n");
+
+    int (*f)();
+    f = (int (*)())t->fptr;
+    status = f();
+
+    cprintf("[KTASK] Should have called...\n");
+
+    t = t_list;
+    
+    //Update the tasklet     
+    while(t){
+        if(t->id == t_id){
+            if(status){
+                task_add(t, &t_flist, 1);
+            }else{
+                t->state = T_WORK;                    
+            }
+            t_id = t->id;
+            break;
+        }
+        t = t->t_next;
+    }
+
+    lock_env();
+    lock_kernel();
+    // curenv->env_status = ENV_RUNNABLE;
+    sched_yield();
+    // return;
 
 }
 
