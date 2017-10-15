@@ -14,7 +14,9 @@
 #include <kern/sched.h>
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
+#include <kern/ide.h>
 
+#include <kern/mm_pres.h>
 #include <kern/vma.h>
 
 struct env *envs = NULL;            /* All environments */
@@ -436,7 +438,7 @@ int env_dup(struct env * parent){
 int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
 {
 
-    cprintf("env_alloc called!\n");
+    cprintf("[ENV] env_alloc() called!\n");
     int32_t generation;
     int r;
     struct env *e;
@@ -487,7 +489,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     */
 
     if (e->env_type == ENV_TYPE_KERNEL) {
-        cprintf("ktask setup\n");
+        // cprintf("ktask setup\n");
         e->env_tf.tf_ds = GD_KD;
         e->env_tf.tf_es = GD_KD;
         e->env_tf.tf_ss = GD_KD;
@@ -512,7 +514,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     env_free_list = e->env_link;
     *newenv_store = e;
 
-    cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+    cprintf("[ENV][%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
     return 0;
 }
 
@@ -711,6 +713,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // cprintf("load_icode(): returning...\n");
 
 }
+
 /*
     Kernel Thread code
 */
@@ -729,15 +732,53 @@ void ktask(){
             }
             t = t->t_next;
         }
-        // Call task func
-        cprintf("[%x]KTASK FAKE TASK CALL EXECUTION\n",curenv->env_id);        
-        // Mark task as T_DONW
-        task_add(t, &t_flist, 1);
-        // Call sched
+
+        cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
+
+
+        /* Needs to be moved into a function pointed to by the tasklet! */
+        /* Non-Blocking Write */
+        // int nsectors = PGSIZE/SECTSIZE;
+        // char buf[PGSIZE];
+
+
+        /* How the fuck ... do you do this?! */
+        // struct page_info * tmp;
+        cprintf("[KTASK] Calling tasklet's function...\n");
+        // uint32_t * f = t->fptr;
+        // (*f);
+        (*t->fptr);
+
+        cprintf("[KTASK] Should have called...\n");
+        // t->fptr(tmp, t);
+
+
+        // First invocation:
+        // if (t->count == 0){
+        //     ide_start_write(1, nsectors);
+        // }
+
+        // // If the disk is ready, call another write:
+        // if (t->count < nsectors){
+        //     if (ide_is_ready()){
+        //         cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
+        //         ide_write_sector(buf + t->count * SECTSIZE);
+        //         ++t->count;
+        //     } else {
+        //         cprintf("[KTASK] Disk Not ready, yielding...\n");
+        //     }
+        // } else {
+        //     // Done, can dequeue tasklet
+        //     cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        //     task_add(t, &t_flist, 1);
+        // }
+
         lock_env();
         lock_kernel();
-
+        // curenv->env_status = ENV_RUNNABLE;
         sched_yield();
+        // return;
+
     }
 
 }
@@ -791,7 +832,7 @@ void kenv_create(void (*binary)(), enum env_type type)
     /* LAB 3: Your code here. */
 
     struct env *e;
-    int ret = env_alloc(&e,0, type);
+    int ret = env_alloc(&e, 0, type);
 
     if(ret == -E_NO_MEM ){
         panic("env_create: OUT OF MEMORY\n");
@@ -977,6 +1018,7 @@ void env_run(struct env *e){
     struct env * old_e = curenv;
     if (e->env_type == ENV_TYPE_KERNEL){
         cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
+        cprintf("\t curenv: %08x\n", curenv);
     } else {
         cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
     }
@@ -1007,6 +1049,8 @@ void env_run(struct env *e){
             }
             if(curenv->env_status == ENV_RUNNING){
                 curenv->env_status = ENV_RUNNABLE;
+                cprintf("should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status);
+
             }
             //if the current env it's dying free it.
             if(curenv->env_status == ENV_DYING){
@@ -1031,7 +1075,7 @@ void env_run(struct env *e){
         //4. Update its 'env_runs' counter
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
-        cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
+        // cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
         lcr3(PADDR(curenv->env_pgdir));
     }
     #ifdef DEBUG_SPINLOCK
@@ -1042,8 +1086,9 @@ void env_run(struct env *e){
     unlock_kernel();
 
     if(old_e && old_e->env_type == ENV_TYPE_KERNEL ){
-        cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
+        // cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
         kenv_cpy_tf(&ktf,&old_e->env_tf);
+
     }
 
     env_pop_tf(&e->env_tf);

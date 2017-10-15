@@ -13,6 +13,8 @@
 #include <kern/vma.h>
 #include <kern/pmap.h>
 
+// #define VMA_DEBUG
+
 /*
     Initialize Process VMAs
 */
@@ -87,7 +89,9 @@ int vma_consistency_check(struct vma * v, int type){
 */
 struct vma * vma_remove_head(struct vma **list){
 
-    cprintf("[VMA] vma_remove_head(): returning head of %x\n", list);
+    #ifdef VMA_DEBUG
+        cprintf("[VMA] vma_remove_head(): returning head of %x\n", list);
+    #endif
     struct vma * el;
     
     // check if the list is empty
@@ -121,7 +125,9 @@ void vma_insert( struct vma * el, struct vma **list, int ordered){
     struct vma * vma_i = *list;   // list iterator
     struct vma * vma_old = *list; // we append the new element to this one
 
-    cprintf("[VMA] vma_insert(): inserting vma...\n");
+    #ifdef VMA_DEBUG
+        cprintf("[VMA] vma_insert(): inserting vma...\n");
+    #endif
 
     // Handling corner case list NULL -> insert the element in the head
     // Handling corener case  element < than the first element in the list
@@ -172,7 +178,9 @@ int vma_new(struct env * e, void *va, size_t len, int type, char * src, size_t f
     // Round up the vma len:
     len = ROUNDUP(len, PGSIZE);
 
-    cprintf("[VMA] vma_new(): trying to allocate new vma @ %x\n", va);
+    #ifdef VMA_DEBUG
+        cprintf("[VMA] vma_new(): trying to allocate new vma @ %x\n", va);
+    #endif
 
     // Return fail if BINARY && no src:
     if ((type == VMA_BINARY) && ((src == NULL) || (filesize == 0))) {

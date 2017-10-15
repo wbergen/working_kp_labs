@@ -5,6 +5,8 @@
 #include <kern/pmap.h>
 #include <kern/monitor.h>
 
+int SCHED_DEBUG = 0;
+
 void sched_halt(void);
 
 /*
@@ -33,11 +35,15 @@ uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){
 */
 int check_time_slice(){
 
-        if( curenv->env_status == ENV_RUNNING && curenv->time_slice < TS_DEFAULT){
-            cprintf("[SCHED] positive time slice %u, reschedule process\n",curenv->time_slice);
+        if( curenv->env_status == ENV_RUNNING && curenv->time_slice < TS_DEFAULT){            
+            if (SCHED_DEBUG)
+                cprintf("[SCHED] positive time slice %u, reschedule process\n",curenv->time_slice);
+
             return 1;
         }else{
-            cprintf("[SCHED] negative time slice, reschedule  new process\n");
+            if (SCHED_DEBUG)
+                cprintf("[SCHED] negative time slice, reschedule  new process\n");
+
             return 0;
         }
 }
@@ -90,13 +96,19 @@ void check_work(){
 
     struct tasklet * t = t_list;
     int i;
-    cprintf("[SCHED] CHECK WORK\n");
+    if (SCHED_DEBUG)
+        cprintf("[SCHED] CHECK WORK\n");
+
     while(t){
         if(t->state == T_WORK){
-            cprintf("[SCHED] WORK FOUND!\n");
+            if (SCHED_DEBUG)
+                cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
+                if (SCHED_DEBUG)
+                    cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
                 if (envs[i].env_status == ENV_RUNNABLE){
-                    cprintf("[SCHED] RUNNING KERN THREAD\n");
+                    if (SCHED_DEBUG)
+                        cprintf("[SCHED] RUNNING KERN THREAD\n");
                     env_run(&envs[i]);
                 }
             }
@@ -112,7 +124,8 @@ void check_work(){
 void sched_yield(void)
 {
     static uint64_t last_tick;
-    cprintf("[SCHED] sched_yield() called!\n");
+    if (SCHED_DEBUG)
+        cprintf("[SCHED] sched_yield() called!\n");
 
     /*
      * Implement simple round-robin scheduling.
@@ -140,7 +153,7 @@ void sched_yield(void)
     // for (j; j < NENV; ++j)
     // {
     //     if (envs[j].env_status != ENV_FREE){
-    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].env_ts);
+    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].time_slice);
     //     }
     // }
     // cprintf("\n");
@@ -185,7 +198,8 @@ void sched_yield(void)
             panic("[SCHED] PROBLEM!\n");
         }
         //i = (int)curenv->env_id - ENV_IDX_MIN + 1;  // Convert id to index + 1
-        cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum());
+        if (SCHED_DEBUG)
+            cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum());
         if(curenv->env_status != ENV_SLEEPING){
             //Update the current env time slice
             curenv->time_slice -= calulate_delta(tick, last_tick);
@@ -199,7 +213,8 @@ void sched_yield(void)
 
     } else {
         // No curenv, set iteratior to 1:
-        cprintf("[SCHED] No curenv (first run?), setting env next index to 1.\n");
+        if (SCHED_DEBUG)
+            cprintf("[SCHED] No curenv (first run?), setting env next index to 1.\n");
         i = NKTHREADS;
         //initialize last tick
         last_tick = read_tsc();
@@ -207,6 +222,7 @@ void sched_yield(void)
     if(curenv){
         check_work();
     }
+
     //keep the last index
     last_idx = i - 1;
     if(last_idx == 0){
@@ -215,7 +231,8 @@ void sched_yield(void)
     //look for a runnable env
     e_run = runnable_env_lookup(i);
     if(e_run >= 0){
-        // cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id);
+        if (SCHED_DEBUG)
+            cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id);
         envs[e_run].time_slice = TS_DEFAULT;
         env_run(&envs[e_run]);
     }else{
@@ -241,7 +258,8 @@ void sched_halt(void)
         }
 
     }
-    cprintf("halting... cpu %d\n",cpunum());
+    if (SCHED_DEBUG)
+        cprintf("halting... cpu %d\n",cpunum());
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         while (1)

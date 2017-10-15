@@ -351,7 +351,7 @@ static void trap_dispatch(struct trapframe *tf)
     else if (tf->tf_trapno == T_SYSCALL){
         
         // Make Grade Happy:
-        print_trapframe(tf);
+        // print_trapframe(tf);
         
         // Setup Args, syscall:
         ret = syscall(tf->tf_regs.reg_eax,
@@ -379,7 +379,7 @@ static void trap_dispatch(struct trapframe *tf)
             // return;
         // }
 
-        cprintf("[KERN] got a timer interrupt!\n");
+        // cprintf("[KERN] got a timer interrupt!\n");
 
         lock_env();
         #ifdef DEBUG_SPINLOCK
@@ -452,7 +452,7 @@ void trap(struct trapframe *tf)
      * in the interrupt path. */
     assert(!(read_eflags() & FL_IF));
 
-    cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
+    // cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
 
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
@@ -581,9 +581,9 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     struct vma * vma_el;
 
     // Alignment debugging:
-    cprintf("\nlooking for %x in vmas... env_id:%x\n", fault_va,curenv->env_id);
-    print_all_vmas(curenv);
-    cprintf("\n");
+    // cprintf("\nlooking for %x in vmas... env_id:%x\n", fault_va,curenv->env_id);
+    // print_all_vmas(curenv);
+    // cprintf("\n");
 
 
     lock_pagealloc();
