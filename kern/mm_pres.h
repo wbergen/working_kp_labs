@@ -5,19 +5,19 @@
 	This function assign a badness score to each active process and kills the winner
 	return 1 if a process is killed to free space, 0 if failure
 */
-int oom_kill(struct env *e);
+int oom_kill(struct env *e, int pgs_r);
 /*
 	This function swap in a page from the disk
 */
-void page_out();
+int page_out();
 /*
 	This function swaps out a page from the disk
 */
-void page_out();
+int page_out();
 /*
 	This function manage the active and inactive LRU lists 
 */
-void lru_manager();
+int lru_manager();
 /*
 	This function tries to reclaim a n amount of pages
 	returns 1 if sucess, 0 if failure  

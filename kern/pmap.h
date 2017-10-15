@@ -9,6 +9,7 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
+#define RESPGS 2 
 #define NTASKS 8
 #define CPR_LRU_SZ 0
 struct env;
@@ -35,6 +36,9 @@ struct lru {
 };
 
 extern struct lru lru_lists;
+extern uint32_t lru_active_count;
+extern uint32_t lru_inactive_count;
+
 /* LRU lists functions */
 
 

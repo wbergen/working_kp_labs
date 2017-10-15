@@ -557,6 +557,7 @@ static void region_alloc(void *va, size_t len, int perm)
             }
 
             // Insert the page to the lru and increase the alloc pages
+        	cprintf("Inserting new page in lru\n");
             lru_ha_insert(p);
             curenv->env_alloc_pages++;
         
@@ -624,6 +625,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                 demand_page = page_alloc(ALLOC_ZERO);
             	if(demand_page){
                 	// Insert the page to the lru and increase the alloc pages
+                	cprintf("Inserting new page in lru\n");
             		lru_ha_insert(demand_page);
             		curenv->env_alloc_pages++;
             	} 

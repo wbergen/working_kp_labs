@@ -71,7 +71,6 @@ enum {
 struct tasklet {
     int id;
     uint32_t *fptr;
-    void (*f);
     uint32_t count;
     int state;
     struct tasklet *t_next;
@@ -84,8 +83,7 @@ struct tasklet {
 enum {
     T_FREE = 0,
     T_WORK,
-    T_DONE,      //?
-    T_WORKING
+    T_WORKING      
 };
 
 

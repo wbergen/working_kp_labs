@@ -14,7 +14,7 @@
 #include <kern/spinlock.h>
 
 #include <kern/vma.h>
-
+#include <kern/mm_pres.h>
 int bad[NENV];
 
 /*
@@ -67,7 +67,7 @@ int oom_kill(struct env *e, int pgs_r){
 /*
 	This function swap in a page from the disk
 */
-void page_in(struct page_info *pg_in){
+int page_in(struct page_info *pg_in){
 
 	/* Code me */
 
@@ -78,13 +78,13 @@ void page_in(struct page_info *pg_in){
 
 		COW pages?
 	*/
-	return;
+	return 1;
 }
 /*
 	This function swaps out a page from the disk
 */
 // void page_out(struct page_info* pg_out, struct tasklet* t){
-void page_out(){
+int page_out(){
 
 	/* Code me */
 	/*
@@ -94,7 +94,7 @@ void page_out(){
 		COW pages? 
 	*/
 
-	// Need to get the page to write, and the offset in disk to write to...
+	cprintf("[KTASK] page_out called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
     char buf[PGSIZE]; // get page backing pg_out
@@ -122,6 +122,7 @@ void page_out(){
         //task_add(t, &t_flist, 1);
     }
 
+	// return;
 }
 /*
 	This function manage the active and inactive LRU lists
@@ -133,7 +134,7 @@ void page_out(){
 	};
 	lru_lists is the structure tu use
 */
-void lru_manager(){
+int lru_manager(){
 
 	/* Code me */
 
@@ -165,9 +166,20 @@ void lru_manager(){
 			how to set them?
 			SC bit set the first time we try to replace a page (MAYBE NOT)
 			READ bit.... set by the MMU?
-
 	*/
-	return;
+	// if the active list is 
+	if(lru_active_count >= MIN_ALRU_SZ){
+
+		struct page_info * p;
+		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/MIN_ALRU_SZ)){
+			/*	if p access bit  0	*/
+			/*	move the element to the iactive list*/
+			lru_ta_remove(&p);
+			lru_ti_insert(p);
+		}
+
+	}
+	return 1;
 }
 /*
 	This function tries to reclaim a n amount of pages
