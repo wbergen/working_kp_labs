@@ -92,7 +92,6 @@ enum {
     T_WORKING      
 };
 
-
 /* Special environment types */
 enum env_type {
     ENV_TYPE_USER = 0,

@@ -66,6 +66,8 @@ static inline void lock_env(void) { }
 static inline void unlock_env(void) { }
 static inline void lock_console(void) { }
 static inline void unlock_console(void) { }
+static inline void lock_task(void) { }
+static inline void unlock_task(void) { }
 
 static inline void assert_lock_env(void) { }
 static inline void assert_lock_pagealloc(void) { }
@@ -77,6 +79,7 @@ static inline int lock_kernel_holding(void) { return holding_l(&kernel_lock); }
 extern struct spinlock pagealloc_lock;
 extern struct spinlock env_lock;
 extern struct spinlock console_lock;
+extern struct spinlock task_lock;
 
 static inline void lock_pagealloc(void) { spin_lock(&pagealloc_lock); }
 static inline void unlock_pagealloc(void) { spin_unlock(&pagealloc_lock); asm volatile("pause"); }
@@ -84,6 +87,8 @@ static inline void lock_env(void) { spin_lock(&env_lock); }
 static inline void unlock_env(void) { spin_unlock(&env_lock); asm volatile("pause"); }
 static inline void lock_console(void) { spin_lock(&console_lock); }
 static inline void unlock_console(void) { spin_unlock(&console_lock); asm volatile("pause"); }
+static inline void lock_task(void) { spin_lock(&task_lock); }
+static inline void unlock_task(void) { spin_unlock(&task_lock); asm volatile("pause"); }
 static inline int lock_env_holding(void) { return holding_l(&env_lock); }
 static inline int lock_pagealloc_holding(void) { return holding_l(&pagealloc_lock); }
 static inline void lock_kernel(void) { }
