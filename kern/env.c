@@ -721,7 +721,7 @@ void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp ));
 
     struct tasklet * t = t_list;
-    int i, t_id, status;
+    int i, t_id, status = 0;
 
     // Get task info
     lock_task();
