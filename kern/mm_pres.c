@@ -15,6 +15,7 @@
 
 #include <kern/vma.h>
 #include <kern/mm_pres.h>
+
 int bad[NENV];
 
 /*
@@ -139,8 +140,7 @@ int lru_manager(){
 		GENERAL DOUBTS:
 			Inactive pages become active on PF???
 		ACTIVE LIST:
-			all pages
-		
+			all pages	
 
 		INACTIVE LIST:
 
@@ -174,27 +174,60 @@ int lru_manager(){
 			lru_ta_remove(&p);
 			lru_ti_insert(p);
 		}
-
 	}
 	return 1;
 }
 /*
 	This function tries to reclaim a n amount of pages
-	returns 1 if sucess, 0 if failure  
+	returns 0 if sucess or the number if the pages still to free  
 */
 int reclaim_pgs(struct env *e, int pg_n){
 
 	/* Code me */
-
+	int pg_c = pg_n;
+	struct page_info *pp;
+	struct tasklet * t = t_list;
+	
 	/*	Swap enough inactive pages */
 
+	while(pg_c > 0){
+		
+		lru_hi_remove(&pp);
+
+		if(pp != NULL){
+			lock_task();
+			while(t){
+		        if(t->state == T_FREE){
+		            t->state = T_WORK;
+		            t->fptr = (uint32_t *)page_out;
+		            t->pi = pp;
+		            t->sector_start = 0;
+		            t->count = 0;
+		            break;
+		        }
+		        t = t->t_next;
+		    }
+		    unlock_task();
+		    if(t == NULL){
+		    	break;
+		    }
+		    pg_c--;	
+		}else{
+			break;
+		}
+
+	}
 	/*	Compress pages?		*/
 	/*		OR				*/
 	/* Deduplicate pages	*/
 
 	/* KILL KILL KILL */
 
-	return 0;
+	if(pg_c > 0){
+		if(oom_kill(e, pg_c))
+			pg_c = 0;
+	}
+	return pg_c;
 }
 
 /*		BONUSES			*/

@@ -724,6 +724,7 @@ void ktask(){
     int i, t_id, status;
 
     // Get task info
+    lock_task();
     while(t){
         if(t->state == T_WORK){
             t->state = T_WORKING;
@@ -732,23 +733,27 @@ void ktask(){
         }
         t = t->t_next;
     }
-
+    unlock_task();
+    
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
     cprintf("[KTASK] Calling tasklet's function...\n");
 
-    int (*f)();
-    f = (int (*)())t->fptr;
-    status = f();
+    if(t->fptr == (uint32_t *)page_out){
+        int (*f)();
+        f = (int (*)(struct tasklet *))t->fptr;
+        status = f(t);        
+    }
 
     cprintf("[KTASK] Should have called...\n");
 
-    t = t_list;
-    
+    lock_task();
+    t = t_list;    
     //Update the tasklet     
     while(t){
         if(t->id == t_id){
             if(status){
+                cprintf("[KTASK] Work done, Free the task\n");
                 task_add(t, &t_flist, 1);
             }else{
                 t->state = T_WORK;                    
@@ -758,6 +763,7 @@ void ktask(){
         }
         t = t->t_next;
     }
+    unlock_task();
 
     lock_env();
     lock_kernel();

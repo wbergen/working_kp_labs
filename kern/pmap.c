@@ -594,6 +594,9 @@ void lru_ti_insert(struct page_info * pp){
 void lru_remove_head(struct page_info **pp, struct page_info **head, struct page_info **tail){
 
     struct page_info * p;
+    if(pp){
+        *pp = NULL;
+    }
     if(!head || !tail){
         return;
     }
@@ -626,6 +629,9 @@ void lru_hi_remove(struct page_info **pp){
 void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page_info **tail){
 
     struct page_info * p;
+    if(pp){
+        *pp = NULL;
+    }
     if(!head || !tail){
         return;
     }
@@ -733,7 +739,7 @@ void task_init(struct page_info * pp){
 
         // Setup Function Pointer:
         t->fptr=(uint32_t *)page_out;
-        
+
         task_add(t, &t_list, 0);
         cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
     }
