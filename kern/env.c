@@ -743,12 +743,17 @@ void ktask(){
 
 
         /* How the fuck ... do you do this?! */
-        struct page_info * tmp;
-        // (*t->fptr)(tmp, t);
+        // struct page_info * tmp;
+        cprintf("[KTASK] Calling tasklet's function...\n");
+        // uint32_t * f = t->fptr;
+        // (*f);
+        (*t->fptr);
+
+        cprintf("[KTASK] Should have called...\n");
         // t->fptr(tmp, t);
 
 
-        // // First invocation:
+        // First invocation:
         // if (t->count == 0){
         //     ide_start_write(1, nsectors);
         // }
@@ -772,6 +777,8 @@ void ktask(){
         lock_kernel();
         // curenv->env_status = ENV_RUNNABLE;
         sched_yield();
+        // return;
+
     }
 
 }

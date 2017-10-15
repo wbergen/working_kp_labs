@@ -729,15 +729,15 @@ void page_init(void)
     pages[1].page_flags = 0;
 
     // Page 2/3/4 for read write tests:
-    int z;
-    for (z = 2; z < 5; ++z)
-    {
-        cprintf("creating rw test page @pages[%x]\n", z);
-        pages[z].pp_ref = 0;
-        pages[z].pp_link = NULL;
-        pages[z].page_flags = 0;
-        /* code */
-    }
+    // int z;
+    // for (z = 2; z < 5; ++z)
+    // {
+    //     cprintf("creating rw test page @pages[%x]\n", z);
+    //     pages[z].pp_ref = 0;
+    //     pages[z].pp_link = NULL;
+    //     pages[z].page_flags = 0;
+    //     /* code */
+    // }
 
     cprintf("[INIT] Task list init \n");
     t_flist = page2kva(&pages[1]);
@@ -760,9 +760,10 @@ void page_init(void)
         t->state = T_WORK;
 
         // Setup Function Pointer:
-        void (*page_out_ptr)(struct page_info * , struct tasklet *);
-        page_out_ptr = &page_out;
-        t->fptr = (uint32_t *)page_out_ptr;
+        void (*f)();
+        f = &page_out;
+        // t->fptr = (uint32_t *)page_out_ptr;
+        // t->fptr=(uint32_t *)f;
         task_add(t, &t_list, 0);
         cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
     }
@@ -774,8 +775,8 @@ void page_init(void)
     lru_lists.t_inactive = NULL;
     lru_lists.h_zswap = NULL;
     lru_lists.t_zswap = NULL;
-    for(i = 5; i < (5 + CPR_LRU_SZ); i++){
-        if(i == 5){
+    for(i = 2; i < (2 + CPR_LRU_SZ); i++){
+        if(i == 2){
             lru_lists.t_zswap = &pages[i];
         }
         pages[i].lru_link = lru_lists.h_zswap;
@@ -784,7 +785,7 @@ void page_init(void)
 
     cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
 
-    for (i = (5 + CPR_LRU_SZ); i < npages; i++) {
+    for (i = (2 + CPR_LRU_SZ); i < npages; i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;

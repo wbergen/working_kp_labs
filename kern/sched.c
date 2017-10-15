@@ -5,7 +5,7 @@
 #include <kern/pmap.h>
 #include <kern/monitor.h>
 
-int SCHED_DEBUG = 1;
+int SCHED_DEBUG = 0;
 
 void sched_halt(void);
 
@@ -148,15 +148,15 @@ void sched_yield(void)
      */
 
     // DEBUG:
-    int j = 0;
-    cprintf("\nENVS:\n");
-    for (j; j < NENV; ++j)
-    {
-        if (envs[j].env_status != ENV_FREE){
-            cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].time_slice);
-        }
-    }
-    cprintf("\n");
+    // int j = 0;
+    // cprintf("\nENVS:\n");
+    // for (j; j < NENV; ++j)
+    // {
+    //     if (envs[j].env_status != ENV_FREE){
+    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].time_slice);
+    //     }
+    // }
+    // cprintf("\n");
 
     /*
         need simple concept of cpu affinity
