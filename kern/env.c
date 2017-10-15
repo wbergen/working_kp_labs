@@ -747,7 +747,11 @@ void ktask(){
         cprintf("[KTASK] Calling tasklet's function...\n");
         // uint32_t * f = t->fptr;
         // (*f);
-        (*t->fptr);
+        // (*t->fptr);
+
+        void (*f)();
+        f = (void (*)())t->fptr;
+        f();
 
         cprintf("[KTASK] Should have called...\n");
         // t->fptr(tmp, t);

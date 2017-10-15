@@ -760,10 +760,10 @@ void page_init(void)
         t->state = T_WORK;
 
         // Setup Function Pointer:
-        void (*f)();
-        f = &page_out;
+        // void (*f)();
+        // f = &page_out;
         // t->fptr = (uint32_t *)page_out_ptr;
-        // t->fptr=(uint32_t *)f;
+        t->fptr=(uint32_t *)page_out;
         task_add(t, &t_list, 0);
         cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
     }

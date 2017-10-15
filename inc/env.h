@@ -71,16 +71,21 @@ enum {
 struct tasklet {
     int id;
     uint32_t *fptr;
+    void (*f);
     uint32_t count;
     int state;
     struct tasklet *t_next;
+    uint32_t sector_start;
+    uint32_t sector_size;
+    struct page_info * pi;
 };
 
 /* Tasklet state */
 enum {
     T_FREE = 0,
     T_WORK,
-    T_DONE      //?
+    T_DONE,      //?
+    T_WORKING
 };
 
 
