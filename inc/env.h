@@ -74,7 +74,13 @@ struct tasklet {
     uint32_t count;
     int state;
     struct tasklet *t_next;
+    struct tasklet_data *data;
     uint32_t sector_start;
+    struct page_info * pi;
+};
+
+/* Tasklet Function Data */
+struct tasklet_data {
     uint32_t sector_size;
     struct page_info * pi;
 };

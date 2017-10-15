@@ -715,19 +715,28 @@ void task_init(struct page_info * pp){
     int idx;
     for (idx = 0; idx < NTASKS; ++idx)
     {
+        // struct tasklet_data td;
         t_flist[idx].id = idx;
         t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
         t_flist[idx].state = T_FREE;
+        // t_flist[idx].data = &td;
+
+        // Tasklet Data:
         t_flist[idx].count = 0;
+        cprintf("LALALAL\n\n");
         if(idx == NTASKS - 1){
             t_flist[idx].t_next = NULL;
         }else{
             t_flist[idx].t_next = &t_flist[idx + 1];
         }
     }
+
     t = task_get(&t_flist);
     if(t){
         t->state = T_WORK;
+
+        t->sector_start = 1;
+        t->pi = NULL;
 
         // Setup Function Pointer:
         t->fptr=(uint32_t *)page_out;

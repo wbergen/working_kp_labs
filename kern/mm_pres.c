@@ -15,7 +15,9 @@
 
 #include <kern/vma.h>
 #include <kern/mm_pres.h>
+
 int bad[NENV];
+uint32_t f_sector = 1;
 
 /*
 	This function assign a badness score to each active process and kills the winner
@@ -67,7 +69,7 @@ int oom_kill(struct env *e, int pgs_r){
 /*
 	This function swap in a page from the disk
 */
-int page_in(struct page_info *pg_in){
+int page_in(struct tasklet *t){
 
 	/* Code me */
 
@@ -78,13 +80,45 @@ int page_in(struct page_info *pg_in){
 
 		COW pages?
 	*/
+
+	// Need to get the buffer to put read data in
+	// Need to get the sector to start reading from
+
+	cprintf("[KTASK] page_in called!\n");
+
+    int nsectors = PGSIZE/SECTSIZE;
+    char buf[PGSIZE]; // get page backing pg_out
+
+    // First invocation, set sector index:
+    if (t->count == 0){
+        ide_start_write(t->sector_start, nsectors);
+    }
+
+    // If the disk is ready, call another write:
+    if (t->count < nsectors){
+        if (ide_is_ready()){
+            cprintf("[KTASK] Disk Ready!  Reading sector %u...\n", t->count);
+            ide_read_sector(buf + t->count * SECTSIZE);
+            ++t->count;
+            return 0;
+        } else {
+            cprintf("[KTASK] Disk Not ready, yielding...\n");
+            return 0;
+        }
+    } else {
+        // Done, can dequeue tasklet
+        cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        return 1;
+    }
+
+    // Catch Bizzarities:
 	return 1;
 }
 /*
 	This function swaps out a page from the disk
 */
 // void page_out(struct page_info* pg_out, struct tasklet* t){
-int page_out(){
+int page_out(struct tasklet *t){
 
 	/* Code me */
 	/*
@@ -94,14 +128,19 @@ int page_out(){
 		COW pages? 
 	*/
 
+	// Need to get the page in question
+	// Need to get the offset to write to
+
 	cprintf("[KTASK] page_out called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
     char buf[PGSIZE]; // get page backing pg_out
 
-    // First invocation:
+    // First invocation, set sector index:
     if (t->count == 0){
-        ide_start_write(1, nsectors);
+    	t->sector_start = f_sector;
+    	f_sector += 8;
+        ide_start_write(t->sector_start, nsectors);
     }
 
     // If the disk is ready, call another write:
@@ -119,10 +158,10 @@ int page_out(){
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         return 1;
-        //task_add(t, &t_flist, 1);
     }
 
-	// return;
+    // Catch Bizzarities:
+	return 1;
 }
 /*
 	This function manage the active and inactive LRU lists
