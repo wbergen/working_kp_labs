@@ -84,6 +84,21 @@ int page_in(struct tasklet *t){
 	// Need to get the buffer to put read data in
 	// Need to get the sector to start reading from
 
+	/*
+	Will need pointer to env that faulted (for addr of pgdir)
+	On pagefault, we have a pte with NP set, and the value of sector_start in the entry
+	Sleep the caller (OR ANY ENV MAPPING THE PAGE, cow only, as cow is only time ref ct > 1)
+	alloc a page
+	Read a page starting at sector start into the addresss pointed to by page_alloc return
+	Update the PTE in the faulting env's pg tables to new address, proper bits
+	Wake the caller
+
+	Use a bitmap to keep track of the state of the swap space, 1 bit = 1 page (8 sects) in ss
+	 - bit_set(): sets a bit representing a page in the swapspace
+	 - bit_remove(): opposite of _set()
+	 - bit_check(): 1/0 if a bit is present in map
+	*/
+
 	cprintf("[KTASK] page_in called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
@@ -158,6 +173,7 @@ int page_out(struct tasklet *t){
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         return 1;
+        /* Need to update the PTE of pi and save the sector_start value into it */
     }
 
     // Catch Bizzarities:
