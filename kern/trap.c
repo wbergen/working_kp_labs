@@ -710,7 +710,7 @@ void page_fault_handler(struct trapframe *tf)
     // cprintf("[KERN_DEBUG] fautling pte: 0x%08x ", pte);
     // cprintf("[");
     if (!(*pte & PTE_P) && (*pte & PTE_G)){
-        cprintf("[GLOBAL / NOT-PRESENT]\n");
+        cprintf("[KERN_DEBUG] [GLOBAL / NOT-PRESENT] page fault on swapped page...\n");
         // Need to page in!
 
         // Sleep the current env:
@@ -718,6 +718,7 @@ void page_fault_handler(struct trapframe *tf)
 
         // Setup a tasklet for paging in:
         struct tasklet * t = t_list;
+        lock_task();
         while(t){
             if(t->state == T_FREE){
                 t->state = T_WORK;
@@ -736,62 +737,65 @@ void page_fault_handler(struct trapframe *tf)
         cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
 
         // Set index in tasklet:
-        t->sector_start = mask & *pte;
+        t->sector_start = (mask & *pte) >> 12;
 
         // Alloc a page:
         struct page_info * swap_in;
         swap_in = page_alloc(0);
         if (swap_in){
             // Success, now set it up:
-            t->page_addr = page2kva(swap_in);
+            t->page_addr = (uint32_t *)page2pa(swap_in);
         } else {
             panic("Tried to swap in a page, but alloc failed!");
         }
 
+        unlock_task();
+
         // All setup...
   
-    }
-
-    /* We've already handled kernel-mode exceptions, so if we get here, the page
-     * fault happened in user mode. */
-
-
-    // LAB 4 TEST AREA:
-    // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
-    /* So the page fault hander needs to...
-        - is there an allocated for that?
-            - There should be, so panic if lookup fails (right?)
-            - walk the pgdir to retrieve the nonpresent pte
-            - allocate w/ page_alloc() and write pa to the pte
-    */ 
-
-    // cprintf("page_fault_handler(): curenv == %x\n", curenv);
-
-    // allocate the page 
-    // print_trapframe(tf);
-
-    // Check for protection fault:
-    if(!(tf->tf_err & 1)) {
-        alloc_page_after_fault(fault_va, tf);
     } else {
-        struct vma* v = vma_lookup(curenv, (void *)fault_va);
-        // if vma permission write we have a COW
-        if(v && (v->perm & PTE_W)){
-            lock_pagealloc();
-			#ifdef DEBUG_SPINLOCK
-			    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
-			#endif
-            if(!page_dedup(curenv, (void *)fault_va)){
-                cprintf("[KERN]page_fault_handler: page dedup failed\n");
+
+        /* We've already handled kernel-mode exceptions, so if we get here, the page
+         * fault happened in user mode. */
+
+
+        // LAB 4 TEST AREA:
+        // cprintf("curenv: %08x - fault_va: %08x\n", curenv, (void *)fault_va);
+        /* So the page fault hander needs to...
+            - is there an allocated for that?
+                - There should be, so panic if lookup fails (right?)
+                - walk the pgdir to retrieve the nonpresent pte
+                - allocate w/ page_alloc() and write pa to the pte
+        */ 
+
+        // cprintf("page_fault_handler(): curenv == %x\n", curenv);
+
+        // allocate the page 
+        // print_trapframe(tf);
+
+        // Check for protection fault:
+        if(!(tf->tf_err & 1)) {
+            alloc_page_after_fault(fault_va, tf);
+        } else {
+            struct vma* v = vma_lookup(curenv, (void *)fault_va);
+            // if vma permission write we have a COW
+            if(v && (v->perm & PTE_W)){
+                lock_pagealloc();
+    			#ifdef DEBUG_SPINLOCK
+    			    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
+    			#endif
+                if(!page_dedup(curenv, (void *)fault_va)){
+                    cprintf("[KERN]page_fault_handler: page dedup failed\n");
+                }
+    			#ifdef DEBUG_SPINLOCK
+    			    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
+    			#endif
+                unlock_pagealloc();
+                //alloc_page_after_fault(fault_va, tf);
+            }else{
+                cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);
+                kill_env(fault_va, tf);
             }
-			#ifdef DEBUG_SPINLOCK
-			    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
-			#endif
-            unlock_pagealloc();
-            //alloc_page_after_fault(fault_va, tf);
-        }else{
-            cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);
-            kill_env(fault_va, tf);
         }
     }
 }
