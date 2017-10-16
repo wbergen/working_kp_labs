@@ -36,7 +36,7 @@ struct spinlock task_lock = {
 #ifdef DEBUG_SPINLOCK_1
     .name = "task_lock"
 #endif
-}
+};
 #endif /* USE_BIG_KERNEL_LOCK */
 
 #ifdef DEBUG_SPINLOCK_1

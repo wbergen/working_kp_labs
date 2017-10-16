@@ -241,7 +241,7 @@ int page_out(struct tasklet *t){
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
-
+        page_free(t->pi);
         // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);
         *p & 0x0;	// clear it

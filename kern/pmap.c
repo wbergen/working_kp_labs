@@ -381,14 +381,14 @@ struct page_info * remove_head_pfl(){
 
 
     if(pp->pp_ref != 0){
-        p = page_free_list;
+      /*  p = page_free_list;
         while(p){
             if(p->page_flags & ALLOC){
                 cprintf("%x PAGE MARKED AS ALLOC ref: %d\n",page2pa(pp),p->pp_ref);
             }
             p = p->pp_link;
         }
-        find_pte(pp);
+        find_pte(pp);*/
         panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
         //cprintf("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
     }
