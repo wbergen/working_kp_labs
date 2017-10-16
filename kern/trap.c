@@ -15,6 +15,7 @@
 #include <kern/cpu.h>
 #include <kern/spinlock.h>
 
+#include <kern/mm_pres.h>
 #include <kern/vma.h>
 
 static struct taskstate ts;
@@ -687,6 +688,66 @@ void page_fault_handler(struct trapframe *tf)
         	alloc_page_after_fault(fault_va, tf);
      	   return;
     	}
+    }
+
+    /*
+    PTE: { [20]   [12] }
+           addr  flags
+
+        // GLOBAL && NP == SWAPPED
+        // A SWAPPED PTE's addr bits == sector start on disk
+    */
+
+    /* !COW NB HERE! */
+    /* Need a way to identify a currently being swapped page */
+
+    /* MOVE this into a func of its own, possibly called by page_fault_handler... */
+    // If we encounter a page marked Not Present && Global, it's been paged:
+    // cprintf("[KERN_DEBUG] faulting addr: 0x%08x\n", fault_va);
+    pte_t * pte = pgdir_walk(curenv->env_pgdir, &fault_va, 0);
+    // cprintf("[KERN_DEBUG] fautling pte: 0x%08x ", pte);
+    // cprintf("[");
+    if (!(*pte & PTE_P) && (*pte & PTE_G)){
+        cprintf("[GLOBAL / NOT-PRESENT]\n");
+        // Need to page in!
+
+        // Sleep the current env:
+        curenv->env_status = ENV_SLEEPING;
+
+        // Setup a tasklet for paging in:
+        struct tasklet * t = t_list;
+        while(t){
+            if(t->state == T_FREE){
+                t->state = T_WORK;
+                t->fptr = (uint32_t *)page_in;
+                t->requestor_env = curenv;
+                t->fault_addr = &fault_va;
+                t->count = 0;
+                break;
+            }
+            t = t->t_next;
+        }
+
+        // Get the sector index from addr section of PTE:
+        uint32_t mask = 0 - 1 - 0xfff;      //0xfffff000
+        cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask);
+        cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
+
+        // Set index in tasklet:
+        t->sector_start = mask & *pte;
+
+        // Alloc a page:
+        struct page_info * swap_in;
+        swap_in = page_alloc(0);
+        if (swap_in){
+            // Success, now set it up:
+            t->page_addr = page2kva(swap_in);
+        } else {
+            panic("Tried to swap in a page, but alloc failed!");
+        }
+
+        // All setup...
+  
     }
 
     /* We've already handled kernel-mode exceptions, so if we get here, the page

@@ -19,6 +19,32 @@
 int bad[NENV];
 uint32_t f_sector = 1;
 
+
+/* Bit "Map" impl. from  https://gist.github.com/gandaro */
+/* `x+1' if `x % 8' evaluates to `true' */
+#define ARRAY_SIZE(x) (x/8+(!!(x%8)))	// Create Macro
+#define SIZE (262144)					// 512*512 (128MB)
+
+char get_bit(char *array, int index);
+void toggle_bit(char *array, int index);
+
+
+void toggle_bit(char *array, int index)
+{
+    array[index/8] ^= 1 << (index % 8);
+}
+
+char get_bit(char *array, int index)
+{
+    return 1 & (array[index/8] >> (index % 8));
+}
+
+// Init one:
+char swap_map[ARRAY_SIZE(SIZE)] = {0};
+
+
+/* END Bit "Map" impl. from https://gist.github.com/gandaro*/
+
 /*
 	This function assign a badness score to each active process and kills the winner
 	return 1 if a process is killed to free space, 0 if failure
@@ -85,10 +111,17 @@ int page_in(struct tasklet *t){
 	// Need to get the sector to start reading from
 
 	/*
+	// DONE AT TRAP:
 	Will need pointer to env that faulted (for addr of pgdir)
+	 - added pointer to env in tasklet; at tasklet creation, set to curenv
 	On pagefault, we have a pte with NP set, and the value of sector_start in the entry
+	 - Either reverse mappings, or walk everything...
 	Sleep the caller (OR ANY ENV MAPPING THE PAGE, cow only, as cow is only time ref ct > 1)
+	 - If a page in is required, sleep caller (should be done in trap.c)..
 	alloc a page
+	 - set the kva (page_alloc return) to tasklet's pi
+
+	// DONE AT TASKLET COMPLETION:
 	Read a page starting at sector start into the addresss pointed to by page_alloc return
 	Update the PTE in the faulting env's pg tables to new address, proper bits
 	Wake the caller
@@ -102,10 +135,14 @@ int page_in(struct tasklet *t){
 	cprintf("[KTASK] page_in called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
-    char buf[PGSIZE]; // get page backing pg_out
+    // char buf[PGSIZE]; // get page backing pg_out
+    // buf is now a pointer (kva) to start of frame
+    char * buf = (char *)t->page_addr;
+
 
     // First invocation, set sector index:
     if (t->count == 0){
+    	// Get the sector to start at from the PTE (here or in ktask.. sector_start must be set)
         ide_start_write(t->sector_start, nsectors);
     }
 
@@ -115,6 +152,9 @@ int page_in(struct tasklet *t){
             cprintf("[KTASK] Disk Ready!  Reading sector %u...\n", t->count);
             ide_read_sector(buf + t->count * SECTSIZE);
             ++t->count;
+
+            // Remove the Bit Map bit representing this sector on disk
+            toggle_bit(swap_map, t->sector_start + t->count);
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
@@ -123,12 +163,45 @@ int page_in(struct tasklet *t){
     } else {
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        // Update the PTE in requestor's pgdir
+        
+        /* !COW NB HERE! */
+        
+        pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
+        // Lookup VMA for correct pte perms:
+        struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
+        // Setup correct PTE w/ vma perms:
+       	p = (uint32_t *)((uint32_t)t->fault_addr | v->perm | PTE_P);
+
+        // Reset the Requestor's state
+        t->requestor_env->env_status = ENV_RUNNABLE;
         return 1;
     }
 
     // Catch Bizzarities:
 	return 1;
 }
+
+
+/*
+	This function returns the index of first 0 in swap_map
+	First 0 will represent first page sized hole (AS LONG AS all r/w are at page granularity)
+	Will Return 0 on failure, index on success
+*/
+uint32_t find_swap_spot(){
+	int i;
+	for (i = 1; i < SIZE; ++i)
+	{
+		if (get_bit(swap_map, i) == 0){
+			return i;
+		}
+	}
+
+	// Failure:
+	cprintf("[KTASK] find_swap_spot() couldn't find a spot!\n");
+	return 0;
+}
+
 /*
 	This function swaps out a page from the disk
 */
@@ -146,7 +219,13 @@ int page_out(struct tasklet *t){
 	// Need to get the page in question
 	// Need to get the offset to write to
 
-	cprintf("[KTASK] page_out called!\n");
+	/* Bit Vec Test */
+	// cprintf("[KTASK] bit 500 == %u\n", get_bit(swap_map, 500));
+	// cprintf("[KTASK] toggling bit 500...\n");
+	// toggle_bit(swap_map, 500);
+	// cprintf("[KTASK] after toggle, x[500] == %u\n", get_bit(swap_map, 500));
+
+	// cprintf("[KTASK] page_out called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
     char buf[PGSIZE]; // get page backing pg_out
@@ -164,6 +243,7 @@ int page_out(struct tasklet *t){
             cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
             ++t->count;
+            // Set the according bit in Bit Map
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
@@ -172,6 +252,7 @@ int page_out(struct tasklet *t){
     } else {
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        // Here, or in kTask need to change all PTEs to hold t->sector start
         return 1;
         /* Need to update the PTE of pi and save the sector_start value into it */
     }
@@ -258,7 +339,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 		            t->state = T_WORK;
 		            t->fptr = (uint32_t *)page_out;
 		            t->pi = pp;
-		            t->sector_start = 0;
+		            t->sector_start = f_sector;
 		            t->count = 0;
 		            break;
 		        }
