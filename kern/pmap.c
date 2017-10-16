@@ -729,7 +729,6 @@ void task_init(struct page_info * pp){
 
         // Tasklet Data:
         t_flist[idx].count = 0;
-        cprintf("LALALAL\n\n");
         if(idx == NTASKS - 1){
             t_flist[idx].t_next = NULL;
         }else{

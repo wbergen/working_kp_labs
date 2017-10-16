@@ -97,20 +97,13 @@ int oom_kill(struct env *e, int pgs_r){
 */
 int page_in(struct tasklet *t){
 
-	/* Code me */
-
 	/*	
 		We need to put the process that needs the page
 		in SLEEPING state and awake it when the page is ready.
 		This allow us not to have a blocking behaviour
 
 		COW pages?
-	*/
 
-	// Need to get the buffer to put read data in
-	// Need to get the sector to start reading from
-
-	/*
 	// DONE AT TRAP:
 	Will need pointer to env that faulted (for addr of pgdir)
 	 - added pointer to env in tasklet; at tasklet creation, set to curenv
@@ -121,15 +114,13 @@ int page_in(struct tasklet *t){
 	alloc a page
 	 - set the kva (page_alloc return) to tasklet's pi
 
-	// DONE AT TASKLET COMPLETION:
+	// DONE BY TASKLET ASYNC:
 	Read a page starting at sector start into the addresss pointed to by page_alloc return
+
+
+	// DONE AT TASKLET COMPLETION:
 	Update the PTE in the faulting env's pg tables to new address, proper bits
 	Wake the caller
-
-	Use a bitmap to keep track of the state of the swap space, 1 bit = 1 page (8 sects) in ss
-	 - bit_set(): sets a bit representing a page in the swapspace
-	 - bit_remove(): opposite of _set()
-	 - bit_check(): 1/0 if a bit is present in map
 	*/
 
 	cprintf("[KTASK] page_in called!\n");
@@ -152,7 +143,6 @@ int page_in(struct tasklet *t){
             cprintf("[KTASK] Disk Ready!  Reading sector %u...\n", t->count);
             ide_read_sector(buf + t->count * SECTSIZE);
             ++t->count;
-
             // Remove the Bit Map bit representing this sector on disk
             toggle_bit(swap_map, t->sector_start + t->count);
             return 0;
@@ -163,8 +153,8 @@ int page_in(struct tasklet *t){
     } else {
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
-        // Update the PTE in requestor's pgdir
         
+        // Update the PTE in requestor's pgdir
         /* !COW NB HERE! */
         
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
@@ -173,7 +163,7 @@ int page_in(struct tasklet *t){
         // Setup correct PTE w/ vma perms:
        	p = (uint32_t *)((uint32_t)t->fault_addr | v->perm | PTE_P);
 
-        // Reset the Requestor's state
+        // Reset the Requestor's status:
         t->requestor_env->env_status = ENV_RUNNABLE;
         return 1;
     }
@@ -196,7 +186,6 @@ uint32_t find_swap_spot(){
 			return i;
 		}
 	}
-
 	// Failure:
 	cprintf("[KTASK] find_swap_spot() couldn't find a spot!\n");
 	return 0;
@@ -219,21 +208,17 @@ int page_out(struct tasklet *t){
 	// Need to get the page in question
 	// Need to get the offset to write to
 
-	/* Bit Vec Test */
-	// cprintf("[KTASK] bit 500 == %u\n", get_bit(swap_map, 500));
-	// cprintf("[KTASK] toggling bit 500...\n");
-	// toggle_bit(swap_map, 500);
-	// cprintf("[KTASK] after toggle, x[500] == %u\n", get_bit(swap_map, 500));
-
-	// cprintf("[KTASK] page_out called!\n");
+	// Find sector to start write at:
+	t->sector_start = find_swap_spot();
 
     int nsectors = PGSIZE/SECTSIZE;
     char buf[PGSIZE]; // get page backing pg_out
+    // char * buf = t->
 
     // First invocation, set sector index:
     if (t->count == 0){
-    	t->sector_start = f_sector;
-    	f_sector += 8;
+    	// t->sector_start = f_sector;
+    	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
     }
 
@@ -244,6 +229,7 @@ int page_out(struct tasklet *t){
             ide_write_sector(buf + t->count * SECTSIZE);
             ++t->count;
             // Set the according bit in Bit Map
+            toggle_bit(swap_map, t->sector_start + t->count);
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
@@ -253,8 +239,13 @@ int page_out(struct tasklet *t){
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         // Here, or in kTask need to change all PTEs to hold t->sector start
-        return 1;
         /* Need to update the PTE of pi and save the sector_start value into it */
+
+        pte_t * p; // get via rev_lookup
+        *p & 0x0;	// clear it
+      	*p = ((t->sector_start << 12) | PTE_G);
+
+        return 1;
     }
 
     // Catch Bizzarities:
@@ -343,7 +334,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 		            t->state = T_WORK;
 		            t->fptr = (uint32_t *)page_out;
 		            t->pi = pp;
-		            t->sector_start = f_sector;
+		            // t->sector_start = f_sector;
 		            t->count = 0;
 		            break;
 		        }
