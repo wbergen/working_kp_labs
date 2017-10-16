@@ -780,19 +780,20 @@ void task_init(struct page_info * pp){
         }
     }
 
-    t = task_get(&t_flist);
-    if(t){
-        t->state = T_WORK;
+    // Setup a dummy tasklet for debugging:
+    // t = task_get(&t_flist);
+    // if(t){
+    //     t->state = T_WORK;
 
-        t->sector_start = 1;
-        t->pi = NULL;
+    //     t->sector_start = 1;
+    //     t->pi = NULL;
 
-        // Setup Function Pointer:
-        t->fptr=(uint32_t *)page_out;
+    //     // Setup Function Pointer:
+    //     t->fptr=(uint32_t *)page_out;
 
-        task_add(t, &t_list, 0);
-        cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
-    }
+    //     task_add(t, &t_list, 0);
+    //     cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
+    // }
     cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
 }
 
