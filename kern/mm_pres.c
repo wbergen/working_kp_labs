@@ -205,7 +205,35 @@ uint32_t find_swap_spot(){
 /*
 	This function swaps out a page from the disk
 */
-// void page_out(struct page_info* pg_out, struct tasklet* t){
+pte_t * find_pte(struct page_info * p){
+
+	int i,j,k;
+	uint32_t pa = page2pa(p);
+	pde_t * pde_entry = NULL;
+	pte_t * pte_entry = NULL;
+
+	for(i = NKTHREADS; i < NENV ; i++){
+
+		if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+			pde_entry = envs[i].env_pgdir;
+
+			for(j = 0; j < PGSIZE; j++){
+
+				if(*(pde_entry + j) & PTE_P){
+					pte_entry = KADDR(PTE_ADDR(*pde_entry));
+
+					for(k = 0; k < PGSIZE; k++){
+						if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa)
+							return (pte_entry + k);
+					}					
+				}
+	
+			}
+		}
+	}	
+	return NULL;
+}
+
 int page_out(struct tasklet *t){
 
 	/* Code me */
