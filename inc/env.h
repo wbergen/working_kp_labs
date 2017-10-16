@@ -34,6 +34,7 @@ typedef int32_t envid_t;
 #define NKTHREADS   1
 //Default Time Slice
 #define TS_DEFAULT 100000000
+#define LRU_DEFAULT 300000000
 #define ENV_IDX_MIN 0x1000
 /* Anonymous VMAs are zero-initialized whereas binary VMAs
  * are filled-in from the ELF binary.

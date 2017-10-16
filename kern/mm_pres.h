@@ -1,5 +1,5 @@
 
-#define MIN_ALRU_SZ	3000
+#define MIN_ALRU_SZ	0
 #define	BL_LRU_RATIO 1
 /*
 	This function assign a badness score to each active process and kills the winner

@@ -222,10 +222,14 @@ int lru_manager(){
 			READ bit.... set by the MMU?
 	*/
 	// if the active list is 
+	cprintf("[LRU][ML] OUT active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 	if(lru_active_count >= MIN_ALRU_SZ){
 
 		struct page_info * p;
-		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/MIN_ALRU_SZ)){
+		cprintf("[LRU][ML] IN active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+
+		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
+			cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
 			/*	move the element to the iactive list*/
 			lru_ta_remove(&p);

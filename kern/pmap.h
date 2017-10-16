@@ -12,6 +12,7 @@
 #define RESPGS 2 
 #define NTASKS 8
 #define CPR_LRU_SZ 0
+#define SWAP_TRESH 1000
 struct env;
 
 extern char bootstacktop[], bootstack[];

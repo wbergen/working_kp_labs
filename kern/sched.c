@@ -4,8 +4,10 @@
 #include <kern/env.h>
 #include <kern/pmap.h>
 #include <kern/monitor.h>
+#include <kern/mm_pres.h>
 
 int SCHED_DEBUG = 0;
+uint64_t lru_check = LRU_DEFAULT;
 
 void sched_halt(void);
 
@@ -92,12 +94,30 @@ int env2id(envid_t id){
     }
     return -1;
 }
+/*
+  Kernel work:
+    - Keep the LRU lists balanced
+    - Swap pages if we are in memory pressure
+    - Dispatch work to kernel threads
+*/
 void check_work(){
 
     struct tasklet * t = t_list;
-    int i;
+    int i, pgs2swap = 0;
     if (SCHED_DEBUG)
         cprintf("[SCHED] CHECK WORK\n");
+
+    if(lru_check > LRU_DEFAULT ){
+        cprintf("[LRU] Managing lists\n");
+        lru_check = LRU_DEFAULT;
+        lru_manager();
+    }
+    pgs2swap = (SWAP_TRESH - free_pages_count);
+    if(pgs2swap > 0){
+        cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
+        pgs2swap = reclaim_pgs(NULL, pgs2swap);
+        cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap);
+    }
 
     while(t){
         if(t->state == T_WORK){
@@ -201,9 +221,10 @@ void sched_yield(void)
         if (SCHED_DEBUG)
             cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum());
         if(curenv->env_status != ENV_SLEEPING){
+            uint64_t delta = calulate_delta(tick, last_tick);
             //Update the current env time slice
-            curenv->time_slice -= calulate_delta(tick, last_tick);
-
+            curenv->time_slice -= delta;
+            lru_check -= delta;
             //update last tick
             last_tick = tick;
 
