@@ -11,7 +11,7 @@
 
 #define RESPGS 2 
 #define NTASKS 8
-#define CPR_LRU_SZ 0
+#define CPR_LRU_SZ 1
 #define SWAP_TRESH 1000
 struct env;
 
@@ -42,7 +42,7 @@ extern uint32_t lru_inactive_count;
 
 /* LRU lists functions */
 
-
+pte_t * find_pte(struct page_info * p);
 /*  Specific lists - tail insert- wrappers */
 void lru_ta_insert(struct page_info * pp);
 void lru_ti_insert(struct page_info * pp);

@@ -617,7 +617,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
+            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
 
             // Allocate a physical frame, huge or not
             struct page_info * demand_page;
