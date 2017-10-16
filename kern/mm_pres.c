@@ -212,8 +212,10 @@ pte_t * find_pte(struct page_info * p){
 					pte_entry = KADDR(PTE_ADDR(*pde_entry));
 
 					for(k = 0; k < PGSIZE; k++){
-						if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa)
+						if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
+							cprintf("[KTASK] find_pte() pte found!\n");
 							return (pte_entry + k);
+						}
 					}					
 				}
 	
@@ -240,8 +242,8 @@ int page_out(struct tasklet *t){
 	t->sector_start = find_swap_spot();
 
     int nsectors = PGSIZE/SECTSIZE;
-    char buf[PGSIZE]; // get page backing pg_out
-    // char * buf = t->
+    // char buf[PGSIZE]; // get page backing pg_out
+    char * buf = (char *)page2pa(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
@@ -269,7 +271,8 @@ int page_out(struct tasklet *t){
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
 
-        pte_t * p; // get via rev_lookup
+        // pte_t * p; // get via rev_lookup
+        pte_t * p = find_pte(t->pi);
         *p & 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
 

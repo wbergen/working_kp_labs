@@ -558,12 +558,14 @@ static void region_alloc(void *va, size_t len, int perm)
             }
 
             // Insert the page to the lru and increase the alloc pages
-        	cprintf("Inserting new page in lru\n");
+        	// cprintf("Inserting new page in lru\n");
             lru_ha_insert(p);
             curenv->env_alloc_pages++;
         
         } else {
-            panic("region_alloc(): page_alloc failure, out of memory\n");
+            lru_manager();
+            reclaim_pgs(curenv, 1);
+            // panic("region_alloc(): page_alloc failure, out of memory\n");
 
         }
     }
