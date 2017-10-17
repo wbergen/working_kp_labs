@@ -33,8 +33,8 @@ typedef int32_t envid_t;
 #define NVMA            105        // preallocated vmas why 124? because they fit 
 #define NKTHREADS   1
 //Default Time Slice
-#define TS_DEFAULT 100000000
-#define LRU_DEFAULT 300000000
+#define TS_DEFAULT 1000000
+#define LRU_DEFAULT 3000000
 #define ENV_IDX_MIN 0x1000
 /* Anonymous VMAs are zero-initialized whereas binary VMAs
  * are filled-in from the ELF binary.

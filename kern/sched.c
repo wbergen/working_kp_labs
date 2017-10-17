@@ -104,14 +104,15 @@ void check_work(){
 
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
-    if (SCHED_DEBUG)
-        cprintf("[SCHED] CHECK WORK\n");
+    //if (SCHED_DEBUG)
+    cprintf("[SCHED] CHECK WORK\n");
 
     if(lru_check > LRU_DEFAULT ){
         cprintf("[LRU] Managing lists\n");
         lru_check = LRU_DEFAULT;
         lru_manager();
     }
+    
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
@@ -121,13 +122,13 @@ void check_work(){
 
     while(t){
         if(t->state == T_WORK){
-            if (SCHED_DEBUG)
+            //if (SCHED_DEBUG)
                 cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
-                if (SCHED_DEBUG)
+                //if (SCHED_DEBUG)
                     cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
                 if (envs[i].env_status == ENV_RUNNABLE){
-                    if (SCHED_DEBUG)
+                    //if (SCHED_DEBUG)
                         cprintf("[SCHED] RUNNING KERN THREAD\n");
                     env_run(&envs[i]);
                 }

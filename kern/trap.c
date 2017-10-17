@@ -628,14 +628,14 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                 demand_page = page_alloc(ALLOC_ZERO);
             	if(demand_page){
                 	// Insert the page to the lru and increase the alloc pages
-                	cprintf("Inserting new page in lru\n");
+                	//cprintf("Inserting new page in lru\n");
             		lru_ha_insert(demand_page);
             		curenv->env_alloc_pages++;
             	} 
 
             }
             if(!demand_page){
-                panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
+                panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY (%d)\n",free_pages_count);
             }
             //Insert the physical frame in the page directory
             int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);
@@ -654,7 +654,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        panic("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
 		#endif

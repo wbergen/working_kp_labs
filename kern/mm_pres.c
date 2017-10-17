@@ -214,7 +214,7 @@ int page_out(struct tasklet *t){
 
     int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
-    char * buf = (char *)page2pa(t->pi);
+    char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
@@ -241,6 +241,8 @@ int page_out(struct tasklet *t){
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
+        // COW NOT GONNA WORK
+       	t->pi->pp_ref = 0;
         page_free(t->pi);
         // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);

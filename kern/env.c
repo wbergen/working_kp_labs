@@ -754,8 +754,9 @@ void ktask(){
         if(t->id == t_id){
             if(status){
                 cprintf("[KTASK] Work done, Free the task\n");
-                task_add(t, &t_flist, 1);
+                task_free(t->id);
             }else{
+                cprintf("[KTASK] Work not done \n");
                 t->state = T_WORK;                    
             }
             t_id = t->id;
@@ -767,7 +768,9 @@ void ktask(){
 
     lock_env();
     lock_kernel();
-    // curenv->env_status = ENV_RUNNABLE;
+    
+    curenv->env_status = ENV_RUNNABLE;
+    
     sched_yield();
     // return;
 
@@ -1006,12 +1009,12 @@ void env_run(struct env *e){
 
     //cprintf("[ENV] env_run type: %08x\n", e->env_type);
     struct env * old_e = curenv;
-    if (e->env_type == ENV_TYPE_KERNEL){
+    /*if (e->env_type == ENV_TYPE_KERNEL){
         cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
         cprintf("\t curenv: %08x\n", curenv);
     } else {
         cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
-    }
+    }*/
 
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){
