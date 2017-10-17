@@ -858,7 +858,7 @@ void task_init(struct page_info * pp){
         t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
         t_flist[idx].state = T_FREE;
         t_flist[idx].data = NULL;
-        t_flist[idx].data = sector_start = 0;
+        t_flist[idx].sector_start = 0;
         t_flist[idx].pi = NULL;
         t_flist[idx].fault_addr = NULL;
         t_flist[idx].page_addr = NULL;
