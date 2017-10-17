@@ -350,7 +350,9 @@ int reclaim_pgs(struct env *e, int pg_n){
 	            // t->sector_start = f_sector;
 	            t->count = 0;
 	            // Decerement pages to swap
+	            task_add_alloc(t);
 	            pg_c--;
+
 		    }else{
 		    	unlock_task();
 		    	break;
