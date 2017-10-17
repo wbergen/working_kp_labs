@@ -64,6 +64,7 @@ KERN_BINFILES :=	user/hello \
 			user/vmatest \
 			user/mapunmap \
 			user/vmaspace \
+			user/mempressc \
 
 # Binary files for LAB5
 KERN_BINFILES +=	user/idle \

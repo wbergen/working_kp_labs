@@ -377,13 +377,24 @@ int is_allocated_init(struct page_info *pp){
 struct page_info * remove_head_pfl(){
 
     struct page_info * pp = page_free_list;
+    struct page_info * p;
+
+
+    if(pp->pp_ref != 0){
+      /*  p = page_free_list;
+        while(p){
+            if(p->page_flags & ALLOC){
+                cprintf("%x PAGE MARKED AS ALLOC ref: %d\n",page2pa(pp),p->pp_ref);
+            }
+            p = p->pp_link;
+        }
+        find_pte(pp);*/
+        panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
+        //cprintf("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
+    }
 
     page_free_list = pp->pp_link;
     pp->pp_link = NULL;
-
-    if(pp->pp_ref != 0){
-        panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
-    }
 
     assert(free_pages_count > 0);
     free_pages_count--;
@@ -461,6 +472,8 @@ struct page_info * remove_element_4MB_pfl(){
 void add_head_pfl(struct page_info * pp){
 
     pp->pp_link = page_free_list;
+    pp->pp_ref = 0;
+    pp->page_flags = 0;
     page_free_list = pp;
 
     free_pages_count++;
@@ -499,6 +512,37 @@ static void mem_init_mp(void)
         boot_map_region(kern_pgdir, ktop - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
         ktop -= (KSTKGAP + KSTKSIZE) ;
     }
+}
+
+pte_t * find_pte(struct page_info * p){
+
+    int i,j,k;
+    uint32_t pa = page2pa(p);
+    pde_t * pde_entry = NULL;
+    pte_t * pte_entry = NULL;
+
+    for(i = NKTHREADS; i < NENV ; i++){
+
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+            pde_entry = envs[i].env_pgdir;
+
+            for(j = 0; j < PGSIZE; j++){
+
+                if(*(pde_entry + j) & PTE_P){
+                    pte_entry = KADDR(PTE_ADDR(*pde_entry));
+
+                    for(k = 0; k < PGSIZE; k++){
+                        if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
+                            cprintf("[KTASK] find_pte() pte found!\n");
+                            return (pte_entry + k);
+                        }
+                    }                   
+                }
+    
+            }
+        }
+    }   
+    return NULL;
 }
 
 /*

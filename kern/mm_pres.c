@@ -194,36 +194,7 @@ uint32_t find_swap_spot(){
 /*
 	This function swaps out a page from the disk
 */
-pte_t * find_pte(struct page_info * p){
 
-	int i,j,k;
-	uint32_t pa = page2pa(p);
-	pde_t * pde_entry = NULL;
-	pte_t * pte_entry = NULL;
-
-	for(i = NKTHREADS; i < NENV ; i++){
-
-		if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
-			pde_entry = envs[i].env_pgdir;
-
-			for(j = 0; j < PGSIZE; j++){
-
-				if(*(pde_entry + j) & PTE_P){
-					pte_entry = KADDR(PTE_ADDR(*pde_entry));
-
-					for(k = 0; k < PGSIZE; k++){
-						if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-							cprintf("[KTASK] find_pte() pte found!\n");
-							return (pte_entry + k);
-						}
-					}					
-				}
-	
-			}
-		}
-	}	
-	return NULL;
-}
 
 int page_out(struct tasklet *t){
 
@@ -270,7 +241,7 @@ int page_out(struct tasklet *t){
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
-
+        page_free(t->pi);
         // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);
         *p & 0x0;	// clear it
@@ -332,7 +303,7 @@ int lru_manager(){
 		cprintf("[LRU][ML] IN active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 
 		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
-			cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
 			/*	move the element to the iactive list*/
 			lru_ta_remove(&p);
