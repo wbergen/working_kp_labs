@@ -30,7 +30,7 @@ void toggle_bit(char *array, int index);
 
 
 void toggle_bit(char *array, int index)
-{
+{	
     array[index/8] ^= 1 << (index % 8);
 }
 
@@ -142,9 +142,9 @@ int page_in(struct tasklet *t){
         if (ide_is_ready()){
             cprintf("[KTASK] Disk Ready!  Reading sector %u...\n", t->count);
             ide_read_sector(buf + t->count * SECTSIZE);
-            ++t->count;
             // Remove the Bit Map bit representing this sector on disk
             toggle_bit(swap_map, t->sector_start + t->count);
+            ++t->count;
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
@@ -228,9 +228,9 @@ int page_out(struct tasklet *t){
         if (ide_is_ready()){
             cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
-            ++t->count;
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
+            ++t->count;
             // unlock_pagealloc();
             cprintf("[KTASK] Wrote to disk!  returning to ktask()...\n");
             return 0;
@@ -248,9 +248,8 @@ int page_out(struct tasklet *t){
         page_free(t->pi);
         // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);
-        *p & 0x0;	// clear it
+        *p &= 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
-
       	// Actual Dequeing done by ktask(), our wrapper via ret:
       	// unlock_pagealloc();
         return 1;
@@ -306,24 +305,25 @@ int lru_manager(){
 	if(lru_active_count >= MIN_ALRU_SZ){
 
 		struct page_info * p;
-		// cprintf("[LRU][ML] IN active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+		cprintf("[LRU][ML] B active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 
 		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
 			/*	move the element to the iactive list*/
-			//print_lru_active();
-			
+
 			lru_ta_remove(&p);
 
 			//print_lru_active();
 			//print_lru_inactive();
 			
 			lru_ti_insert(p);
-
+			//print_lru_active();
+			//print_lru_inactive();
 			//print_lru_inactive();
 		}
 	}
+		cprintf("[LRU][ML] A active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 	return 1;
 }
 /*

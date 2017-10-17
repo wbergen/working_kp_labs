@@ -513,7 +513,7 @@ static void mem_init_mp(void)
         ktop -= (KSTKGAP + KSTKSIZE) ;
     }
 }
-
+/*  Best function EVER  */
 pte_t * find_pte(struct page_info * p){
 
     int i,j,k;
@@ -526,14 +526,15 @@ pte_t * find_pte(struct page_info * p){
         if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
             pde_entry = envs[i].env_pgdir;
 
-            for(j = 0; j < PGSIZE; j++){
+            for(j = 0; j < NPDENTRIES; j++){
 
                 if(*(pde_entry + j) & PTE_P){
-                    pte_entry = KADDR(PTE_ADDR(*pde_entry));
 
-                    for(k = 0; k < PGSIZE; k++){
+                    pte_entry = KADDR(PTE_ADDR(*(pde_entry + j)));
+
+                    for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            cprintf("[KTASK] find_pte() pte found!\n");
+                            cprintf("[KTASK] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
                             return (pte_entry + k);
                         }
                     }                   
@@ -703,18 +704,15 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
     if(pp){
         *pp = NULL;
     }
-
     if(!head || !tail){
         return;
     }
-
     if(*head == *tail){
         *tail = NULL;
     }
-
     p = *head;
+    cprintf("HEAD %x\n", *head);
     *head = p->lru_link;
-
     if(pp){
         *pp = p;
     }
@@ -749,7 +747,6 @@ void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page
     }
 
     p = *tail;
-    //cprintf("[LRU]H2 p: %x *p %x *tail: %x *head %x\n",p, *p, *tail, *head);
 
     if(pp){
         *pp = p;
@@ -767,7 +764,6 @@ void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page
         p = p->lru_link;
     }
     *tail = old_p;
-    //cprintf("[LRU] %d p: %x *tail: %x *head %x\n",count, old_p, *tail, *head);
 }
 /*  Specific lists - tail remove - wrappers */
 void lru_ta_remove(struct page_info ** pp){

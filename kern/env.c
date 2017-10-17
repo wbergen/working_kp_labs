@@ -738,7 +738,7 @@ void ktask(){
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
     cprintf("[KTASK] Calling tasklet's function...\n");
-
+    lock_pagealloc();
     if(t->fptr == (uint32_t *)page_out){
         int (*f)();
         f = (int (*)(struct tasklet *))t->fptr;
@@ -750,7 +750,7 @@ void ktask(){
     } else {
         cprintf("[KTASK] Unknown function called!\n");
     }
-
+    unlock_pagealloc();
     //Update the tasklet     
     lock_task();
     t = t_list;    
@@ -776,7 +776,7 @@ void ktask(){
     lock_env();
     lock_kernel();
     
-    curenv->env_status = ENV_RUNNABLE;
+    //curenv->env_status = ENV_RUNNABLE;
     
     sched_yield();
     // return;
@@ -1045,7 +1045,7 @@ void env_run(struct env *e){
             if(curenv->env_status == ENV_RUNNABLE ||
                 curenv->env_status == ENV_FREE ||
                 curenv->env_status == ENV_NOT_RUNNABLE){
-                panic("env_run: ENV STATUS IS IN A INCONSISTENT STATE\n");
+                panic("env_run: ENV STATUS IS IN A INCONSISTENT STATE, is %d\n", curenv->env_status);
             }
             if(curenv->env_status == ENV_RUNNING){
                 curenv->env_status = ENV_RUNNABLE;

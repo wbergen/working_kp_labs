@@ -6,7 +6,7 @@
 #include <kern/monitor.h>
 #include <kern/mm_pres.h>
 
-int SCHED_DEBUG = 1;
+int SCHED_DEBUG = 0;
 uint64_t lru_check = LRU_DEFAULT;
 
 void sched_halt(void);
@@ -104,7 +104,7 @@ void check_work(){
 
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
-    if (SCHED_DEBUG)
+    //if (SCHED_DEBUG)
         cprintf("[SCHED] CHECK WORK\n");
 
     if(lru_check > LRU_DEFAULT ){
@@ -124,10 +124,10 @@ void check_work(){
             //if (SCHED_DEBUG)
                 cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
-                if (SCHED_DEBUG)
+                //if (SCHED_DEBUG)
                     cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
                 if (envs[i].env_status == ENV_RUNNABLE){
-                    if (SCHED_DEBUG)
+                    //if (SCHED_DEBUG)
                         cprintf("[SCHED] RUNNING KERN THREAD\n");
                     env_run(&envs[i]);
                 }
