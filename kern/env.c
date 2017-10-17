@@ -737,7 +737,8 @@ void ktask(){
     
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
-    // Dispatch correct function:
+    cprintf("[KTASK] Calling tasklet's function...\n");
+
     if(t->fptr == (uint32_t *)page_out){
         int (*f)();
         f = (int (*)(struct tasklet *))t->fptr;
@@ -753,12 +754,14 @@ void ktask(){
     //Update the tasklet     
     lock_task();
     t = t_list;    
+    //Update the tasklet     
     while(t){
         if(t->id == t_id){
-            if(status || t->count == 7){
+            if(status){
                 cprintf("[KTASK] Work done, Free the task\n");
-                task_add(t, &t_flist, 1);
+                task_free(t->id);
             }else{
+                cprintf("[KTASK] Work not done \n");
                 t->state = T_WORK;                    
             }
             t_id = t->id;
@@ -772,7 +775,12 @@ void ktask(){
     // ktask round done, schedule:
     lock_env();
     lock_kernel();
+    
+    curenv->env_status = ENV_RUNNABLE;
+    
     sched_yield();
+    // return;
+
 }
 
 static void load_kthread(struct env *e, void (*binary)()){

@@ -42,7 +42,6 @@ char get_bit(char *array, int index)
 // Init one:
 char swap_map[ARRAY_SIZE(SIZE)] = {0};
 
-/* END Bit "Map" impl. from https://gist.github.com/gandaro */
 
 /* END Bit "Map" impl. from https://gist.github.com/gandaro*/
 
@@ -224,8 +223,6 @@ int page_out(struct tasklet *t){
         ide_start_write(t->sector_start, nsectors);
     }
 
-    // lock_pagealloc();
-
     // If the disk is ready, call another write:
     if (t->count < nsectors){
         if (ide_is_ready()){
@@ -239,17 +236,17 @@ int page_out(struct tasklet *t){
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
-            // unlock_pagealloc();
             return 0;
         }
     } else {
         // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
-
-        // Free the page we've just finished writing to disk:
+        // Here, or in kTask need to change all PTEs to hold t->sector start
+        /* Need to update the PTE of pi and save the sector_start value into it */
+        // COW NOT GONNA WORK
+       	t->pi->pp_ref = 0;
         page_free(t->pi);
-
-        // Update PTE with index in high 20 bits:
+        // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);
         *p & 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
@@ -260,7 +257,6 @@ int page_out(struct tasklet *t){
     }
 
     // Catch Bizzarities:
-    cprintf("[KTASK] should never happen...\n");
 	return 1;
 }
 /*
@@ -348,8 +344,9 @@ int reclaim_pgs(struct env *e, int pg_n){
 	while(pg_c > 0){
 		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
 		lru_hi_remove(&pp);
-		//cprintf("Removed page\n");
+
 		if(pp != NULL){
+
 			lock_task();
 			t = task_get_free();
 			if(t){
@@ -367,12 +364,6 @@ int reclaim_pgs(struct env *e, int pg_n){
 		    	break;
 		    }
 		    unlock_task();
-		    if(t == NULL){
-		    	break;
-		    }
-		    pg_c--;	
-		}else{
-			break;
 		}
 
 	}

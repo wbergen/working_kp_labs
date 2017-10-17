@@ -601,7 +601,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
 
-            // cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
+            cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
 
             region_alloc(vma_el->va, vma_el->len, vma_el->perm | PTE_W);
 
@@ -617,7 +617,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            // cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
+            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
 
             // Allocate a physical frame, huge or not
             struct page_info * demand_page;
@@ -628,7 +628,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
                 demand_page = page_alloc(ALLOC_ZERO);
             	if(demand_page){
                 	// Insert the page to the lru and increase the alloc pages
-                	// cprintf("Inserting new page in lru\n");
+                	cprintf("Inserting new page in lru\n");
             		lru_ha_insert(demand_page);
             		curenv->env_alloc_pages++;
             	} 
@@ -654,7 +654,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        panic("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
 		#endif

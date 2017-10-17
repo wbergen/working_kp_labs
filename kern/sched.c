@@ -112,7 +112,6 @@ void check_work(){
         lru_check = LRU_DEFAULT;
         lru_manager();
     }
-
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
@@ -122,7 +121,7 @@ void check_work(){
 
     while(t){
         if(t->state == T_WORK){
-            if (SCHED_DEBUG)
+            //if (SCHED_DEBUG)
                 cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
                 if (SCHED_DEBUG)
