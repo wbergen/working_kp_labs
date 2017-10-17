@@ -58,6 +58,9 @@ void lru_hi_remove(struct page_info ** pp);
 
 int lru_remove_el_list(struct page_info *pp);
 
+void print_lru_active();
+void print_lru_inactive();
+
 /* This macro takes a kernel virtual address -- an address that points above
  * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
  * and returns the corresponding physical address.  It panics if you pass it a
@@ -116,8 +119,12 @@ void *mmio_map_region(physaddr_t pa, size_t size);
 int  user_mem_check(struct env *env, const void *va, size_t len, int perm);
 void user_mem_assert(struct env *env, const void *va, size_t len, int perm);
 
+/*  Task manipulation functions */
+void task_add_alloc(struct tasklet * ts);
+int task_free(int id);
+struct tasklet * task_get_free();
 void task_add(struct tasklet *t, struct tasklet **list, int free);
-struct tasklet * task_get(struct tasklet ** list);
+
 /*
     This function deduplicate if needed a physical page
 
@@ -125,7 +132,7 @@ struct tasklet * task_get(struct tasklet ** list);
 */
 int page_dedup(struct env * e, void * va);
 
-void task_add_free(struct tasklet *t);
+
 
 static inline physaddr_t page2pa(struct page_info *pp)
 {

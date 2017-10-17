@@ -306,8 +306,16 @@ int lru_manager(){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
 			/*	move the element to the iactive list*/
+			//print_lru_active();
+			
 			lru_ta_remove(&p);
+
+			//print_lru_active();
+			//print_lru_inactive();
+			
 			lru_ti_insert(p);
+
+			//print_lru_inactive();
 		}
 	}
 	return 1;
@@ -321,34 +329,33 @@ int reclaim_pgs(struct env *e, int pg_n){
 	/* Code me */
 	int pg_c = pg_n;
 	struct page_info *pp;
-	struct tasklet * t = t_list;
+	struct tasklet * t = NULL;
 	
 	/*	Swap enough inactive pages */
+	//struct tasklet * task_get(struct tasklet ** list){
+	//void task_add(struct tasklet *t, struct tasklet **list, int free){
 
 	while(pg_c > 0){
 		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
 		lru_hi_remove(&pp);
-		//cprintf("Removed page\n");
+
 		if(pp != NULL){
+
 			lock_task();
-			while(t){
-		        if(t->state == T_FREE){
-		            t->state = T_WORK;
-		            t->fptr = (uint32_t *)page_out;
-		            t->pi = pp;
-		            // t->sector_start = f_sector;
-		            t->count = 0;
-		            break;
-		        }
-		        t = t->t_next;
-		    }
-		    unlock_task();
-		    if(t == NULL){
+			t = task_get_free();
+			if(t){
+		        t->state = T_WORK;
+		        t->fptr = (uint32_t *)page_out;
+		        t->pi = pp;
+	            // t->sector_start = f_sector;
+	            t->count = 0;
+	            // Decerement pages to swap
+	            pg_c--;
+		    }else{
+		    	unlock_task();
 		    	break;
 		    }
-		    pg_c--;	
-		}else{
-			break;
+		    unlock_task();
 		}
 
 	}
