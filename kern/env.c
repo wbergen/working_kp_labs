@@ -723,7 +723,7 @@ void ktask(){
     struct tasklet * t = t_list;
     int i, t_id, status = 0;
 
-    // Get task info
+    // Look for work:
     lock_task();
     while(t){
         if(t->state == T_WORK){
@@ -737,19 +737,22 @@ void ktask(){
     
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
-    cprintf("[KTASK] Calling tasklet's function...\n");
-
+    // Dispatch correct function:
     if(t->fptr == (uint32_t *)page_out){
         int (*f)();
         f = (int (*)(struct tasklet *))t->fptr;
         status = f(t);        
+    } else if (t->fptr == (uint32_t *)page_in){
+        int (*f)();
+        f = (int (*)(struct tasklet *))t->fptr;
+        status = f(t);
+    } else {
+        cprintf("[KTASK] Unknown function called!\n");
     }
 
-    cprintf("[KTASK] Should have called...\n");
-
+    //Update the tasklet     
     lock_task();
     t = t_list;    
-    //Update the tasklet     
     while(t){
         if(t->id == t_id){
             if(status){
@@ -765,12 +768,10 @@ void ktask(){
     }
     unlock_task();
 
+    // ktask round done, schedule:
     lock_env();
     lock_kernel();
-    // curenv->env_status = ENV_RUNNABLE;
     sched_yield();
-    // return;
-
 }
 
 static void load_kthread(struct env *e, void (*binary)()){

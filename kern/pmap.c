@@ -774,6 +774,22 @@ void task_init(struct page_info * pp){
     t_flist = page2kva(pp);
     t_list = NULL;
 
+    /*
+    struct tasklet {
+        int id;
+        uint32_t *fptr;
+        uint32_t count;
+        int state;
+        struct tasklet *t_next;
+        struct tasklet_data *data;
+        uint32_t sector_start;
+        struct page_info * pi;      // Don't think this is the way to go...
+        uint32_t * fault_addr;
+        uint32_t * page_addr;
+        struct env * requestor_env;
+    };
+    */
+
     int idx;
     for (idx = 0; idx < NTASKS; ++idx)
     {
@@ -781,7 +797,13 @@ void task_init(struct page_info * pp){
         t_flist[idx].id = idx;
         t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
         t_flist[idx].state = T_FREE;
-        // t_flist[idx].data = &td;
+        t_flist[idx].data = NULL;
+        t_flist[idx].data = sector_start = 0;
+        t_flist[idx].pi = NULL;
+        t_flist[idx].fault_addr = NULL;
+        t_flist[idx].page_addr = NULL;
+        t_flist[idx].requestor_env = NULL;
+
 
         // Tasklet Data:
         t_flist[idx].count = 0;

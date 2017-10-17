@@ -25,10 +25,6 @@ uint32_t f_sector = 1;
 #define ARRAY_SIZE(x) (x/8+(!!(x%8)))	// Create Macro
 #define SIZE (262144)					// 512*512 (128MB)
 
-char get_bit(char *array, int index);
-void toggle_bit(char *array, int index);
-
-
 void toggle_bit(char *array, int index)
 {
     array[index/8] ^= 1 << (index % 8);
@@ -42,8 +38,8 @@ char get_bit(char *array, int index)
 // Init one:
 char swap_map[ARRAY_SIZE(SIZE)] = {0};
 
+/* END Bit "Map" impl. from https://gist.github.com/gandaro */
 
-/* END Bit "Map" impl. from https://gist.github.com/gandaro*/
 
 /*
 	This function assign a badness score to each active process and kills the winner
@@ -237,16 +233,17 @@ int page_out(struct tasklet *t){
             return 0;
         }
     } else {
-        // Done, can dequeue tasklet
         cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
-        // Here, or in kTask need to change all PTEs to hold t->sector start
-        /* Need to update the PTE of pi and save the sector_start value into it */
+
+        // Free the page we've just finished writing to disk:
         page_free(t->pi);
-        // pte_t * p; // get via rev_lookup
+
+        // Update PTE with index in high 20 bits:
         pte_t * p = find_pte(t->pi);
         *p & 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
 
+      	// Actual Dequeing done by ktask(), our wrapper via ret:
         return 1;
     }
 
@@ -296,11 +293,11 @@ int lru_manager(){
 			READ bit.... set by the MMU?
 	*/
 	// if the active list is 
-	cprintf("[LRU][ML] OUT active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+	// cprintf("[LRU][ML] OUT active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 	if(lru_active_count >= MIN_ALRU_SZ){
 
 		struct page_info * p;
-		cprintf("[LRU][ML] IN active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+		// cprintf("[LRU][ML] IN active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 
 		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
@@ -318,17 +315,18 @@ int lru_manager(){
 */
 int reclaim_pgs(struct env *e, int pg_n){
 
+	cprintf("[REC] reclaim_pgs called!\n");
+
 	/* Code me */
 	int pg_c = pg_n;
 	struct page_info *pp;
 	struct tasklet * t = t_list;
 	
 	/*	Swap enough inactive pages */
-
 	while(pg_c > 0){
-		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
+		cprintf("[REC] Remove page inactive count: %d \n", lru_inactive_count);
 		lru_hi_remove(&pp);
-		//cprintf("Removed page\n");
+		cprintf("[REC] Removed page\n");
 		if(pp != NULL){
 			lock_task();
 			while(t){
@@ -338,6 +336,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 		            t->pi = pp;
 		            // t->sector_start = f_sector;
 		            t->count = 0;
+		            cprintf("[REC] free task found, and setup!\n");
 		            break;
 		        }
 		        t = t->t_next;
