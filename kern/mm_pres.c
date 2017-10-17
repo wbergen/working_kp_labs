@@ -326,9 +326,9 @@ int reclaim_pgs(struct env *e, int pg_n){
 	/*	Swap enough inactive pages */
 
 	while(pg_c > 0){
-		
+		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
 		lru_hi_remove(&pp);
-
+		//cprintf("Removed page\n");
 		if(pp != NULL){
 			lock_task();
 			while(t){

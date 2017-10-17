@@ -574,6 +574,9 @@ struct tasklet * task_get(struct tasklet ** list){
         return NULL;
 
 }
+void print_list(struct page_info * head, struct page_info * tail){
+    cprintf("\n");
+}
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
@@ -613,9 +616,9 @@ void lru_insert_tail(struct page_info * pp, struct page_info **head, struct page
         return;        
     }
     
-    assert((**tail).lru_link == NULL);
+    assert((*tail)->lru_link == NULL);
 
-    (**tail).lru_link = pp;
+    (*tail)->lru_link = pp;
     *tail = pp;
 
     pp->lru_link = NULL;
@@ -639,6 +642,7 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
     if(pp){
         *pp = NULL;
     }
+
     if(!head || !tail){
         return;
     }
@@ -648,7 +652,8 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
     }
 
     p = *head;
-    *head = (*head)->lru_link;
+    cprintf("%x, %x\n",*head, *tail);
+    *head = p->lru_link;
 
     if(pp){
         *pp = p;
@@ -669,8 +674,9 @@ void lru_hi_remove(struct page_info **pp){
 /*  remove an element in the tail of a lru list  */
 
 void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page_info **tail){
+    struct page_info * p, *old_p;
+    //cprintf("[LRU]H %x *tail: %x *head %x\n", *tail, *head);
 
-    struct page_info * p;
     if(pp){
         *pp = NULL;
     }
@@ -683,21 +689,25 @@ void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page
     }
 
     p = *tail;
+    //cprintf("[LRU]H2 p: %x *p %x *tail: %x *head %x\n",p, *p, *tail, *head);
 
     if(pp){
         *pp = p;
     }
-
+    int count = 0;
     //find the new tail
-    p = *head;
+    old_p = p = *head;
     while(p){
+        count++;
         if(!p->lru_link){
+            old_p->lru_link = NULL;
             break;
         }
+        old_p = p;
         p = p->lru_link;
     }
-    *tail = p;
-
+    *tail = old_p;
+    //cprintf("[LRU] %d p: %x *tail: %x *head %x\n",count, old_p, *tail, *head);
 }
 /*  Specific lists - tail remove - wrappers */
 void lru_ta_remove(struct page_info ** pp){
@@ -711,16 +721,18 @@ void lru_ti_remove(struct page_info ** pp){
 
 int lru_remove_el(struct page_info *pp, struct page_info **head, struct page_info **tail){
     
-    struct page_info * p;
+    struct page_info * p, * old_p;
     if(!pp || !head || !tail){
         return 0;
     }
 
-    p = *head;
+    old_p = p = *head;
     while(p){
         if(p == pp){
+            old_p->lru_link = p->lru_link;
             break;
         }
+        old_p = p;
         p = p->lru_link;
     }
 
