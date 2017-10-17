@@ -6,7 +6,7 @@
 #include <kern/monitor.h>
 #include <kern/mm_pres.h>
 
-int SCHED_DEBUG = 0;
+int SCHED_DEBUG = 1;
 uint64_t lru_check = LRU_DEFAULT;
 
 void sched_halt(void);
@@ -112,6 +112,7 @@ void check_work(){
         lru_check = LRU_DEFAULT;
         lru_manager();
     }
+
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);

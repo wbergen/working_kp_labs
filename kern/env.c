@@ -755,7 +755,7 @@ void ktask(){
     t = t_list;    
     while(t){
         if(t->id == t_id){
-            if(status){
+            if(status || t->count == 7){
                 cprintf("[KTASK] Work done, Free the task\n");
                 task_add(t, &t_flist, 1);
             }else{
@@ -767,7 +767,8 @@ void ktask(){
         t = t->t_next;
     }
     unlock_task();
-
+    cprintf("[KTASK] Tasklet at end of ktask(): [%08x, fptr: %08x, count: %u] state: %u.\n", t->id, t->fptr, t->count, t->state);
+    
     // ktask round done, schedule:
     lock_env();
     lock_kernel();
@@ -1007,12 +1008,12 @@ void env_run(struct env *e){
 
     //cprintf("[ENV] env_run type: %08x\n", e->env_type);
     struct env * old_e = curenv;
-    if (e->env_type == ENV_TYPE_KERNEL){
-        cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
-        cprintf("\t curenv: %08x\n", curenv);
-    } else {
-        cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
-    }
+    // if (e->env_type == ENV_TYPE_KERNEL){
+    //     cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
+    //     cprintf("\t curenv: %08x\n", curenv);
+    // } else {
+    //     cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
+    // }
 
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){

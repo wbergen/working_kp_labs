@@ -215,7 +215,7 @@ int page_out(struct tasklet *t){
 
     int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
-    char * buf = (char *)page2pa(t->pi);
+    char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
@@ -223,6 +223,8 @@ int page_out(struct tasklet *t){
     	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
     }
+
+    // lock_pagealloc();
 
     // If the disk is ready, call another write:
     if (t->count < nsectors){
@@ -232,9 +234,12 @@ int page_out(struct tasklet *t){
             ++t->count;
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
+            // unlock_pagealloc();
+            cprintf("[KTASK] Wrote to disk!  returning to ktask()...\n");
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
+            // unlock_pagealloc();
             return 0;
         }
     } else {
@@ -250,10 +255,12 @@ int page_out(struct tasklet *t){
       	*p = ((t->sector_start << 12) | PTE_G);
 
       	// Actual Dequeing done by ktask(), our wrapper via ret:
+      	// unlock_pagealloc();
         return 1;
     }
 
     // Catch Bizzarities:
+    cprintf("[KTASK] should never happen...\n");
 	return 1;
 }
 /*
