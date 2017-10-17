@@ -567,15 +567,76 @@ void task_add(struct tasklet *t, struct tasklet **list, int free){
 struct tasklet * task_get(struct tasklet ** list){
         
         struct tasklet *t_s = *list;
-        if(list){
+        if(*list){
             *list = t_s->t_next;
             return t_s;
         }
         return NULL;
 
 }
-void print_list(struct page_info * head, struct page_info * tail){
-    cprintf("\n");
+/*
+    Return 1 if the task of id "id" is removed 
+    0 if not found
+*/
+int task_free(int id){
+    struct tasklet * ts, * old_ts;
+
+    ts = old_ts = t_list;
+
+    while(ts){
+        if(ts->id == id){
+            old_ts->t_next = ts->t_next;
+            if(t_list == ts){
+                t_list = ts->t_next;
+            }
+            break;
+        }
+        old_ts = ts;
+        ts = ts->t_next;
+    }
+    if(ts){
+        task_add(ts, &t_flist, 1);
+        return 1;
+    }else{
+        return 0;
+    }
+
+}
+
+struct tasklet * task_get_free(){
+    return task_get(&t_flist);
+}
+
+void task_add_alloc(struct tasklet * ts){
+    task_add(ts,&t_list,0);
+}
+
+
+
+void print_lru_list(int acount, struct page_info * head, struct page_info * tail){
+    struct page_info * p;
+    int count = 0;
+    cprintf("[LRU] HEAD:%x TAIL:%x\n", head, tail);
+
+    p = head;
+    while(p){
+        count ++;
+        if(!p->lru_link)
+            break;
+        p = p->lru_link;
+    }
+
+    cprintf("[LRU] COUNT: %dACTUAL COUNT: %d ACTUAL TAIL:%x TAIL:%x\n", acount, count, p, tail);
+
+}
+void print_lru_active(){
+    cprintf("\tLRU ACTIVE LIST\t\n");
+    print_lru_list(lru_active_count, lru_lists.h_active, lru_lists.t_active);
+}
+
+void print_lru_inactive(){
+    cprintf("\tLRU INACTIVE LIST\t\n");
+    print_lru_list(lru_inactive_count, lru_lists.h_inactive, lru_lists.t_inactive);
 }
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
@@ -652,7 +713,6 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
     }
 
     p = *head;
-    cprintf("%x, %x\n",*head, *tail);
     *head = p->lru_link;
 
     if(pp){
