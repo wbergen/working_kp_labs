@@ -719,10 +719,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 */
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp ));
+    print_lru_inactive();
 
     struct tasklet * t = t_list;
     int i, t_id, status = 0;
-
     // Look for work:
     lock_task();
     while(t){
@@ -751,6 +751,7 @@ void ktask(){
         cprintf("[KTASK] Unknown function called!\n");
     }
     unlock_pagealloc();
+
     //Update the tasklet     
     lock_task();
     t = t_list;    
@@ -1013,7 +1014,6 @@ void env_run(struct env *e){
      *  and make sure you have set the relevant parts of
      *  e->env_tf to sensible values.
      */
-
     //cprintf("[ENV] env_run type: %08x\n", e->env_type);
     struct env * old_e = curenv;
     // if (e->env_type == ENV_TYPE_KERNEL){
@@ -1066,7 +1066,6 @@ void env_run(struct env *e){
             }
         }
 
-
         //2. Set 'curenv' to the new environment
         curenv = e;
 
@@ -1078,6 +1077,7 @@ void env_run(struct env *e){
         // cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
         lcr3(PADDR(curenv->env_pgdir));
     }
+
     #ifdef DEBUG_SPINLOCK
         cprintf("----------------------------env_run[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
     #endif
@@ -1088,7 +1088,6 @@ void env_run(struct env *e){
     if(old_e && old_e->env_type == ENV_TYPE_KERNEL ){
         // cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
         kenv_cpy_tf(&ktf,&old_e->env_tf);
-
     }
 
     env_pop_tf(&e->env_tf);

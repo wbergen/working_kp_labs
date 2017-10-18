@@ -208,21 +208,21 @@ int page_out(struct tasklet *t){
 
 	// Need to get the page in question
 	// Need to get the offset to write to
-
+	print_lru_inactive();
 	// Find sector to start write at:
 	t->sector_start = find_swap_spot();
 
     int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
     char * buf = (char *)page2kva(t->pi);
-
+    print_lru_inactive();
     // First invocation, set sector index:
     if (t->count == 0){
     	// t->sector_start = f_sector;
     	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
     }
-
+    print_lru_inactive();
     // If the disk is ready, call another write:
     if (t->count < nsectors){
         if (ide_is_ready()){
@@ -340,7 +340,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 	/*	Swap enough inactive pages */
 	//struct tasklet * task_get(struct tasklet ** list){
 	//void task_add(struct tasklet *t, struct tasklet **list, int free){
-
+	print_lru_inactive();
 	while(pg_c > 0){
 		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
 		lru_hi_remove(&pp);
@@ -372,7 +372,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 	/* Deduplicate pages	*/
 
 	/* KILL KILL KILL */
-
+	print_lru_inactive();
 	if(pg_c > 0){
 		if(oom_kill(e, pg_c))
 			pg_c = 0;

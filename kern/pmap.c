@@ -621,10 +621,15 @@ void print_lru_list(int acount, struct page_info * head, struct page_info * tail
 
     p = head;
     while(p){
+       // cprintf(" p: %x PLINK %x",p,p->lru_link);
         count ++;
         if(!p->lru_link)
             break;
         p = p->lru_link;
+    }
+    cprintf("\n");
+    if(acount != count){
+       panic("[LRU] COUNT: %d ACTUAL COUNT: %d\n", acount, count);
     }
 
     cprintf("[LRU] COUNT: %dACTUAL COUNT: %d ACTUAL TAIL:%x TAIL:%x\n", acount, count, p, tail);
@@ -642,6 +647,7 @@ void print_lru_inactive(){
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
+    cprintf("LRU INSERT HEAD\n");
     if(!pp || !head || !tail){
         return;
     }
@@ -668,6 +674,7 @@ void lru_hi_insert(struct page_info * pp){
 /*  Insert an element in the tail of a lru list  */
 
 void lru_insert_tail(struct page_info * pp, struct page_info **head, struct page_info **tail){
+    cprintf("LRU INSERT TAIL\n");
 
     if(!pp || !tail){
         return;
@@ -699,6 +706,7 @@ void lru_ti_insert(struct page_info * pp){
 
 /*  remove an element in the head of a lru list  */
 void lru_remove_head(struct page_info **pp, struct page_info **head, struct page_info **tail){
+        cprintf("LRU REMOVE HEAD\n");
 
     struct page_info * p;
     if(pp){
@@ -734,6 +742,7 @@ void lru_hi_remove(struct page_info **pp){
 void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page_info **tail){
     struct page_info * p, *old_p;
     //cprintf("[LRU]H %x *tail: %x *head %x\n", *tail, *head);
+    cprintf("LRU REMOVE TAIL\n");
 
     if(pp){
         *pp = NULL;
@@ -776,7 +785,8 @@ void lru_ti_remove(struct page_info ** pp){
 }
 
 int lru_remove_el(struct page_info *pp, struct page_info **head, struct page_info **tail){
-    
+    cprintf("LRU REMOVE EL\n");
+
     struct page_info * p, * old_p;
     if(!pp || !head || !tail){
         return 0;

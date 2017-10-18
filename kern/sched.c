@@ -101,12 +101,10 @@ int env2id(envid_t id){
     - Dispatch work to kernel threads
 */
 void check_work(){
-
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
-        cprintf("[SCHED] CHECK WORK\n");
-
+    cprintf("[SCHED] CHECK WORK\n");
     if(lru_check > LRU_DEFAULT ){
         cprintf("[LRU] Managing lists\n");
         lru_check = LRU_DEFAULT;
@@ -128,7 +126,9 @@ void check_work(){
                     cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
                 if (envs[i].env_status == ENV_RUNNABLE){
                     //if (SCHED_DEBUG)
-                        cprintf("[SCHED] RUNNING KERN THREAD\n");
+                    cprintf("[SCHED] RUNNING KERN THREAD\n");
+                    print_lru_inactive();
+
                     env_run(&envs[i]);
                 }
             }
