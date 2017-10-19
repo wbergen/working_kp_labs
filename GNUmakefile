@@ -184,6 +184,10 @@ qemu-nox-gdb: $(IMAGES) pre-qemu
 print-qemu:
 	@echo $(QEMU)
 
+print-qemu-all:
+	@echo "qemu invoke:"
+	@echo $(QEMU) $(QEMUOPTS)
+
 print-gdbport:
 	@echo $(GDBPORT)
 
