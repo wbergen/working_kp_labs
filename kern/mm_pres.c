@@ -127,7 +127,10 @@ int page_in(struct tasklet *t){
 	cprintf("[KTASK] page_in called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
+    // char buf[PGSIZE]; // get page backing pg_out
+    // buf is now a pointer (kva) to start of frame
     char * buf = (char *)t->page_addr;
+
 
     // First invocation, set sector index:
     if (t->count == 0){
@@ -195,6 +198,7 @@ uint32_t find_swap_spot(){
 /*
 	This function prints the swap map
 */
+
 void print_swapmap(int len){
 	int i;
 	cprintf("[KTASK] [");
@@ -204,8 +208,6 @@ void print_swapmap(int len){
 	}
 	cprintf("]\n");
 }
-
-
 /*
 	This function swaps out a page from the disk
 */
@@ -223,11 +225,13 @@ int page_out(struct tasklet *t){
 
 	// Can always set these the same:
     int nsectors = PGSIZE/SECTSIZE;
+    // char buf[PGSIZE]; // get page backing pg_out
     char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
     	t->sector_start = find_swap_spot();
+    	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
         cprintf("[KTASK] page_out(): STARTING. swap_spot found @ %u\n", t->sector_start);
     }
@@ -237,7 +241,6 @@ int page_out(struct tasklet *t){
         if (ide_is_ready()){
             cprintf("[KTASK] page_out(): WRITING. Disk Ready!  writing sector %u... Toggling bit %u\n", t->count, t->sector_start + t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
-
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
             ++t->count;

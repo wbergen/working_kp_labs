@@ -100,11 +100,12 @@ int env2id(envid_t id){
     - Swap pages if we are in memory pressure
     - Dispatch work to kernel threads
 */
+
 void check_work(){
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
-    cprintf("[SCHED] CHECK WORK\n");
+    cprintf("[SCHED] CHECK WORK %x\n", curenv);
     if(lru_check > LRU_DEFAULT ){
         cprintf("[LRU] Managing lists\n");
         lru_check = LRU_DEFAULT;
@@ -124,11 +125,12 @@ void check_work(){
             for(i = 0; i < NKTHREADS; i++){
                 //if (SCHED_DEBUG)
                     cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
-                if (envs[i].env_status == ENV_RUNNABLE){
+                if (envs[i].env_status == ENV_RUNNABLE || (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum())){
                     //if (SCHED_DEBUG)
                     cprintf("[SCHED] RUNNING KERN THREAD\n");
                     print_lru_inactive();
                     print_lru_active();
+                    envs[i].time_slice = TS_DEFAULT*2;
                     env_run(&envs[i]);
                 }
             }
@@ -228,8 +230,12 @@ void sched_yield(void)
             //update last tick
             last_tick = tick;
 
-            if(check_time_slice())
+            if(check_time_slice()){
                 env_run(curenv);
+            }else{
+                if(curenv->env_type != ENV_TYPE_KERNEL)
+                    check_work();
+            }
         }
 
     } else {
@@ -239,9 +245,6 @@ void sched_yield(void)
         i = NKTHREADS;
         //initialize last tick
         last_tick = read_tsc();
-    }
-    if(curenv){
-        check_work();
     }
 
     //keep the last index
@@ -257,6 +260,9 @@ void sched_yield(void)
         envs[e_run].time_slice = TS_DEFAULT;
         env_run(&envs[e_run]);
     }else{
+        if(curenv){
+            check_work();
+        }
         sched_halt();
     }
 }

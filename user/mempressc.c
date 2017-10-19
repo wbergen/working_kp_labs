@@ -19,6 +19,7 @@ void umain(int argc, char **argv)
 
     /* Read every page so that they get swapped back again */
     for(i = 37; i < MEM_BLOCK_SIZE; i+= PGSIZE) {
+        cprintf("L-USER lol! \n");
         *(gigs + i) = 'a';
         //assert(gigs[i] == (char) 0xd0);
     }

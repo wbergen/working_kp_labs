@@ -32,6 +32,8 @@ uint32_t free_pages_count = 0;
 struct lru lru_lists;
 uint32_t lru_active_count = 0; 
 uint32_t lru_inactive_count = 0;
+
+int worked = 0;
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/
