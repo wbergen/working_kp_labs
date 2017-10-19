@@ -323,7 +323,7 @@ int lru_manager(){
 		struct page_info * p;
 		// cprintf("[LRU][ML] B active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 
-		while((lru_inactive_count < 2000 )&&(lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
+		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
 			/*	move the element to the iactive list*/
