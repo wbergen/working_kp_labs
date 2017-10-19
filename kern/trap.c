@@ -435,8 +435,8 @@ void trap(struct trapframe *tf)
 
 	#endif
 
-    cprintf("[KERN_DEBUG] Trap #%u\n", num_traps);
-    ++num_traps;
+    // cprintf("[KERN_DEBUG] Trap #%u\n", num_traps);
+    // ++num_traps;
 
     /* The environment may have set DF and some versions of GCC rely on DF being
      * clear. */
@@ -786,7 +786,7 @@ void page_fault_handler(struct trapframe *tf)
     // } else {
         // cprintf("[KERN_DEBUG] pte exists, is == 0x%08x\n", *pte);
     // }
-    cprintf("[KERN_DEBUG] page_fault_handler(): fault_va == 0x%08x\n", (void *)fault_va);
+    // cprintf("[KERN_DEBUG] page_fault_handler(): fault_va == 0x%08x\n", (void *)fault_va);
     // cprintf("[KERN_DEBUG] curenv's pte @ fault va == 0x%08x\n", *pte);
     if (pte && !(*pte & PTE_P) && (*pte & PTE_G)){
         
@@ -817,7 +817,7 @@ void page_fault_handler(struct trapframe *tf)
 
         // Check for protection fault:
         if(!(tf->tf_err & 1)) {
-            cprintf("[KERN_DEBUG] Not a protection fault.  PTE: 0x%08x\n", pte);
+            // cprintf("[KERN_DEBUG] Not a protection fault.  PTE: 0x%08x\n", pte);
             alloc_page_after_fault(fault_va, tf);
         } else {
             struct vma* v = vma_lookup(curenv, (void *)fault_va);

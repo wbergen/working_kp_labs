@@ -127,25 +127,25 @@ int page_in(struct tasklet *t){
 	cprintf("[KTASK] page_in called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
-    // char buf[PGSIZE]; // get page backing pg_out
-    // buf is now a pointer (kva) to start of frame
     char * buf = (char *)t->page_addr;
-
 
     // First invocation, set sector index:
     if (t->count == 0){
     	// Get the sector to start at from the PTE (here or in ktask.. sector_start must be set)
+        cprintf("[KTASK] page_out(): STARTING. First sector to read == %u\n", t->sector_start);
         ide_start_write(t->sector_start, nsectors);
     }
 
     // If the disk is ready, call another write:
     if (t->count < nsectors){
         if (ide_is_ready()){
-            cprintf("[KTASK] Disk Ready!  Reading sector %u...\n", t->count);
+            cprintf("[KTASK] page_in(): READING.  Disk Ready!  Reading sector %u, toggling bit %u\n", t->count, t->sector_start + t->count);
             ide_read_sector(buf + t->count * SECTSIZE);
+
             // Remove the Bit Map bit representing this sector on disk
             toggle_bit(swap_map, t->sector_start + t->count);
             ++t->count;
+
             return 0;
         } else {
             cprintf("[KTASK] Disk Not ready, yielding...\n");
@@ -153,7 +153,7 @@ int page_in(struct tasklet *t){
         }
     } else {
         // Done, can dequeue tasklet
-        cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        cprintf("[KTASK] page_in(): FINISHED. Read 8 sectors starting @ %u.\n", t->sector_start);
         
         // Update the PTE in requestor's pgdir
         /* !COW NB HERE! */
@@ -162,10 +162,10 @@ int page_in(struct tasklet *t){
         // Lookup VMA for correct pte perms:
         struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
         // Setup correct PTE w/ vma perms:
-       	p = (uint32_t *)((uint32_t)t->fault_addr | v->perm | PTE_P);
+       	p = (void *)((uint32_t)t->fault_addr | v->perm | PTE_P);
 
-        // Reset the Requestor's status:
-        t->requestor_env->env_status = ENV_RUNNABLE;
+
+        // Return status indicates completed:
         return 1;
     }
 
@@ -193,9 +193,8 @@ uint32_t find_swap_spot(){
 }
 
 /*
-	This function swaps out a page from the disk
+	This function prints the swap map
 */
-
 void print_swapmap(int len){
 	int i;
 	cprintf("[KTASK] [");
@@ -206,6 +205,10 @@ void print_swapmap(int len){
 	cprintf("]\n");
 }
 
+
+/*
+	This function swaps out a page from the disk
+*/
 int page_out(struct tasklet *t){
 
 	/* Code me */
@@ -216,40 +219,38 @@ int page_out(struct tasklet *t){
 		COW pages? 
 	*/
 
-	// Need to get the page in question
-	// Need to get the offset to write to
-	// Find sector to start write at:
-	
-	//print_swapmap(128);
+   	// print_swapmap(128);
+
+	// Can always set these the same:
     int nsectors = PGSIZE/SECTSIZE;
-    // char buf[PGSIZE]; // get page backing pg_out
     char * buf = (char *)page2kva(t->pi);
+
     // First invocation, set sector index:
     if (t->count == 0){
     	t->sector_start = find_swap_spot();
-    	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
-        cprintf("[KTASK] page_out(): sector_start == %u\n", t->sector_start);
+        cprintf("[KTASK] page_out(): STARTING. swap_spot found @ %u\n", t->sector_start);
     }
-    // If the disk is ready, call another write:
+
+    // While we have work to do, check ff the disk is ready & call another write:
     if (t->count < nsectors){
         if (ide_is_ready()){
-            cprintf("[KTASK] Disk Ready!  writing sector %u... Toggle %u\n", t->count, t->sector_start + t->count);
+            cprintf("[KTASK] page_out(): WRITING. Disk Ready!  writing sector %u... Toggling bit %u\n", t->count, t->sector_start + t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
+
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
             ++t->count;
-            // unlock_pagealloc();
-            cprintf("[KTASK] Wrote to disk!  returning to ktask()...\n");
+
             return 0;
         } else {
-            cprintf("[KTASK] Disk Not ready, yielding...\n");
+            cprintf("[KTASK] page_out(): Disk Not ready, yielding...\n");
             return 0;
         }
     } else {
-        // Done, can dequeue tasklet
-        // cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
-        cprintf("[KTASK] page_out(): All done, finished writing w/ sector_start == %u\n", t->sector_start);
+        // All done writing:
+        cprintf("[KTASK] page_out(): FINISHED. Wrote 8 sectors starting from sector %u.\n", t->sector_start);
+
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
         // COW NOT GONNA WORK
@@ -260,8 +261,9 @@ int page_out(struct tasklet *t){
         *p &= 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
 
-      	// Actual Dequeing done by ktask(), our wrapper via ret:
-      	// unlock_pagealloc();
+      	// print_swapmap(128);
+
+      	// Return status indicating done!
         return 1;
     }
 
