@@ -719,9 +719,11 @@ static void load_icode(struct env *e, uint8_t *binary)
 */
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp ));
-    print_lru_inactive();
-    print_lru_active();
+   // print_lru_inactive();
+   // print_lru_active();
 
+    worked = 1;
+    
     struct tasklet * t = t_list;
     int i, t_id, status = 0;
     // Look for work:
@@ -1051,7 +1053,7 @@ void env_run(struct env *e){
             }
             if(curenv->env_status == ENV_RUNNING){
                 curenv->env_status = ENV_RUNNABLE;
-                cprintf("should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status);
+                cprintf("[SCHED]should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status);
 
             }
             //if the current env it's dying free it.
@@ -1070,7 +1072,6 @@ void env_run(struct env *e){
 
         //2. Set 'curenv' to the new environment
         curenv = e;
-
         //3. Set its status to ENV_RUNNING
         curenv->env_status = ENV_RUNNING;
         //4. Update its 'env_runs' counter

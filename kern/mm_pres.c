@@ -135,7 +135,7 @@ int page_in(struct tasklet *t){
     // First invocation, set sector index:
     if (t->count == 0){
     	// Get the sector to start at from the PTE (here or in ktask.. sector_start must be set)
-        ide_start_write(t->sector_start, nsectors);
+        ide_start_read(t->sector_start, nsectors);
     }
 
     // If the disk is ready, call another write:
