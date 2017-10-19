@@ -128,7 +128,7 @@ void check_work(){
                     //if (SCHED_DEBUG)
                     cprintf("[SCHED] RUNNING KERN THREAD\n");
                     print_lru_inactive();
-
+                    print_lru_active();
                     env_run(&envs[i]);
                 }
             }

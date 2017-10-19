@@ -720,6 +720,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp ));
     print_lru_inactive();
+    print_lru_active();
 
     struct tasklet * t = t_list;
     int i, t_id, status = 0;
@@ -789,6 +790,7 @@ static void load_kthread(struct env *e, void (*binary)()){
     //  Allocating a page for the stack
     struct page_info * pp = page_alloc(ALLOC_ZERO);
     // set the entry point to the 
+    cprintf("[MEMINIT] kt stack %x\n",pp);
     e->env_tf.tf_eip = (uintptr_t)binary;
 
     if(pp){
@@ -1075,7 +1077,10 @@ void env_run(struct env *e){
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
         // cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
-        lcr3(PADDR(curenv->env_pgdir));
+
+        //if(e->env_type != ENV_TYPE_KERNEL){       
+            lcr3(PADDR(curenv->env_pgdir));
+        //}
     }
 
     #ifdef DEBUG_SPINLOCK
