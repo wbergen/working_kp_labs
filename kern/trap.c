@@ -727,7 +727,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
 
     // Set index in tasklet:
-    int s_off = (uint32_t)((mask & *pte) >> 12);
+    uint32_t s_off = (uint32_t)((mask & *pte) >> 12);
 
     cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
     t->sector_start = s_off;
