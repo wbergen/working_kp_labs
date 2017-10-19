@@ -19,6 +19,7 @@
 #include <kern/vma.h>
 
 static struct taskstate ts;
+uint32_t num_traps = 0;
 //int first_trap = 1;
 //struct tasklet * t_list;
 
@@ -419,8 +420,7 @@ static void trap_dispatch(struct trapframe *tf)
 }
 
 void trap(struct trapframe *tf)
-{   
-
+{
     // print_trapframe(tf);
 	#ifdef USE_BIG_KERNEL_LOCK
 	    if(lock_kernel_holding() ){
@@ -434,6 +434,9 @@ void trap(struct trapframe *tf)
         	lock_kernel();
 
 	#endif
+
+    cprintf("[KERN_DEBUG] Trap #%u\n", num_traps);
+    ++num_traps;
 
     /* The environment may have set DF and some versions of GCC rely on DF being
      * clear. */
@@ -504,7 +507,7 @@ void trap(struct trapframe *tf)
      * some additional information. */
     last_tf = tf;
     if(lock_env_holding()){
-    	cprintf("HOLDING BEFORE TRAP DISP CPU:%d",cpunum());
+    	cprintf("HOLDING BEFORE TRAP DISP CPU:%d\n",cpunum());
     }
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
@@ -617,7 +620,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
+            // cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
 
             // Allocate a physical frame, huge or not
             struct page_info * demand_page;
@@ -682,23 +685,40 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 */
 void swap_in(uint32_t * fault_va, pte_t * pte){
 
+    /*
+    struct tasklet {
+        int id;
+        uint32_t *fptr;
+        uint32_t count;
+        int state;
+        struct tasklet *t_next;
+        struct tasklet_data *data;
+        uint32_t sector_start;
+        struct page_info * pi;      // Don't think this is the way to go...
+        uint32_t * fault_addr;
+        uint32_t * page_addr;
+        struct env * requestor_env;
+    };
+    */
+
+
     // Sleep the current env:
     curenv->env_status = ENV_SLEEPING;
 
     // Setup a tasklet for paging in:
-    struct tasklet * t = t_list;
+    struct tasklet * t = NULL;
 
     lock_task();
-    while(t){
-        if(t->state == T_FREE){
-            t->state = T_WORK;
-            t->fptr = (uint32_t *)page_in;
-            t->requestor_env = curenv;
-            t->fault_addr = fault_va;
-            t->count = 0;
-            break;
-        }
-        t = t->t_next;
+    // lock_pagealloc();
+    t = task_get_free();
+    if (t){
+        t->state = T_WORK;
+        t->fptr = (uint32_t *)page_in;
+        t->requestor_env = curenv;
+        t->fault_addr = fault_va;
+        t->count = 0;
+    } else {
+        panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
     }
 
     // Get the sector index from addr section of PTE:
@@ -707,19 +727,27 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
 
     // Set index in tasklet:
-    t->sector_start = (mask & *pte) >> 12;
+    int s_off = (uint32_t)((mask & *pte) >> 12);
+
+    cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
+    t->sector_start = s_off;
 
     // Alloc a page:
     struct page_info * swap_in;
     swap_in = page_alloc(0);
     if (swap_in){
         // Success, now set it up:
-        t->page_addr = (uint32_t *)page2pa(swap_in);
+        t->page_addr = (uint32_t *)page2kva(swap_in);
     } else {
         panic("[KERN] swap_in(): Tried to swap in a page, but alloc failed!");
     }
 
+    // Enqueue the Tasklet:
+    task_add_alloc(t);
+
     unlock_task();
+    // unlock_pagealloc();
+    // sched_yield();
 }
 
 
@@ -739,7 +767,7 @@ void page_fault_handler(struct trapframe *tf)
     if (!(tf->tf_err & 4)){
         if(fault_va > UTOP){
             //If  the kernel error is due to a print syscall must be checked
-            panic("[KERN ]page_fault_handler(): kernel page fault!\n");
+            panic("[KERN_DEBUG] page_fault_handler(): kernel page fault!\n");
         }
         if(!(tf->tf_err & 1)){
         	alloc_page_after_fault(fault_va, tf);
@@ -751,14 +779,22 @@ void page_fault_handler(struct trapframe *tf)
     /* Need a way to identify a currently being swapped page */
 
     // If we encounter a page marked Not Present && Global, it's been paged
-    pte_t * pte = pgdir_walk(curenv->env_pgdir, &fault_va, 0);
-    if (!(*pte & PTE_P) && (*pte & PTE_G)){
+    // lock_pagealloc();
+    pte_t * pte = pgdir_walk(curenv->env_pgdir, (void *)fault_va, 0);
+    // if (!pte) {
+        // cprintf("[KERN_DEBUG] pgdir_walk nil!\n");
+    // } else {
+        // cprintf("[KERN_DEBUG] pte exists, is == 0x%08x\n", *pte);
+    // }
+    cprintf("[KERN_DEBUG] page_fault_handler(): fault_va == 0x%08x\n", (void *)fault_va);
+    // cprintf("[KERN_DEBUG] curenv's pte @ fault va == 0x%08x\n", *pte);
+    if (pte && !(*pte & PTE_P) && (*pte & PTE_G)){
         
         cprintf("[KERN_DEBUG] [GLOBAL / NOT-PRESENT] page fault on swapped page...\n");
         
         // Need to page in!
-        swap_in(&fault_va, pte);
-  
+        swap_in((void *)fault_va, pte);
+    // }
     } else {
 
         /* We've already handled kernel-mode exceptions, so if we get here, the page
@@ -781,6 +817,7 @@ void page_fault_handler(struct trapframe *tf)
 
         // Check for protection fault:
         if(!(tf->tf_err & 1)) {
+            cprintf("[KERN_DEBUG] Not a protection fault.  PTE: 0x%08x\n", pte);
             alloc_page_after_fault(fault_va, tf);
         } else {
             struct vma* v = vma_lookup(curenv, (void *)fault_va);
