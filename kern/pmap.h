@@ -72,6 +72,9 @@ static inline physaddr_t _paddr(const char *file, int line, void *kva)
 {
     if ((uint32_t)kva < KERNBASE)
         _panic(file, line, "PADDR called with invalid kva %08lx", kva);
+    if(kva >= (void *)0xf02a5000  && kva < (void *)0xf02a6000){
+        panic("BADBAD %x\n",kva);
+    }
     return (physaddr_t)kva - KERNBASE;
 }
 

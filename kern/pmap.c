@@ -353,7 +353,10 @@ This funtion is used only in the first part of the mem_init and will return true
 */
 int is_allocated_init(struct page_info *pp){
     physaddr_t page_a;
+    
     page_a = page2pa(pp);
+        //cprintf("IT'S ME MARIO!%x %x\n",page2kva(pp),  pp);
+
     //cprintf("[INIT] pa: %x\n",npages_basemem);
     if(page_a < npages_basemem * PGSIZE){
         return 0;
@@ -362,15 +365,23 @@ int is_allocated_init(struct page_info *pp){
         return 1;
     }
     if(page_a >= EXTPHYSMEM && page_a < PADDR(boot_alloc(0))){
+        //if((void *)0xf02a5000 == page2kva(pp)){
+            //cprintf("IT'S ME BROWSER !\n");
+        //}
+        //cprintf("IT'S ME MARIO 3!\n");
         return 1;
     }
     if( page_a == MPENTRY_PADDR){
         return 0;
     }
     // Don't break the magic 
-    if(pp >= (struct page_info *)0xf02a5c00){
+    //if(page2kva(pp) == (void *)f02a5000){
+    //    cprintf("IT'S ME MARIO!%x %x\n",page2kva(pp),  pp);
+    //}
+    /*if(pp >= (struct page_info *)0xf02a5000){
         return 1;
-    }
+    }*/
+    //cprintf("%d\n",(((int)0xffff -(int) 0x5c00) / sizeof(struct page_info))) ;
     return 0;
 }
 
@@ -976,11 +987,12 @@ void page_init(void)
     pages[1].pp_link = NULL;
     pages[1].page_flags = 0;
 
+
     task_init(&pages[1]);
 
     lru_init();
 
-    for (i = (RESPGS + CPR_LRU_SZ); i < (npages); i++) {
+    for (i = (RESPGS + CPR_LRU_SZ); i < (npages - (PGSIZE/sizeof(struct page_info))); i++) {
 
         //initialize the page_info fields
         pages[i].pp_ref = 0;

@@ -736,9 +736,9 @@ void ktask(){
     }
     unlock_task();
     
-    cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
+    //cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
-    cprintf("[KTASK] Calling tasklet's function...\n");
+    //cprintf("[KTASK] Calling tasklet's function...\n");
     lock_pagealloc();
     if(t->fptr == (uint32_t *)page_out){
         int (*f)();
@@ -763,7 +763,7 @@ void ktask(){
                 cprintf("[KTASK] Work done, Free the task\n");
                 task_free(t->id);
             }else{
-                cprintf("[KTASK] Work not done \n");
+                //cprintf("[KTASK] Work not done \n");
                 t->state = T_WORK;                    
             }
             t_id = t->id;
