@@ -43,6 +43,7 @@ char get_bit(char *array, int index)
 char swap_map[ARRAY_SIZE(SIZE)] = {0};
 
 
+
 /* END Bit "Map" impl. from https://gist.github.com/gandaro*/
 
 /*
@@ -195,6 +196,15 @@ uint32_t find_swap_spot(){
 	This function swaps out a page from the disk
 */
 
+void print_swapmap(int len){
+	int i;
+	cprintf("[KTASK] [");
+	for (i = 0; i < len; ++i)
+	{
+		cprintf("%u", get_bit(swap_map, i));
+	}
+	cprintf("]\n");
+}
 
 int page_out(struct tasklet *t){
 
@@ -209,14 +219,14 @@ int page_out(struct tasklet *t){
 	// Need to get the page in question
 	// Need to get the offset to write to
 	// Find sector to start write at:
-	t->sector_start = find_swap_spot();
-
+	
+	//print_swapmap(128);
     int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
     char * buf = (char *)page2kva(t->pi);
     // First invocation, set sector index:
     if (t->count == 0){
-    	// t->sector_start = f_sector;
+    	t->sector_start = find_swap_spot();
     	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
         cprintf("[KTASK] page_out(): sector_start == %u\n", t->sector_start);
@@ -224,7 +234,7 @@ int page_out(struct tasklet *t){
     // If the disk is ready, call another write:
     if (t->count < nsectors){
         if (ide_is_ready()){
-            cprintf("[KTASK] Disk Ready!  writing sector %u...\n", t->count);
+            cprintf("[KTASK] Disk Ready!  writing sector %u... Toggle %u\n", t->count, t->sector_start + t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
