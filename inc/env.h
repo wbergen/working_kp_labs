@@ -77,9 +77,8 @@ struct tasklet {
     struct tasklet *t_next;
     struct tasklet_data *data;
     uint32_t sector_start;
-    struct page_info * pi;      // Don't think this is the way to go...
+    struct page_info * pi;              
     uint32_t * fault_addr;
-    uint32_t * page_addr;
     struct env * requestor_env;
 };
 

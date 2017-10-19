@@ -669,7 +669,7 @@ void print_lru_inactive(){
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
-    cprintf("LRU INSERT HEAD\n");
+    // cprintf("LRU INSERT HEAD\n");
     if(!pp || !head || !tail){
         return;
     }
@@ -878,8 +878,7 @@ void task_init(struct page_info * pp){
         struct tasklet *t_next;
         struct tasklet_data *data;
         uint32_t sector_start;
-        struct page_info * pi;      // Don't think this is the way to go...
-        uint32_t * fault_addr;
+        struct page_info * pi;
         uint32_t * page_addr;
         struct env * requestor_env;
     };
@@ -896,7 +895,6 @@ void task_init(struct page_info * pp){
         t_flist[idx].sector_start = 0;
         t_flist[idx].pi = NULL;
         t_flist[idx].fault_addr = NULL;
-        t_flist[idx].page_addr = NULL;
         t_flist[idx].requestor_env = NULL;
 
 

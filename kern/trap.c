@@ -709,7 +709,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     struct tasklet * t = NULL;
 
     lock_task();
-    // lock_pagealloc();
+    lock_pagealloc();
     t = task_get_free();
     if (t){
         t->state = T_WORK;
@@ -722,6 +722,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     }
 
     // Get the sector index from addr section of PTE:
+    cprintf("[KERN_DEBUG] faulting va: 0x%08x\n", fault_va);
     uint32_t mask = 0 - 1 - 0xfff;      //0xfffff000
     cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask);
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
@@ -737,16 +738,17 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     swap_in = page_alloc(0);
     if (swap_in){
         // Success, now set it up:
-        t->page_addr = (uint32_t *)page2kva(swap_in);
+        t->pi = swap_in;
     } else {
         panic("[KERN] swap_in(): Tried to swap in a page, but alloc failed!");
     }
 
     // Enqueue the Tasklet:
+    t->count = 0;
     task_add_alloc(t);
 
     unlock_task();
-    // unlock_pagealloc();
+    unlock_pagealloc();
     // sched_yield();
 }
 

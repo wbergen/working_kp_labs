@@ -124,19 +124,19 @@ int page_in(struct tasklet *t){
 	Wake the caller
 	*/
 
-	cprintf("[KTASK] page_in called!\n");
+	// cprintf("[KTASK] page_in called!\n");
 
     int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
     // buf is now a pointer (kva) to start of frame
-    char * buf = (char *)t->page_addr;
+    char * buf = (char *)page2kva(t->pi);
 
 
     // First invocation, set sector index:
     if (t->count == 0){
     	// Get the sector to start at from the PTE (here or in ktask.. sector_start must be set)
-        cprintf("[KTASK] page_out(): STARTING. First sector to read == %u\n", t->sector_start);
-        ide_start_write(t->sector_start, nsectors);
+        cprintf("[KTASK] page_in(): STARTING. First sector to read == %u\n", t->sector_start);
+        ide_start_read(t->sector_start, nsectors);
     }
 
     // If the disk is ready, call another write:
@@ -165,7 +165,11 @@ int page_in(struct tasklet *t){
         // Lookup VMA for correct pte perms:
         struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
         // Setup correct PTE w/ vma perms:
-       	p = (void *)((uint32_t)t->fault_addr | v->perm | PTE_P);
+       	*p = page2pa(t->pi) | v->perm | PTE_P;
+
+       	cprintf("KTASK] page_in(): reset pte: 0x%08x\n", *p);
+
+       	t->requestor_env->env_status = ENV_RUNNABLE;
 
 
         // Return status indicates completed:
@@ -198,7 +202,6 @@ uint32_t find_swap_spot(){
 /*
 	This function prints the swap map
 */
-
 void print_swapmap(int len){
 	int i;
 	cprintf("[KTASK] [");
@@ -225,13 +228,11 @@ int page_out(struct tasklet *t){
 
 	// Can always set these the same:
     int nsectors = PGSIZE/SECTSIZE;
-    // char buf[PGSIZE]; // get page backing pg_out
     char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
     	t->sector_start = find_swap_spot();
-    	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
         cprintf("[KTASK] page_out(): STARTING. swap_spot found @ %u\n", t->sector_start);
     }
@@ -241,6 +242,7 @@ int page_out(struct tasklet *t){
         if (ide_is_ready()){
             cprintf("[KTASK] page_out(): WRITING. Disk Ready!  writing sector %u... Toggling bit %u\n", t->count, t->sector_start + t->count);
             ide_write_sector(buf + t->count * SECTSIZE);
+            
             // Set the according bit in Bit Map
             toggle_bit(swap_map, t->sector_start + t->count);
             ++t->count;
@@ -259,7 +261,6 @@ int page_out(struct tasklet *t){
         // COW NOT GONNA WORK
        	t->pi->pp_ref = 0;
         page_free(t->pi);
-        // pte_t * p; // get via rev_lookup
         pte_t * p = find_pte(t->pi);
         *p &= 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
@@ -320,7 +321,7 @@ int lru_manager(){
 	if(lru_active_count >= MIN_ALRU_SZ){
 
 		struct page_info * p;
-		cprintf("[LRU][ML] B active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+		// cprintf("[LRU][ML] B active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 
 		while((lru_inactive_count < 2000 )&&(lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
