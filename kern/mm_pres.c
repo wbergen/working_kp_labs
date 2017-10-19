@@ -219,6 +219,7 @@ int page_out(struct tasklet *t){
     	// t->sector_start = f_sector;
     	// f_sector += 8;
         ide_start_write(t->sector_start, nsectors);
+        cprintf("[KTASK] page_out(): sector_start == %u\n", t->sector_start);
     }
     // If the disk is ready, call another write:
     if (t->count < nsectors){
@@ -237,7 +238,8 @@ int page_out(struct tasklet *t){
         }
     } else {
         // Done, can dequeue tasklet
-        cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        // cprintf("[KTASK] No work left, Dequeuing tasklet...\n");
+        cprintf("[KTASK] page_out(): All done, finished writing w/ sector_start == %u\n", t->sector_start);
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
         // COW NOT GONNA WORK
@@ -247,6 +249,7 @@ int page_out(struct tasklet *t){
         pte_t * p = find_pte(t->pi);
         *p &= 0x0;	// clear it
       	*p = ((t->sector_start << 12) | PTE_G);
+
       	// Actual Dequeing done by ktask(), our wrapper via ret:
       	// unlock_pagealloc();
         return 1;

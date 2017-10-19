@@ -538,7 +538,7 @@ pte_t * find_pte(struct page_info * p){
 
                     for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            cprintf("[KTASK] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
+                            // cprintf("[KTASK] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
                             return (pte_entry + k);
                         }
                     }                   
