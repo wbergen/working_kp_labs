@@ -757,7 +757,8 @@ void ktask(){
 
     //Update the tasklet     
     lock_task();
-    t = t_list;    
+    t = t_list;
+    //cprintf("ktask  %x\n",t);
     //Update the tasklet     
     while(t){
         if(t->id == t_id){

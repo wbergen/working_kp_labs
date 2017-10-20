@@ -620,7 +620,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            // cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
+            cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
 
             // Allocate a physical frame, huge or not
             struct page_info * demand_page;
@@ -709,7 +709,8 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     struct tasklet * t = NULL;
 
     lock_task();
-    lock_pagealloc();
+
+
     t = task_get_free();
     if (t){
         t->state = T_WORK;
@@ -733,9 +734,14 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
     t->sector_start = s_off;
 
+
     // Alloc a page:
     struct page_info * swap_in;
+
+    lock_pagealloc();
     swap_in = page_alloc(0);
+    unlock_pagealloc();
+
     if (swap_in){
         // Success, now set it up:
         t->pi = swap_in;
@@ -745,10 +751,11 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
 
     // Enqueue the Tasklet:
     t->count = 0;
+    cprintf("[KTASK DB] Paging in on task: %x page: %x\n", fault_va, t->pi);    
     task_add_alloc(t);
 
     unlock_task();
-    unlock_pagealloc();
+
     // sched_yield();
 }
 

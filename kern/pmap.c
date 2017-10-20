@@ -551,7 +551,7 @@ pte_t * find_pte(struct page_info * p){
 
                     for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            // cprintf("[KTASK] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
+                            cprintf("[KTASK DB] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
                             return (pte_entry + k);
                         }
                     }                   
@@ -575,8 +575,21 @@ void task_add(struct tasklet *t, struct tasklet **list, int free){
             t->count = 0;
         }
 
-        *list = t;
-        t->t_next = t_s;
+        if(!*list){
+            *list = t;
+            t->t_next = NULL;
+        }
+
+        while(t_s){
+            if(!t_s->t_next){
+                t_s->t_next = t;
+                t->t_next = NULL;
+            }
+            t_s = t_s->t_next;
+        }
+
+        cprintf("[KTASK DB] adding task %d\n",t->id);
+
 }
 
 /*
@@ -587,6 +600,7 @@ struct tasklet * task_get(struct tasklet ** list){
         struct tasklet *t_s = *list;
         if(*list){
             *list = t_s->t_next;
+            cprintf("[KTASK DB] Getting task %d\n",t_s->id);
             return t_s;
         }
         return NULL;
@@ -613,9 +627,12 @@ int task_free(int id){
         ts = ts->t_next;
     }
     if(ts){
+        cprintf("[KTASK DB] Freeing task %d\n",ts->id);
         task_add(ts, &t_flist, 1);
         return 1;
     }else{
+        cprintf("[KTASK DB] FAILURE Freeing task \n");
+
         return 0;
     }
 
@@ -626,6 +643,8 @@ struct tasklet * task_get_free(){
 }
 
 void task_add_alloc(struct tasklet * ts){
+    cprintf("[KTASK DB] Addinng alloc task %d\n",ts->id);
+
     task_add(ts,&t_list,0);
 }
 

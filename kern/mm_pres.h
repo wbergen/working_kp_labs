@@ -1,7 +1,7 @@
 
 #define MIN_ALRU_SZ	0
 #define	BL_LRU_RATIO 1
-
+#define NSECTORS 8; 
 /*
 	This function assign a badness score to each active process and kills the winner
 	return 1 if a process is killed to free space, 0 if failure

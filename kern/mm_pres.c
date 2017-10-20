@@ -125,8 +125,6 @@ int page_in(struct tasklet *t){
 	*/
 
 	// cprintf("[KTASK] page_in called!\n");
-
-    int nsectors = PGSIZE/SECTSIZE;
     // char buf[PGSIZE]; // get page backing pg_out
     // buf is now a pointer (kva) to start of frame
     char * buf = (char *)page2kva(t->pi);
@@ -136,11 +134,11 @@ int page_in(struct tasklet *t){
     if (t->count == 0){
     	// Get the sector to start at from the PTE (here or in ktask.. sector_start must be set)
         cprintf("[KTASK] page_in(): STARTING. First sector to read == %u\n", t->sector_start);
-        ide_start_read(t->sector_start, nsectors);
+        ide_start_read(t->sector_start, NSECTORS);
     }
 
     // If the disk is ready, call another write:
-    if (t->count < nsectors){
+    if (t->count < NSECTORS){
         if (ide_is_ready()){
             cprintf("[KTASK] page_in(): READING.  Disk Ready!  Reading sector %u, toggling bit %u\n", t->count, t->sector_start + t->count);
             ide_read_sector(buf + t->count * SECTSIZE);
@@ -227,20 +225,20 @@ int page_out(struct tasklet *t){
    	// print_swapmap(128);
 
 	// Can always set these the same:
-    int nsectors = PGSIZE/SECTSIZE;
+
     char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
     if (t->count == 0){
     	t->sector_start = find_swap_spot();
-        ide_start_write(t->sector_start, nsectors);
+        ide_start_write(t->sector_start, NSECTORS);
         cprintf("[KTASK] page_out(): STARTING. swap_spot found @ %u\n", t->sector_start);
     }
 
     // While we have work to do, check ff the disk is ready & call another write:
-    if (t->count < nsectors){
+    if (t->count < NSECTORS){
         if (ide_is_ready()){
-            cprintf("[KTASK] page_out(): WRITING. Disk Ready!  writing sector %u... Toggling bit %u\n", t->count, t->sector_start + t->count);
+            cprintf("[KTASK DB] page_out(): WRITING. Disk Ready!  writing sector %u... Toggling bit %u task %d\n", t->count, t->sector_start + t->count, t->id);
             ide_write_sector(buf + t->count * SECTSIZE);
             
             // Set the according bit in Bit Map
@@ -259,11 +257,20 @@ int page_out(struct tasklet *t){
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
         // COW NOT GONNA WORK
-       	t->pi->pp_ref = 0;
+       	if(t->pi->pp_ref != 1){
+       		panic("page out finished but page with ref: %d\n",t->pi->pp_ref);
+       	}else{
+       		t->pi->pp_ref--;
+       	}
         page_free(t->pi);
         pte_t * p = find_pte(t->pi);
-        *p &= 0x0;	// clear it
-      	*p = ((t->sector_start << 12) | PTE_G);
+        if(p){
+        	*p &= 0x0;	// clear it
+      		*p = ((t->sector_start << 12) | PTE_G);        	
+        }else{
+        	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);
+        }
+
 
       	// print_swapmap(128);
 
@@ -365,6 +372,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 			lock_task();
 			t = task_get_free();
 			if(t){
+				cprintf("[KTASK DB] Work being prepared on task %d\n",t->id);
 		        t->state = T_WORK;
 		        t->fptr = (uint32_t *)page_out;
 		        t->pi = pp;
