@@ -751,6 +751,8 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
 
     // Enqueue the Tasklet:
     t->count = 0;
+    // cprintf("[KTASK_PTE] PAGE IN QUEUED")
+    // cprintf("[KTASK_PTE] PAGE IN QUEUED. PTE: 0x%08x -> 0x%08x\n", *pte, (uint32_t)((mask & *pte)));
     cprintf("[KTASK DB] Paging in on task: %x page: %x\n", fault_va, t->pi);    
     task_add_alloc(t);
 
