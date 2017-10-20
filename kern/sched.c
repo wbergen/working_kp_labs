@@ -95,6 +95,22 @@ int env2id(envid_t id){
     return -1;
 }
 /*
+    This function resumes the work of sleeping processes due to direct reclaim
+*/
+void resume_env(){
+
+    int i;
+    for(i=0; i<NENV; i++){
+        if(get_bit(drc_map, i) == 1){
+            if(envs[i].env_status == ENV_SLEEPING){
+                envs[i].env_status = ENV_RUNNABLE;
+            }
+            toggle_bit(drc_map, i);
+        }
+    }
+
+}
+/*
   Kernel work:
     - Keep the LRU lists balanced
     - Swap pages if we are in memory pressure
@@ -102,6 +118,8 @@ int env2id(envid_t id){
 */
 
 void check_work(){
+
+
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
@@ -116,6 +134,8 @@ void check_work(){
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
         pgs2swap = reclaim_pgs(NULL, pgs2swap);
         cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap);
+    }else{
+        resume_env();
     }
 
     while(t){

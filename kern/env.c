@@ -634,6 +634,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     // Segment info:
     uint32_t *va;
     size_t msize;
+    size_t mmcount =0;
     for (; ph < eph; ph++)
     {   
         // If the segment is LOAD, map it:
@@ -667,7 +668,9 @@ static void load_icode(struct env *e, uint8_t *binary)
             // if ELF_PROG_FLAG_READ or LF_PROG_FLAG_EXEC do nothing
             // VMA Map:
             // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
-            // 1 success, 0 failure, -1 other errors...        
+            // 1 success, 0 failure, -1 other errors...      
+
+            mmcount += msize;  
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), perm, NULL) < 1){
                 panic("load_icode(): vma creation failed!\n");
             }
@@ -711,7 +714,10 @@ static void load_icode(struct env *e, uint8_t *binary)
     // }
 
     // cprintf("load_icode(): returning...\n");
-
+    if(mmcount >= (free_pages_count - 200) * PGSIZE){
+        cprintf("[ERROR] Trying to allocate binary with too large memory footprint\n");
+        env_destroy(e);
+    }
 }
 
 /*

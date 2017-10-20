@@ -280,6 +280,14 @@ int page_out(struct tasklet *t){
         // Here, or in kTask need to change all PTEs to hold t->sector start
         /* Need to update the PTE of pi and save the sector_start value into it */
         // COW NOT GONNA WORK
+        // The page has been free while swapping it out
+		if(t->pi->pp_ref == 0 && !(t->pi->page_flags & ALLOC)){
+			toggle_bit(swap_map, t->sector_start);
+       		return 1;
+       	}else{
+       		panic("page out finished but page with ref: %d and marked as alloc\n",t->pi->pp_ref);
+
+       	}
        	if(t->pi->pp_ref != 1){
        		panic("page out finished but page with ref: %d\n",t->pi->pp_ref);
        	}else{

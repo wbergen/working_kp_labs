@@ -566,9 +566,8 @@ static void region_alloc(void *va, size_t len, int perm)
             curenv->env_alloc_pages++;
         
         } else {
-            lru_manager();
-            reclaim_pgs(curenv, 1);
-            // panic("region_alloc(): page_alloc failure, out of memory\n");
+            
+            panic("region_alloc(): page_alloc failure, Binary is too big\n");
 
         }
     }
@@ -638,7 +637,8 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
             }
             if(!demand_page){
-                panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
+            	curenv->env_status = ENV_SLEEPING;
+                //panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
             }
             //Insert the physical frame in the page directory
             int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);
