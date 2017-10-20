@@ -272,7 +272,6 @@ int page_out(struct tasklet *t){
         	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);    	
         }
 
-
       	// print_swapmap(128);
 
       	// Return status indicating done!
