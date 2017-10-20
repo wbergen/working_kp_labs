@@ -638,6 +638,8 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
 
             }
             if(!demand_page){
+                curenv->env_status = ENV_SLEEPING;
+                toggle_bit(drc_map, ENVX(curenv->env_id));
                 panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
             }
             //Insert the physical frame in the page directory

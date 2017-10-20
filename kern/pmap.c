@@ -14,6 +14,7 @@
 // Here so that i can create a tasklet with pointers to the funcs in this file
 // This won't be needed later when tasklet gets set dynamically, ie. at PF
 #include <kern/mm_pres.h>
+#include <kern/bitmap.h>
 /* These variables are set by i386_detect_memory() */
 size_t npages;                  /* Amount of physical memory (in pages) */
 size_t PREMAPPED_FLAG;
@@ -348,6 +349,10 @@ void mem_init(void)
 
     /* Check for huge page support */
     check_page_hugepages();
+
+    /* Setup a direct reclaim bit map */
+    char drc_map[ARRAY_SIZE(NENV)] = {0};
+
 }
 
 /*
