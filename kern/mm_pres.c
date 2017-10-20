@@ -160,12 +160,33 @@ int page_in(struct tasklet *t){
         /* !COW NB HERE! */
         
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
+        pte_t pre = *p;
         // Lookup VMA for correct pte perms:
         struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
         // Setup correct PTE w/ vma perms:
-       	*p = page2pa(t->pi) | v->perm | PTE_P;
+        /* Reconstruct PTE */
+        // Remove Global bit:
+        *p ^= PTE_G;
+    	cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
 
-       	cprintf("KTASK] page_in(): reset pte: 0x%08x\n", *p);
+    	// Set Present bit:
+    	*p |= PTE_P;
+    	cprintf("[KTASK_PTE] PAGE IN. after SETTING PTE_P: 0x%08x\n", *p);
+
+        // Clear high 20:
+        *p &= 0x00000FFF;
+		cprintf("[KTASK_PTE] PAGE IN. after CLEARING high 20: 0x%08x\n", *p);
+
+        // Set high 20 w/pa
+        *p |= page2pa(t->pi);
+        cprintf("[KTASK_PTE] PAGE IN. after SETTING high 20: 0x%08x\n", *p);
+
+       	// *p = page2pa(t->pi) | v->perm | PTE_P;
+
+   	    cprintf("[KTASK_PTE] PAGE IN DONE. PTE: 0x%08x -> 0x%08x\n", pre, *p);
+
+
+       	cprintf("[KTASK] page_in(): reset pte: 0x%08x\n", *p);
 
        	t->requestor_env->env_status = ENV_RUNNABLE;
 
@@ -264,9 +285,26 @@ int page_out(struct tasklet *t){
        	}
         page_free(t->pi);
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
+        pte_t pre = *p;
         if(p){
-        	*p &= 0x0;	// clear it
-      		*p = ((t->sector_start << 12) | PTE_G);        	
+        	// *p &= 0x0;	// clear it
+        	// cprintf("[KTASK_PTE] PAGE OUT. before REMOVING PTE_P: 0x%08x\n", *p);
+
+        	// Remove Present Flag:
+        	*p ^= PTE_P;
+        	// cprintf("[KTASK_PTE] PAGE OUT. after REMOVING PTE_P: 0x%08x\n", *p);
+        	// Clear high 20:
+        	*p &= 0x00000FFF;
+        	// cprintf("[KTASK_PTE] PAGE OUT. after clearing high 20: 0x%08x\n", *p);
+        	// Set high 20 w/ sector offset:
+      		*p |= ((t->sector_start << 12));
+      		// cprintf("[KTASK_PTE] PAGE OUT. after SETTING high 20: 0x%08x\n", *p);
+      		// Set Global Flag:
+        	*p |= PTE_G;
+        	// cprintf("[KTASK_PTE] PAGE OUT. after SETTING PTE_G: 0x%08x\n", *p);
+
+		    cprintf("[KTASK_PTE] PAGE OUT QUEUED. PTE: 0x%08x -> 0x%08x\n", pre, *p);
+     	
         }else{
         	//cprintf("panic pte: %x %x\n", *ppte, page2pa(t->pi));
         	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);    	
