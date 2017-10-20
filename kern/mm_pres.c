@@ -161,8 +161,10 @@ int page_in(struct tasklet *t){
         
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
         pte_t pre = *p;
+
+        lru_ha_insert(t->pi);
         // Lookup VMA for correct pte perms:
-        struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
+        //struct vma * v = vma_lookup(t->requestor_env, t->fault_addr);
         // Setup correct PTE w/ vma perms:
         /* Reconstruct PTE */
         // Remove Global bit:
@@ -384,7 +386,7 @@ int lru_manager(){
 			//print_lru_inactive();
 		}
 	}
-		cprintf("[LRU][ML] A active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
+		cprintf("[USER]                                           A active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 	return 1;
 }
 /*
@@ -412,6 +414,9 @@ int reclaim_pgs(struct env *e, int pg_n){
 			if(t){
 				uint32_t fva = 0;
 				find_pte_all(pp, &t->requestor_env, &fva);
+				if(t->requestor_env == NULL || fva == 0){
+					panic("OMG env %x fva: %x lookingfor: %x\n",t->requestor_env, fva, page2pa(pp));
+				}
 		        t->state = T_WORK;
 		        t->fptr = (uint32_t *)page_out;
 		        t->pi = pp;
@@ -419,7 +424,7 @@ int reclaim_pgs(struct env *e, int pg_n){
 	            // t->sector_start = f_sector;
 	            t->count = 0;
 	            // Decerement pages to swap
-				cprintf("[KTASK DB] Work being prepared on task %d, faulting addr: %x %x\n",t->id,t->fault_addr, *find_pte(pp) );
+				cprintf("[KTASK DB] Work being prepared on task %d, faulting addr: %x\n",t->id,t->fault_addr);
 
 	            task_add_alloc(t);
 	            pg_c--;

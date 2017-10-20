@@ -2,7 +2,7 @@
 #include <inc/assert.h>
 #include <inc/string.h>
 
-#define MEM_BLOCK_SIZE  (128 *  1024 * 1024)
+#define MEM_BLOCK_SIZE  (110 *  1024 * 1024)
 #define PRINT(...)      cprintf(__VA_ARGS__);
 
 //char gigs[MEM_BLOCK_SIZE];
@@ -18,19 +18,18 @@ void umain(int argc, char **argv)
     PRINT("Memory of size %d bytes set to: %x\n", MEM_BLOCK_SIZE, gigs[10]);*/
 
     /* Read every page so that they get swapped back again */
-    for(i = 37; i < MEM_BLOCK_SIZE; i+= PGSIZE) {
+    for(i = 37; i < MEM_BLOCK_SIZE/2; i+= PGSIZE) {
 
-        cprintf("L-USER lol! \n");
+        cprintf("USER pt.1: %d/%d\n", i, MEM_BLOCK_SIZE);
         *(gigs + i) = 'a';
         //assert(gigs[i] == (char) 0xd0);
     }
-/*
-    for(i = 37; i < MEM_BLOCK_SIZE; i+= PGSIZE) {
 
-        cprintf("L-USER lol! \n");
-        *(gigs + i) = 'a';
-        //assert(gigs[i] == (char) 0xd0);
-    }*/
+    for(i = 37; i < MEM_BLOCK_SIZE/2; i+= PGSIZE) {
+
+        cprintf("USER pt.2: %d/%d\n", i, MEM_BLOCK_SIZE);
+        assert(gigs[i] == (char) 0x61);
+    }
     
     PRINT("mempress successful.\n");
     return;

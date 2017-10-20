@@ -540,7 +540,7 @@ pte_t * find_pte(struct page_info * p){
 
     for(i = NKTHREADS; i < NENV ; i++){
 
-        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
             pde_entry = envs[i].env_pgdir;
 
             for(j = 0; j < NPDENTRIES; j++){
@@ -569,10 +569,11 @@ pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_add
     uint32_t pa = page2pa(p);
     pde_t * pde_entry = NULL;
     pte_t * pte_entry = NULL;
-
+    *e = NULL;
+    *fault_addr = 0;
     for(i = NKTHREADS; i < NENV ; i++){
 
-        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
             pde_entry = envs[i].env_pgdir;
 
             for(j = 0; j < NPDENTRIES; j++){
@@ -605,7 +606,7 @@ uint32_t find_addr(struct page_info * p){
     uint32_t fault_addr = 0;
     for(i = NKTHREADS; i < NENV ; i++){
 
-        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
             pde_entry = envs[i].env_pgdir;
 
             for(j = 0; j < NPDENTRIES; j++){

@@ -10,7 +10,7 @@
 #include <inc/assert.h>
 
 #define RESPGS 2 
-#define NTASKS 8
+#define NTASKS 80
 #define CPR_LRU_SZ 1
 #define SWAP_TRESH 1000
 struct env;
