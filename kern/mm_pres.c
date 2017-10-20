@@ -263,12 +263,13 @@ int page_out(struct tasklet *t){
        		t->pi->pp_ref--;
        	}
         page_free(t->pi);
-        pte_t * p = find_pte(t->pi);
+        pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
         if(p){
         	*p &= 0x0;	// clear it
       		*p = ((t->sector_start << 12) | PTE_G);        	
         }else{
-        	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);
+        	//cprintf("panic pte: %x %x\n", *ppte, page2pa(t->pi));
+        	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);    	
         }
 
 
@@ -372,13 +373,17 @@ int reclaim_pgs(struct env *e, int pg_n){
 			lock_task();
 			t = task_get_free();
 			if(t){
-				cprintf("[KTASK DB] Work being prepared on task %d\n",t->id);
+				uint32_t fva = 0;
+				find_pte_all(pp, &t->requestor_env, &fva);
 		        t->state = T_WORK;
 		        t->fptr = (uint32_t *)page_out;
 		        t->pi = pp;
+		        t->fault_addr = (uint32_t *)fva;
 	            // t->sector_start = f_sector;
 	            t->count = 0;
 	            // Decerement pages to swap
+				cprintf("[KTASK DB] Work being prepared on task %d, faulting addr: %x %x\n",t->id,t->fault_addr, *find_pte(pp) );
+
 	            task_add_alloc(t);
 	            pg_c--;
 

@@ -44,6 +44,8 @@ extern int worked;
 /* LRU lists functions */
 
 pte_t * find_pte(struct page_info * p);
+uint32_t find_addr(struct page_info * p);
+pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_addr);
 /*  Specific lists - tail insert- wrappers */
 void lru_ta_insert(struct page_info * pp);
 void lru_ti_insert(struct page_info * pp);
