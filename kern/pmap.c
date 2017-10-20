@@ -1064,6 +1064,7 @@ void page_init(void)
      *       in-use. */
     cprintf("[MEMINIT] page 0:%x page 1:%x page n: %x\n", &pages[0], &pages[1], &pages[npages-1]);
     cprintf("[MEMINIT] envs 0:%x envs n:%x\n", &envs[0], &pages[NENV-1]);
+    cprintf("[MEMINIT] tasklist size:%d \n", NTASKS*sizeof(struct tasklet));
 
     size_t i;
     struct tasklet *t;

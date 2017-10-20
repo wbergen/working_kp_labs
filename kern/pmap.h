@@ -11,7 +11,7 @@
 #include <kern/bitmap.h>
 
 #define RESPGS 2 
-#define NTASKS 80
+#define NTASKS 100
 #define CPR_LRU_SZ 1
 #define SWAP_TRESH 1000
 struct env;

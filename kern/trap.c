@@ -566,9 +566,8 @@ static void region_alloc(void *va, size_t len, int perm)
             curenv->env_alloc_pages++;
         
         } else {
-            lru_manager();
-            reclaim_pgs(curenv, 1);
-            // panic("region_alloc(): page_alloc failure, out of memory\n");
+            
+            panic("region_alloc(): page_alloc failure, Binary is too big\n");
 
         }
     }
