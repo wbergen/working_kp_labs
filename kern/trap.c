@@ -729,7 +729,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
 
     // Set index in tasklet:
-    uint32_t s_off = (uint32_t)((mask & *pte) >> 12);
+    uint32_t s_off = (uint32_t)((PTE_ADDR(*pte)) >> 12);
 
     cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
     t->sector_start = s_off;
@@ -750,7 +750,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     }
 
     // Enqueue the Tasklet:
-    t->count = 0;
+
     // cprintf("[KTASK_PTE] PAGE IN QUEUED")
     // cprintf("[KTASK_PTE] PAGE IN QUEUED. PTE: 0x%08x -> 0x%08x\n", *pte, (uint32_t)((mask & *pte)));
     cprintf("[KTASK DB] Paging in on task: %x page: %x\n", fault_va, t->pi);    
@@ -800,11 +800,11 @@ void page_fault_handler(struct trapframe *tf)
     // cprintf("[KERN_DEBUG] page_fault_handler(): fault_va == 0x%08x\n", (void *)fault_va);
     // cprintf("[KERN_DEBUG] curenv's pte @ fault va == 0x%08x\n", *pte);
     if (pte && !(*pte & PTE_P) && (*pte & PTE_G)){
-        
+        cprintf("[KTASK DB] Paging in FAULT on task: %x\n", fault_va); 
         cprintf("[KERN_DEBUG] [GLOBAL / NOT-PRESENT] page fault on swapped page...\n");
         
         // Need to page in!
-        swap_in((void *)fault_va, pte);
+        swap_in( (uint32_t*) fault_va, pte);
     // }
     } else {
 

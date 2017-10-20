@@ -551,7 +551,7 @@ pte_t * find_pte(struct page_info * p){
 
                     for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            // cprintf("[KTASK DB] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
+                            cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff)));
                             return (pte_entry + k);
                         }
                     }                   
@@ -563,6 +563,71 @@ pte_t * find_pte(struct page_info * p){
     return NULL;
 }
 
+pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_addr){
+
+    int i,j,k;
+    uint32_t pa = page2pa(p);
+    pde_t * pde_entry = NULL;
+    pte_t * pte_entry = NULL;
+
+    for(i = NKTHREADS; i < NENV ; i++){
+
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+            pde_entry = envs[i].env_pgdir;
+
+            for(j = 0; j < NPDENTRIES; j++){
+
+                if(*(pde_entry + j) & PTE_P){
+
+                    pte_entry = KADDR(PTE_ADDR(*(pde_entry + j)));
+
+                    for(k = 0; k < NPTENTRIES; k++){
+                        if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
+                            cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff)));
+                            *fault_addr = ((j << 22) | (k << 12) | (pa & 0xfff));
+                            *e = &envs[i];
+                            return (pte_entry + k);
+                        }
+                    }                   
+                }
+    
+            }
+        }
+    }   
+    return NULL;
+}
+uint32_t find_addr(struct page_info * p){
+
+    int i,j,k;
+    uint32_t pa = page2pa(p);
+    pde_t * pde_entry = NULL;
+    pte_t * pte_entry = NULL;
+    uint32_t fault_addr = 0;
+    for(i = NKTHREADS; i < NENV ; i++){
+
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE){
+            pde_entry = envs[i].env_pgdir;
+
+            for(j = 0; j < NPDENTRIES; j++){
+
+                if(*(pde_entry + j) & PTE_P){
+
+                    pte_entry = KADDR(PTE_ADDR(*(pde_entry + j)));
+
+                    for(k = 0; k < NPTENTRIES; k++){
+                        if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
+                            cprintf("[KTASK DB] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
+                            fault_addr = (j << 22) | (k << 12) | (pa & 0xfff);
+                            return fault_addr;
+                        }
+                    }                   
+                }
+    
+            }
+        }
+    }   
+    return 0;
+}
 /*
     add a task to the free list
 */
@@ -643,7 +708,7 @@ struct tasklet * task_get_free(){
 }
 
 void task_add_alloc(struct tasklet * ts){
-    cprintf("[KTASK DB] Addinng alloc task %d\n",ts->id);
+    cprintf("[KTASK DB] Adding alloc task %d\n",ts->id);
 
     task_add(ts,&t_list,0);
 }
@@ -660,8 +725,8 @@ void print_lru_list(int acount, struct page_info * head, struct page_info * tail
         //cprintf(" p: %x PLINKADDR %x PLINK %x\n ",p, &(p->lru_link), p->lru_link);
         count ++;
         if(!p->lru_link){
-            pte_t * pte = find_pte(p);
-            cprintf("Last lru_link %x ref: %d pte: %x\n", p->lru_link, p->pp_ref, pte);
+            //pte_t * pte = find_pte(p);
+            cprintf("Last lru_link %x ref: %d\n", p->lru_link, p->pp_ref);
             break;            
         }
 
