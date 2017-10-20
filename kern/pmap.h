@@ -37,7 +37,7 @@ struct lru {
 
 };
 
-extern char * drc_map;
+extern char drc_map[];
 
 extern struct lru lru_lists;
 extern uint32_t lru_active_count;
