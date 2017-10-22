@@ -9,10 +9,11 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 
-#define RESPGS 2 
 #define NTASKS 100
 #define CPR_LRU_SZ 1
 #define SWAP_TRESH 1000
+#define RESPGS 1 + ROUNDUP((NTASKS*sizeof(struct tasklet)), PGSIZE)/PGSIZE 
+
 struct env;
 
 extern char bootstacktop[], bootstack[];
