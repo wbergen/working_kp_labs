@@ -1074,9 +1074,11 @@ void page_init(void)
     pages[0].page_flags = 0;
 
     // Page 1 for task list
-    pages[1].pp_ref = 0;
-    pages[1].pp_link = NULL;
-    pages[1].page_flags = 0;
+    for(i = 1; i < ROUNDUP((NTASKS*sizeof(struct tasklet)), PGSIZE)/PGSIZE; i++){
+        pages[i].pp_ref = 0;
+        pages[i].pp_link = NULL;
+        pages[i].page_flags = 0;
+    }
 
 
     task_init(&pages[1]);
@@ -1665,8 +1667,8 @@ void page_remove(pde_t *pgdir, void *va)
 
     // iI ref count is 0 free the page
     if(pp->pp_ref == 0){
-        if(lru_remove_el_list(pp))  cprintf("page removed from lru\n");
-        cprintf("free page %08x\n",va);
+        lru_remove_el_list(pp);  //cprintf("page removed from lru\n");
+        //cprintf("free page %08x\n",va);
         page_free(pp);
     }
 
@@ -1785,21 +1787,26 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
 
         // Check that an entry exists:
         if (!p){
+            cprintf("Check that an entry exists\n");
             goto FAILURE;
         }
 
         // Page is marked present:
         if (!(*p & PTE_P)){
+            cprintf("Page is marked present\n");
             goto FAILURE;
         }
 
         // PTE permissions -eq requested permissions:
         if ((*p & perm) != perm){
+            cprintf(" PTE permissions -eq requested permissions\n");
             goto FAILURE;
         }
         
         // Address is below ULIM (safe user space):
         if ((low+(PGSIZE*1)) > ULIM){
+            cprintf(" Address is below ULIM\n");
+
             goto FAILURE;
         }
     }

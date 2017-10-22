@@ -99,11 +99,9 @@ int env2id(envid_t id){
 */
 void resume_env(){
 
-    cprintf("AAAAAAAAAAAAAAAAAAAA1\n");
     int i;
     for(i=0; i<NENV; i++){
         if(get_bit(drc_map, i) == 1){
-            cprintf("AAAAAAAAAAAAAAAAAAAA2\n");
             if(envs[i].env_status == ENV_SLEEPING){
                 envs[i].env_status = ENV_RUNNABLE;
             }
@@ -121,7 +119,7 @@ void resume_env(){
 
 void check_work(){
 
-
+    lock_task();
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
@@ -133,8 +131,9 @@ void check_work(){
     }
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
+        if(pgs2swap > 100) pgs2swap = 100;
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
-        pgs2swap = reclaim_pgs(NULL, pgs2swap);
+        pgs2swap = reclaim_pgs(NULL, 1);
         cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap);
     }else{
         resume_env();
@@ -146,13 +145,14 @@ void check_work(){
                 cprintf("[SCHED] WORK FOUND!\n");
             for(i = 0; i < NKTHREADS; i++){
                 //if (SCHED_DEBUG)
-                    cprintf("[SCHED] kthreads's status: %u\n", envs[i].env_status);
+                cprintf("[SCHED] kthreads's status: %u on cpu: %d. curr cpu:%d\n", envs[i].env_status, envs[i].env_cpunum, cpunum() );
                 if (envs[i].env_status == ENV_RUNNABLE || (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum())){
                     //if (SCHED_DEBUG)
                     cprintf("[SCHED] RUNNING KERN THREAD\n");
                     print_lru_inactive();
-                    print_lru_active();
+                    //print_lru_active();
                     envs[i].time_slice = TS_DEFAULT*2;
+                    unlock_task();
                     env_run(&envs[i]);
                 }
             }
@@ -160,6 +160,9 @@ void check_work(){
         }
         t = t->t_next;
     }
+    cprintf("hey\n");
+    unlock_task();
+    cprintf("hey hey\n");
 
 }
 /*
@@ -302,6 +305,7 @@ void sched_halt(void)
     for (i = NKTHREADS; i < NENV; i++) {
         if ((envs[i].env_status == ENV_RUNNABLE ||
              envs[i].env_status == ENV_RUNNING ||
+             envs[i].env_status == ENV_SLEEPING || 
              envs[i].env_status == ENV_DYING)){
             break;
         }
@@ -311,6 +315,7 @@ void sched_halt(void)
         cprintf("halting... cpu %d\n",cpunum());
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
+        cprintf("env status %d %d\n",envs[0x1001].env_status, curenv->env_id);
         while (1)
             monitor(NULL);
     }

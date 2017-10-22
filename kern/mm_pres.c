@@ -267,7 +267,6 @@ int page_out(struct tasklet *t){
        	}else{
        		t->pi->pp_ref--;
        	}
-        page_free(t->pi);
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
         pte_t pre = *p;
         if(p){
@@ -286,7 +285,7 @@ int page_out(struct tasklet *t){
       		// Set Global Flag:
         	*p |= PTE_G;
         	// cprintf("[KTASK_PTE] PAGE OUT. after SETTING PTE_G: 0x%08x\n", *p);
-
+        	page_free(t->pi);
 		    cprintf("[KTASK_PTE] PAGE OUT QUEUED. PTE: 0x%08x -> 0x%08x\n", pre, *p);
      	
         }else{
@@ -351,7 +350,7 @@ int lru_manager(){
 
 		struct page_info * p;
 		// cprintf("[LRU][ML] B active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
-
+		lock_pagealloc();
 		while((lru_active_count - MIN_ALRU_SZ) > (lru_inactive_count/BL_LRU_RATIO)){
 			//cprintf("[LRU][ML] MOVING active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 			/*	if p access bit  0	*/
@@ -367,6 +366,7 @@ int lru_manager(){
 			//print_lru_inactive();
 			//print_lru_inactive();
 		}
+		unlock_pagealloc();
 	}
 		cprintf("[USER]                                           A active:%d inactive:%d \n",lru_active_count, lru_inactive_count);
 	return 1;
@@ -387,11 +387,11 @@ int reclaim_pgs(struct env *e, int pg_n){
 	//void task_add(struct tasklet *t, struct tasklet **list, int free){
 	while(pg_c > 0){
 		//cprintf("Remove page inactive count: %d \n", lru_inactive_count);
+		lock_pagealloc();
 		lru_hi_remove(&pp);
-
+		unlock_pagealloc();
 		if(pp != NULL){
 
-			lock_task();
 			t = task_get_free();
 			if(t){
 				uint32_t fva = 0;
@@ -412,10 +412,8 @@ int reclaim_pgs(struct env *e, int pg_n){
 	            pg_c--;
 
 		    }else{
-		    	unlock_task();
 		    	break;
 		    }
-		    unlock_task();
 		}
 
 	}

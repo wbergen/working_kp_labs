@@ -688,7 +688,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-
+    cprintf("load_icode(): Program stack at %x\n", (void*)USTACKTOP-PGSIZE);
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip = eh->e_entry;
 
@@ -729,11 +729,12 @@ void ktask(){
    // print_lru_active();
 
     worked = 1;
-    
+    lock_task();
+
     struct tasklet * t = t_list;
     int i, t_id, status = 0;
     // Look for work:
-    lock_task();
+
     while(t){
         if(t->state == T_WORK){
             t->state = T_WORKING;
@@ -742,7 +743,6 @@ void ktask(){
         }
         t = t->t_next;
     }
-    unlock_task();
     
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
@@ -762,7 +762,6 @@ void ktask(){
     unlock_pagealloc();
 
     //Update the tasklet     
-    lock_task();
     t = t_list;
     //cprintf("ktask  %x\n",t);
     //Update the tasklet     

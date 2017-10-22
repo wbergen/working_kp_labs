@@ -629,9 +629,14 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             } else {
                 demand_page = page_alloc(ALLOC_ZERO);
             	if(demand_page){
+            		void * addr = (void *)ROUNDDOWN(fault_va,PGSIZE);
                 	// Insert the page to the lru and increase the alloc pages
                 	//cprintf("Inserting new page in lru\n");
-            		lru_ha_insert(demand_page);
+
+                	//Let's not add the stack to the swapping lists
+                	if(addr != (void*)USTACKTOP-PGSIZE){
+	            		lru_ha_insert(demand_page);
+                	}
             		curenv->env_alloc_pages++;
             	} 
 
@@ -658,7 +663,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        panic("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs!\n");
+        panic("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs! addr %x\n",fault_va);
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
 		#endif
@@ -720,7 +725,9 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
         t->fault_addr = fault_va;
         t->count = 0;
     } else {
-        panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
+    	curenv->env_status = ENV_SLEEPING;
+        toggle_bit(drc_map, ENVX(curenv->env_id));
+        //panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
     }
 
     // Get the sector index from addr section of PTE:

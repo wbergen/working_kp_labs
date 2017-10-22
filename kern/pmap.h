@@ -10,7 +10,7 @@
 #include <inc/assert.h>
 #include <kern/bitmap.h>
 
-#define NTASKS 100
+#define NTASKS 400
 #define CPR_LRU_SZ 1
 #define SWAP_TRESH 1000
 #define RESPGS 1 + ROUNDUP((NTASKS*sizeof(struct tasklet)), PGSIZE)/PGSIZE 
