@@ -15,32 +15,15 @@
 
 #include <kern/vma.h>
 #include <kern/mm_pres.h>
+#include <kern/bitmap.h>
 
 int bad[NENV];
 uint32_t f_sector = 1;
 
-
-/* Bit "Map" impl. from  https://gist.github.com/gandaro */
-/* `x+1' if `x % 8' evaluates to `true' */
-#define ARRAY_SIZE(x) (x/8+(!!(x%8)))	// Create Macro
-#define SIZE (262144)					// 512*512 (128MB)
-
-char get_bit(char *array, int index);
-void toggle_bit(char *array, int index);
-
-
-void toggle_bit(char *array, int index)
-{	
-    array[index/8] ^= 1 << (index % 8);
-}
-
-char get_bit(char *array, int index)
-{
-    return 1 & (array[index/8] >> (index % 8));
-}
+#define SIZE_SWAP_MAP (262144)					// 512*512 (128MB)
 
 // Init one:
-char swap_map[ARRAY_SIZE(SIZE)] = {0};
+char swap_map[ARRAY_SIZE(SIZE_SWAP_MAP)] = {0};
 
 
 
@@ -169,19 +152,19 @@ int page_in(struct tasklet *t){
         /* Reconstruct PTE */
         // Remove Global bit:
         *p ^= PTE_G;
-    	cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
+    	// cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
 
     	// Set Present bit:
     	*p |= PTE_P;
-    	cprintf("[KTASK_PTE] PAGE IN. after SETTING PTE_P: 0x%08x\n", *p);
+    	// cprintf("[KTASK_PTE] PAGE IN. after SETTING PTE_P: 0x%08x\n", *p);
 
         // Clear high 20:
         *p &= 0x00000FFF;
-		cprintf("[KTASK_PTE] PAGE IN. after CLEARING high 20: 0x%08x\n", *p);
+		// cprintf("[KTASK_PTE] PAGE IN. after CLEARING high 20: 0x%08x\n", *p);
 
         // Set high 20 w/pa
         *p |= page2pa(t->pi);
-        cprintf("[KTASK_PTE] PAGE IN. after SETTING high 20: 0x%08x\n", *p);
+        // cprintf("[KTASK_PTE] PAGE IN. after SETTING high 20: 0x%08x\n", *p);
 
        	// *p = page2pa(t->pi) | v->perm | PTE_P;
 
@@ -209,7 +192,7 @@ int page_in(struct tasklet *t){
 */
 uint32_t find_swap_spot(){
 	int i;
-	for (i = 1; i < SIZE; ++i)
+	for (i = 1; i < SIZE_SWAP_MAP; ++i)
 	{
 		if (get_bit(swap_map, i) == 0){
 			return i;
@@ -220,18 +203,6 @@ uint32_t find_swap_spot(){
 	return 0;
 }
 
-/*
-	This function prints the swap map
-*/
-void print_swapmap(int len){
-	int i;
-	cprintf("[KTASK] [");
-	for (i = 0; i < len; ++i)
-	{
-		cprintf("%u", get_bit(swap_map, i));
-	}
-	cprintf("]\n");
-}
 /*
 	This function swaps out a page from the disk
 */
@@ -245,7 +216,7 @@ int page_out(struct tasklet *t){
 		COW pages? 
 	*/
 
-   	// print_swapmap(128);
+   	// print_swapmap(swap_map, 128);
 
 	// Can always set these the same:
 
@@ -281,13 +252,16 @@ int page_out(struct tasklet *t){
         /* Need to update the PTE of pi and save the sector_start value into it */
         // COW NOT GONNA WORK
         // The page has been free while swapping it out
-		if(t->pi->pp_ref == 0 && !(t->pi->page_flags & ALLOC)){
-			toggle_bit(swap_map, t->sector_start);
-       		return 1;
-       	}else{
-       		panic("page out finished but page with ref: %d and marked as alloc\n",t->pi->pp_ref);
-
+		if(t->pi->pp_ref == 0){
+			if (!(t->pi->page_flags & ALLOC)){
+				toggle_bit(swap_map, t->sector_start);
+				return 1;	
+			} else {
+	       		panic("page out finished but page with ref: %d and marked as alloc\n",t->pi->pp_ref);
+			}
        	}
+
+       	
        	if(t->pi->pp_ref != 1){
        		panic("page out finished but page with ref: %d\n",t->pi->pp_ref);
        	}else{

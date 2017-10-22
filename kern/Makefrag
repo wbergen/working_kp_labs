@@ -32,7 +32,8 @@ KERN_SRCFILES :=	kern/entry.S \
 			lib/readline.c \
 			lib/string.c \
 			kern/vma.c \
-			kern/mm_pres.c
+			kern/mm_pres.c \
+			kern/bitmap.c
 
 # Source files for LAB5
 KERN_SRCFILES +=        kern/mpentry.S \

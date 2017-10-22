@@ -75,7 +75,7 @@ struct tasklet {
     uint32_t count;
     int state;
     struct tasklet *t_next;
-    struct tasklet_data *data;
+    // struct tasklet_data *data;
     uint32_t sector_start;
     struct page_info * pi;              
     uint32_t * fault_addr;

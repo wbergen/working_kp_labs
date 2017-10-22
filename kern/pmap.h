@@ -8,6 +8,7 @@
 
 #include <inc/memlayout.h>
 #include <inc/assert.h>
+#include <kern/bitmap.h>
 
 #define NTASKS 100
 #define CPR_LRU_SZ 1
@@ -36,6 +37,8 @@ struct lru {
     struct page_info * t_zswap; 
 
 };
+
+extern char drc_map[];
 
 extern struct lru lru_lists;
 extern uint32_t lru_active_count;

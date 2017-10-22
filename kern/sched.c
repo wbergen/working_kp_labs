@@ -99,9 +99,11 @@ int env2id(envid_t id){
 */
 void resume_env(){
 
+    cprintf("AAAAAAAAAAAAAAAAAAAA1\n");
     int i;
     for(i=0; i<NENV; i++){
         if(get_bit(drc_map, i) == 1){
+            cprintf("AAAAAAAAAAAAAAAAAAAA2\n");
             if(envs[i].env_status == ENV_SLEEPING){
                 envs[i].env_status = ENV_RUNNABLE;
             }

@@ -14,6 +14,7 @@
 // Here so that i can create a tasklet with pointers to the funcs in this file
 // This won't be needed later when tasklet gets set dynamically, ie. at PF
 #include <kern/mm_pres.h>
+#include <kern/bitmap.h>
 /* These variables are set by i386_detect_memory() */
 size_t npages;                  /* Amount of physical memory (in pages) */
 size_t PREMAPPED_FLAG;
@@ -32,6 +33,8 @@ uint32_t free_pages_count = 0;
 struct lru lru_lists;
 uint32_t lru_active_count = 0; 
 uint32_t lru_inactive_count = 0;
+
+char drc_map[ARRAY_SIZE(NENV)] = {0};
 
 int worked = 0;
 /***************************************************************
@@ -348,6 +351,9 @@ void mem_init(void)
 
     /* Check for huge page support */
     check_page_hugepages();
+
+    /* Setup a direct reclaim bit map */
+
 }
 
 /*
@@ -976,7 +982,6 @@ void task_init(struct page_info * pp){
         t_flist[idx].id = idx;
         t_flist[idx].fptr = (uint32_t *)0xdeadbeef;
         t_flist[idx].state = T_FREE;
-        t_flist[idx].data = NULL;
         t_flist[idx].sector_start = 0;
         t_flist[idx].pi = NULL;
         t_flist[idx].fault_addr = NULL;
