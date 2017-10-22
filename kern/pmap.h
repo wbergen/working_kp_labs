@@ -50,6 +50,8 @@ extern int worked;
 pte_t * find_pte(struct page_info * p);
 uint32_t find_addr(struct page_info * p);
 pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_addr);
+pte_t * seek_pte(pte_t * to_find, struct env * e);
+
 /*  Specific lists - tail insert- wrappers */
 void lru_ta_insert(struct page_info * pp);
 void lru_ti_insert(struct page_info * pp);

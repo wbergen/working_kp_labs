@@ -608,6 +608,34 @@ pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_add
     }   
     return NULL;
 }
+
+pte_t * seek_pte(pte_t * to_find, struct env * e){
+    
+    int i, j;
+    pde_t * pde_entry = NULL;
+    pte_t * pte_entry = NULL;
+    
+    for (i = 0; i < NPDENTRIES; ++i)
+    {
+        pde_entry = e->env_pgdir;
+        // If the entry exists, walk the pte:
+        if (*(pde_entry + i) & PTE_P){
+            pte_entry = KADDR(PTE_ADDR(*(pde_entry + i)));
+            for (j = 0; j < NPTENTRIES; ++j)
+            {
+                if(*(pte_entry + j) == *to_find){
+                    return pte_entry + j;
+                }            
+            }
+        }
+    }
+
+    // Not found, NULL:
+    return NULL;
+}
+
+
+
 uint32_t find_addr(struct page_info * p){
 
     int i,j,k;

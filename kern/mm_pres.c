@@ -154,8 +154,8 @@ int page_in(struct tasklet *t){
         *p ^= PTE_G;
     	// cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
 
-        // Remove COW bit
-        //*p ^= PTE_AVAIL;
+        // Remove Available bit:
+        *p ^= PTE_AVAIL;
 
     	// Set Present bit:
     	*p |= PTE_P;
@@ -169,11 +169,26 @@ int page_in(struct tasklet *t){
         *p |= page2pa(t->pi);
         // cprintf("[KTASK_PTE] PAGE IN. after SETTING high 20: 0x%08x\n", *p);
 
-       	// *p = page2pa(t->pi) | v->perm | PTE_P;
+        // COW:
+        if (pre & PTE_AVAIL){
+        	// For each env:
+        	int i;
+        	pte_t * found;
+        	for (i = 0; i < NENV; ++i)
+        	{
+        		// Only Reasonable Envs:
+		        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
+		        
+		        	// If a match is found, update with new PA, flags:
+		        	found = seek_pte(&pre, &envs[i]);
+		        	if (found) {
+		        		*found = *p;
+		        	}
+		        }
+        	}
+        }
 
    	    cprintf("[KTASK_PTE] PAGE IN DONE. PTE: 0x%08x -> 0x%08x\n", pre, *p);
-
-
        	cprintf("[KTASK] page_in(): reset pte: 0x%08x\n", *p);
 
        	t->requestor_env->env_status = ENV_RUNNABLE;

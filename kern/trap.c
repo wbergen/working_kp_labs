@@ -742,13 +742,29 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
         //panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
     }
 
+    // Set PTE_AVAIL indicating it's being swapped in ALL PTE's that map it:
+    int i;
+    pte_t * found= NULL;
+    for (i = 0; i < NENV; ++i){
+        // Only Reasonable Envs:
+        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
+        
+            // If a match is found, update with new PA, flags:
+            found = seek_pte(pte, &envs[i]);
+            if (found) {
+                *found |= PTE_AVAIL;
+            }
+        }
+    }
+
+    // seek_pte(pte, curenv);
+    // *pte |= PTE_AVAIL;
+
     // Get the sector index from addr section of PTE:
     cprintf("[KERN_DEBUG] faulting va: 0x%08x\n", fault_va);
     uint32_t mask = 0 - 1 - 0xfff;      //0xfffff000
     cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask);
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
-
-    // Set index in tasklet:        		if (&cpus[envs[i].env_cpunum]->cpu_status == CPU_HALTED){
         			
 
     uint32_t s_off = (uint32_t)((PTE_ADDR(*pte)) >> 12);
@@ -812,28 +828,21 @@ void page_fault_handler(struct trapframe *tf)
     /* Need a way to identify a currently being swapped page */
 
     // If we encounter a page marked Not Present && Global, it's been paged
-    // lock_pagealloc();
     pte_t * pte = pgdir_walk(curenv->env_pgdir, (void *)fault_va, 0);
-    // if (!pte) {
-        // cprintf("[KERN_DEBUG] pgdir_walk nil!\n");
-    // } else {
-        // cprintf("[KERN_DEBUG] pte exists, is == 0x%08x\n", *pte);
-    // }
-    // cprintf("[KERN_DEBUG] page_fault_handler(): fault_va == 0x%08x\n", (void *)fault_va);
-    // cprintf("[KERN_DEBUG] curenv's pte @ fault va == 0x%08x\n", *pte);
-    if (pte && !(*pte & PTE_P) && (*pte & PTE_G)){
+
+    // We have a page fault on a swapped addr, NOT currently being swapped:
+    if (pte && !(*pte & PTE_P) && (*pte & PTE_G) && !(*pte & PTE_AVAIL)){
         cprintf("[KTASK DB] Paging in FAULT on task: %x\n", fault_va); 
-        cprintf("[KERN_DEBUG] [GLOBAL / NOT-PRESENT] page fault on swapped page...\n");
-        
-        //if(!(*pte & PTE_AVAIL)){
-        //	*pte |= PTE_AVAIL;
-        	swap_in( (uint32_t*) fault_va, pte);
-        //}else{
-        //	curenv->env_status = ENV_SLEEPING;
-        //	toggle_bit(drc_map, ENVX(curenv->env_id));
-        //}
-        // Need to page in!
-    // }
+        cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT] page fault on swapped page, sleeping and swapping in...\n");
+    	swap_in( (uint32_t*) fault_va, pte);
+
+    // We have a page fault on a swapped addr, that IS being currently swapped
+    } else if (pte && !(*pte & PTE_P) && (*pte & PTE_G) && (*pte & PTE_AVAIL)){
+        // Another process has already initiated a swap in of this page, so wait:
+        cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT & PTE_AVAIL] page fault page being currently swapped, sleeping...\n");
+        curenv->env_status = ENV_SLEEPING;
+        toggle_bit(drc_map, ENVX(curenv->env_id));
+
     } else {
 
         /* We've already handled kernel-mode exceptions, so if we get here, the page
