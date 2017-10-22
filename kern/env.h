@@ -11,14 +11,14 @@ struct tasklet *t_list;
 // extern struct tasklet *t_list;
 #define curenv (thiscpu->cpu_env)   /* Current environment */
 extern struct segdesc gdt[];
-
+extern struct trapframe ktf;
 /*
     Kernel Thread code
 */
 void ktask();
 
 void kenv_create(void (*binary)(), enum env_type type);
-
+void kenv_cpy_tf(struct trapframe *tfs, struct trapframe *tf);
 void env_init(void);
 void env_init_percpu(void);
 int  env_alloc(struct env **e, envid_t parent_id, int type);

@@ -444,8 +444,10 @@ void trap(struct trapframe *tf)
 
     /* Halt the CPU if some other CPU has called panic(). */
     extern char *panicstr;
-    if (panicstr)
+    if (panicstr){
+    	cprintf("panic, let's halt cpu:%d\n",cpunum());
         asm volatile("hlt");
+    }
     //cprintf("[SCHED] xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx CPU %d\n", cpunum());
     /* Re-acqurie the big kernel lock if we were halted in sched_yield(). */
     //if (xchg(&thiscpu->cpu_status, CPU_STARTED) == CPU_HALTED)
@@ -725,8 +727,18 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
         t->fault_addr = fault_va;
         t->count = 0;
     } else {
+    	int i;
     	curenv->env_status = ENV_SLEEPING;
         toggle_bit(drc_map, ENVX(curenv->env_id));
+        unlock_task();
+        sched_yield();
+        /*for(i = 0; i < NKTHREADS; i++){
+        	if(envs[i].env_cpunum != cpunum()){
+        		if (cpus[envs[i].env_cpunum].cpu_status == CPU_HALTED){
+        			xchg(&cpus[envs[i].env_cpunum].cpu_status, CPU_STARTED);
+        		}
+        	}
+        }*/
         //panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
     }
 
@@ -736,7 +748,9 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask);
     cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
 
-    // Set index in tasklet:
+    // Set index in tasklet:        		if (&cpus[envs[i].env_cpunum]->cpu_status == CPU_HALTED){
+        			
+
     uint32_t s_off = (uint32_t)((PTE_ADDR(*pte)) >> 12);
 
     cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
@@ -811,8 +825,14 @@ void page_fault_handler(struct trapframe *tf)
         cprintf("[KTASK DB] Paging in FAULT on task: %x\n", fault_va); 
         cprintf("[KERN_DEBUG] [GLOBAL / NOT-PRESENT] page fault on swapped page...\n");
         
+        //if(!(*pte & PTE_AVAIL)){
+        //	*pte |= PTE_AVAIL;
+        	swap_in( (uint32_t*) fault_va, pte);
+        //}else{
+        //	curenv->env_status = ENV_SLEEPING;
+        //	toggle_bit(drc_map, ENVX(curenv->env_id));
+        //}
         // Need to page in!
-        swap_in( (uint32_t*) fault_va, pte);
     // }
     } else {
 

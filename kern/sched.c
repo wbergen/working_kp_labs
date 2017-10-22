@@ -119,6 +119,7 @@ void resume_env(){
 
 void check_work(){
 
+    assert_lock_env();
     lock_task();
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
@@ -131,9 +132,8 @@ void check_work(){
     }
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
-        if(pgs2swap > 100) pgs2swap = 100;
         cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
-        pgs2swap = reclaim_pgs(NULL, 1);
+        pgs2swap = reclaim_pgs(NULL, pgs2swap);
         cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap);
     }else{
         resume_env();
@@ -162,8 +162,6 @@ void check_work(){
     }
     cprintf("hey\n");
     unlock_task();
-    cprintf("hey hey\n");
-
 }
 /*
  * Choose a user environment to run and run it.
@@ -285,9 +283,6 @@ void sched_yield(void)
         envs[e_run].time_slice = TS_DEFAULT;
         env_run(&envs[e_run]);
     }else{
-        if(curenv){
-            check_work();
-        }
         sched_halt();
     }
 }
@@ -309,17 +304,23 @@ void sched_halt(void)
              envs[i].env_status == ENV_DYING)){
             break;
         }
-
     }
-    if (SCHED_DEBUG)
-        cprintf("halting... cpu %d\n",cpunum());
+    //if (SCHED_DEBUG)
+    cprintf("halting... cpu %d %x %x\n",cpunum(), t_list, curenv);
+    check_work();
+
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
         cprintf("env status %d %d\n",envs[0x1001].env_status, curenv->env_id);
         while (1)
             monitor(NULL);
     }
-   
+
+    if(curenv && ENVX(curenv->env_id) < NKTHREADS){
+        kenv_cpy_tf(&ktf, &curenv->env_tf);
+        curenv->env_status = ENV_RUNNABLE;
+    }
+    
     /* Mark that no environment is running on this CPU */
     curenv = NULL;
     lcr3(PADDR(kern_pgdir));
@@ -340,6 +341,9 @@ void sched_halt(void)
         cprintf("Unlocking kernel halt.........\n");    
     #endif
     unlock_kernel();
+    if(curenv){
+            cprintf("hey hey %x\n", curenv->env_id, cpunum());
+    }
     /* Reset stack pointer, enable interrupts and then halt. */
     asm volatile (
         "movl $0, %%ebp\n"
@@ -349,8 +353,6 @@ void sched_halt(void)
         "sti\n"
         "hlt\n"
     : : "a" (thiscpu->cpu_ts.ts_esp0));
-
-
 }
 
 

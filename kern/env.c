@@ -729,6 +729,7 @@ void ktask(){
    // print_lru_active();
 
     worked = 1;
+    lock_env();
     lock_task();
 
     struct tasklet * t = t_list;
@@ -783,7 +784,6 @@ void ktask(){
     cprintf("[KTASK] Tasklet at end of ktask(): [%08x, fptr: %08x, count: %u] state: %u.\n", t->id, t->fptr, t->count, t->state);
     
     // ktask round done, schedule:
-    lock_env();
     lock_kernel();
     
     //curenv->env_status = ENV_RUNNABLE;

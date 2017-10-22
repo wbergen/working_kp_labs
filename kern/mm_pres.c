@@ -154,6 +154,9 @@ int page_in(struct tasklet *t){
         *p ^= PTE_G;
     	// cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
 
+        // Remove COW bit
+        //*p ^= PTE_AVAIL;
+
     	// Set Present bit:
     	*p |= PTE_P;
     	// cprintf("[KTASK_PTE] PAGE IN. after SETTING PTE_P: 0x%08x\n", *p);
@@ -261,14 +264,11 @@ int page_out(struct tasklet *t){
 			}
        	}
 
-       	
-       	if(t->pi->pp_ref != 1){
-       		panic("page out finished but page with ref: %d\n",t->pi->pp_ref);
-       	}else{
-       		t->pi->pp_ref--;
-       	}
+ 
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
-        pte_t pre = *p;
+        pte_t pre;
+COW:
+        pre = *p;
         if(p){
         	// *p &= 0x0;	// clear it
         	// cprintf("[KTASK_PTE] PAGE OUT. before REMOVING PTE_P: 0x%08x\n", *p);
@@ -284,10 +284,17 @@ int page_out(struct tasklet *t){
       		// cprintf("[KTASK_PTE] PAGE OUT. after SETTING high 20: 0x%08x\n", *p);
       		// Set Global Flag:
         	*p |= PTE_G;
+
+	       	if(t->pi->pp_ref > 1){
+	       		p = find_pte_all(t->pi, &t->requestor_env, t->fault_addr);
+	       		goto COW;
+	       	}else{
+	       		t->pi->pp_ref--;
+	       	}
         	// cprintf("[KTASK_PTE] PAGE OUT. after SETTING PTE_G: 0x%08x\n", *p);
         	page_free(t->pi);
 		    cprintf("[KTASK_PTE] PAGE OUT QUEUED. PTE: 0x%08x -> 0x%08x\n", pre, *p);
-     	
+     		
         }else{
         	//cprintf("panic pte: %x %x\n", *ppte, page2pa(t->pi));
         	panic("panic, CANNOT FIND THE PTE AFTER PAGEOUT %d ref:%x lru:%x link:%x\n",t->pi->pp_ref,t->pi->lru_link, t->pi->pp_link, t->pi);    	

@@ -571,12 +571,17 @@ pte_t * find_pte(struct page_info * p){
 
 pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_addr){
 
-    int i,j,k;
+    int i,j,k; 
     uint32_t pa = page2pa(p);
     pde_t * pde_entry = NULL;
     pte_t * pte_entry = NULL;
-    *e = NULL;
     *fault_addr = 0;
+
+    if(*e){
+        i = ENVX((*e)->env_id) + 1;
+    }else{
+            *e = NULL; 
+    }
     for(i = NKTHREADS; i < NENV ; i++){
 
         if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
@@ -1805,7 +1810,7 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
         
         // Address is below ULIM (safe user space):
         if ((low+(PGSIZE*1)) > ULIM){
-            cprintf(" Address is below ULIM\n");
+            cprintf(" PTE permissions -eq requested permissions\n");
 
             goto FAILURE;
         }
