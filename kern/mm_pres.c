@@ -238,6 +238,7 @@ int page_out(struct tasklet *t){
 
 	// Can always set these the same:
 
+	uint32_t cow_flag = 0;
     char * buf = (char *)page2kva(t->pi);
 
     // First invocation, set sector index:
@@ -279,6 +280,9 @@ int page_out(struct tasklet *t){
 			}
        	}
 
+       	if (t->pi->pp_ref > 1){
+       		cow_flag = 1;
+       	}
  
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
         pte_t pre;
@@ -299,6 +303,9 @@ COW:
       		// cprintf("[KTASK_PTE] PAGE OUT. after SETTING high 20: 0x%08x\n", *p);
       		// Set Global Flag:
         	*p |= PTE_G;
+
+        	if (cow_flag)
+        		*p |= PTE_AVAIL;
 
 	       	if(t->pi->pp_ref > 1){
 	       		p = find_pte_all(t->pi, &t->requestor_env, t->fault_addr);

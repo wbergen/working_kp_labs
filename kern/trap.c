@@ -737,7 +737,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     // Set PTE_AVAIL indicating it's being swapped in ALL PTE's that map it:
     int i;
     pte_t * found= NULL;
-    for (i = 0; i < NENV; ++i){
+    for (i = NKTHREADS; i < NENV; ++i){
         // Only Reasonable Envs:
         if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
         
