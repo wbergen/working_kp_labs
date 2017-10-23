@@ -49,6 +49,7 @@ int check_time_slice(){
             return 0;
         }
 }
+
 /* 
     It looks for a runnable env
 
@@ -59,7 +60,7 @@ int runnable_env_lookup(int i){
     // Save current index:
     int last_idx = i - 1;
 
-    if(last_idx == 0){
+    if(last_idx == NKTHREADS - 1){
         last_idx = NENV - 1;
     }
 
@@ -272,7 +273,7 @@ void sched_yield(void)
 
     //keep the last index
     last_idx = i - 1;
-    if(last_idx == 0){
+    if(last_idx == NKTHREADS - 1){
         last_idx = NENV - 1;
     }
     //look for a runnable env

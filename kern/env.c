@@ -799,11 +799,13 @@ static void load_kthread(struct env *e, void (*binary)()){
     //  Allocating a page for the stack
     struct page_info * pp = page_alloc(ALLOC_ZERO);
     // set the entry point to the 
-    cprintf("[MEMINIT] kt stack %x\n",pp);
+    // cprintf("[MEMINIT] kt stack %x\n",pp);
     e->env_tf.tf_eip = (uintptr_t)binary;
 
     if(pp){
         kesp[ENVX(e->env_id)] = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
+        cprintf("[MEMINIT] kt stack 0x%08x\n", kesp[ENVX(e->env_id)]);
+
         e->env_tf.tf_esp = kesp[ENVX(e->env_id)];
         kenv_cpy_tf(&e->env_tf,&ktf);
 
@@ -1086,14 +1088,15 @@ void env_run(struct env *e){
         //5. Use lcr3() to switch to its address space.
         // cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
 
-        //if(e->env_type != ENV_TYPE_KERNEL){       
+        if(e->env_type != ENV_TYPE_KERNEL){       
             lcr3(PADDR(curenv->env_pgdir));
-        //}
+        }
     }
 
     #ifdef DEBUG_SPINLOCK
         cprintf("----------------------------env_run[cpu:%d][%x][UNLOCK][ENV]\n",cpunum(),curenv->env_id);
     #endif
+    
     unlock_env();
     
     unlock_kernel();

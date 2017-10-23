@@ -31,7 +31,7 @@ typedef int32_t envid_t;
 #define NENV            (1 << LOG2NENV)
 #define ENVX(envid)     ((envid) & (NENV - 1))
 #define NVMA            105        // preallocated vmas why 124? because they fit 
-#define NKTHREADS   1
+#define NKTHREADS   2
 //Default Time Slice
 #define TS_DEFAULT 1000000
 #define LRU_DEFAULT 3000000
