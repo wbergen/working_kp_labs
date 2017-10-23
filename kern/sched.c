@@ -311,7 +311,7 @@ void sched_halt(void)
 
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
-        cprintf("env status %d %d\n",envs[0x1001].env_status, curenv->env_id);
+        cprintf("env status %d %d\n",envs[NKTHREADS].env_status, curenv->env_id);
         while (1)
             monitor(NULL);
     }

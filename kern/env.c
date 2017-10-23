@@ -22,7 +22,8 @@
 struct env *envs = NULL;            /* All environments */
 static struct env *env_free_list;   /* Free environment list */
                                     /* (linked by env->env_link) */
-uintptr_t kesp; 
+//uintptr_t kesp;
+uintptr_t kesp[NKTHREADS];
 struct trapframe ktf;
 
 #define ENVGENSHIFT 12      /* >= LOGNENV */
@@ -724,7 +725,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     Kernel Thread code
 */
 void ktask(){
-    asm ("movl %%esp, %0;" : "=r" ( kesp ));
+    asm ("movl %%esp, %0;" : "=r" ( kesp[ENVX(curenv->env_id)] ));
    // print_lru_inactive();
    // print_lru_active();
 
@@ -802,8 +803,8 @@ static void load_kthread(struct env *e, void (*binary)()){
     e->env_tf.tf_eip = (uintptr_t)binary;
 
     if(pp){
-        kesp = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
-        e->env_tf.tf_esp = kesp;
+        kesp[ENVX(e->env_id)] = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
+        e->env_tf.tf_esp = kesp[ENVX(e->env_id)];
         kenv_cpy_tf(&e->env_tf,&ktf);
 
     }else{
@@ -852,7 +853,7 @@ void kenv_create(void (*binary)(), enum env_type type)
         panic("env_create: NO FREE ENV\n");
     }
 
-    cprintf("[ENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
+    cprintf("[KENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
 
     load_kthread(e,binary);
 

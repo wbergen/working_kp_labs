@@ -727,19 +727,11 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
         t->fault_addr = fault_va;
         t->count = 0;
     } else {
-    	int i;
+    	// Sleep untill we should have a free task to allocate
     	curenv->env_status = ENV_SLEEPING;
         toggle_bit(drc_map, ENVX(curenv->env_id));
         unlock_task();
         sched_yield();
-        /*for(i = 0; i < NKTHREADS; i++){
-        	if(envs[i].env_cpunum != cpunum()){
-        		if (cpus[envs[i].env_cpunum].cpu_status == CPU_HALTED){
-        			xchg(&cpus[envs[i].env_cpunum].cpu_status, CPU_STARTED);
-        		}
-        	}
-        }*/
-        //panic("[KERN_DEBUG] swap_in(): Page fault on swapped page, but no free tasks!\n");
     }
 
     // Set PTE_AVAIL indicating it's being swapped in ALL PTE's that map it:
