@@ -155,7 +155,10 @@ int page_in(struct tasklet *t){
     	// cprintf("[KTASK_PTE] PAGE IN. after REMOVING PTE_G: 0x%08x\n", *p);
 
         // Remove Available bit:
-        *p ^= PTE_AVAIL;
+        if(*p & PTE_AVAIL){
+        	*p ^= PTE_AVAIL;
+        	pre ^= PTE_AVAIL;
+        }
 
     	// Set Present bit:
     	*p |= PTE_P;
@@ -304,8 +307,13 @@ COW:
       		// Set Global Flag:
         	*p |= PTE_G;
 
-        	if (cow_flag)
+        	if (cow_flag){
         		*p |= PTE_AVAIL;
+        	}else{
+        		if(*p & PTE_AVAIL){
+        			*p ^= PTE_AVAIL;
+        		}
+        	}
 
 	       	if(t->pi->pp_ref > 1){
 	       		p = find_pte_all(t->pi, &t->requestor_env, t->fault_addr);
