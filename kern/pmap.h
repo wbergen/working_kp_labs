@@ -44,7 +44,6 @@ extern struct lru lru_lists;
 extern uint32_t lru_active_count;
 extern uint32_t lru_inactive_count;
 
-extern int worked;
 /* LRU lists functions */
 
 pte_t * find_pte(struct page_info * p);

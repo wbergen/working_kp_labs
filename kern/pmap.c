@@ -36,7 +36,6 @@ uint32_t lru_inactive_count = 0;
 
 char drc_map[ARRAY_SIZE(NENV)] = {0};
 
-int worked = 0;
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/
@@ -1693,7 +1692,7 @@ void page_remove(pde_t *pgdir, void *va)
 
     // Check the reference count to be more than 0
     if(pp->pp_ref <= 0){
-        panic("page_remove: PAGE REF COUNT ALREADY 0, IT'S: %d\n",pp->pp_ref);
+        panic("page_remove: PAGE REF COUNT ALREADY 0, IT'S: %d pte: %x\n",pp->pp_ref, *(pgdir_walk(pgdir, va, 0)));
     }
     // Decrement the ref count
     pp->pp_ref--;

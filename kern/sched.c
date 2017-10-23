@@ -57,6 +57,9 @@ int check_time_slice(){
 */
 int runnable_env_lookup(int i){
 
+    if( i < NKTHREADS){
+        i = NKTHREADS;
+    }
     // Save current index:
     int last_idx = i - 1;
 
@@ -70,11 +73,11 @@ int runnable_env_lookup(int i){
             i = NKTHREADS;
         }
         // If runnable, run the new one:
-        if (envs[i].env_status == ENV_RUNNABLE){
+        if (envs[i].env_status == ENV_RUNNABLE && envs[i].env_type != ENV_TYPE_KERNEL){
             return i;
         }
         // If current env found, and it's ENV_RUNNING, choose it, else drop to mon:
-        if (envs[i].env_id == envs[last_idx].env_id) {
+        if (envs[i].env_id == envs[last_idx].env_id && envs[i].env_type != ENV_TYPE_KERNEL) {
             if (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum()){
                 return i;
             } else {
@@ -125,7 +128,8 @@ void check_work(){
     struct tasklet * t = t_list;
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
-    cprintf("[SCHED] CHECK WORK %x\n", curenv);
+
+    cprintf("[SCHED] CHECK WORK \n");
     if(lru_check > LRU_DEFAULT ){
         cprintf("[LRU] Managing lists\n");
         lru_check = LRU_DEFAULT;
@@ -161,7 +165,6 @@ void check_work(){
         }
         t = t->t_next;
     }
-    cprintf("hey\n");
     unlock_task();
 }
 /*
@@ -236,10 +239,8 @@ void sched_yield(void)
     // At first call, curenv hasn't been setup
     if (curenv) {
         // Set next:
-        order = ROUNDDOWN(curenv->env_id, PGSIZE);
-        // cprintf("order = %08x\n", order);
-        i = (int)curenv->env_id - order + 1;  // Convert id to index + 1
-        //i = env2id(curenv->env_id);
+        i = ENVX(curenv->env_id);  // Convert id to index + 1
+
         if(i < 0){
             panic("[SCHED] PROBLEM!\n");
         }
@@ -257,6 +258,7 @@ void sched_yield(void)
             if(check_time_slice()){
                 env_run(curenv);
             }else{
+                //If I was the kernel env do not check work, let a user env run
                 if(curenv->env_type != ENV_TYPE_KERNEL)
                     check_work();
             }
@@ -307,21 +309,19 @@ void sched_halt(void)
         }
     }
     //if (SCHED_DEBUG)
-    cprintf("halting... cpu %d %x %x\n",cpunum(), t_list, curenv);
+    if(curenv) cprintf("halting... cpu %d %x %x\n",cpunum(), t_list, curenv);
     check_work();
 
     if (i == NENV) {
         cprintf("No runnable environments in the system!\n");
-        cprintf("env status %d %d\n",envs[NKTHREADS].env_status, curenv->env_id);
         while (1)
             monitor(NULL);
     }
 
     if(curenv && ENVX(curenv->env_id) < NKTHREADS){
         kenv_cpy_tf(&ktf, &curenv->env_tf);
-        curenv->env_status = ENV_RUNNABLE;
     }
-    
+    if(curenv) curenv->env_status = ENV_RUNNABLE;
     /* Mark that no environment is running on this CPU */
     curenv = NULL;
     lcr3(PADDR(kern_pgdir));

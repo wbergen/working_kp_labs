@@ -323,7 +323,7 @@ static void trap_dispatch(struct trapframe *tf)
 
     // Forward page faults to page_fault_handler:
     if (tf->tf_trapno == T_PGFLT){
-        // print_trapframe(tf)
+        print_trapframe(tf);
         lock_env();
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
@@ -458,7 +458,7 @@ void trap(struct trapframe *tf)
      * in the interrupt path. */
     assert(!(read_eflags() & FL_IF));
 
-    // cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
+    cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
 
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
@@ -665,7 +665,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        panic("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs! addr %x\n",fault_va);
+        cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs! addr %x\n",fault_va);
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
 		#endif

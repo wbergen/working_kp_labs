@@ -515,7 +515,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     env_free_list = e->env_link;
     *newenv_store = e;
 
-    cprintf("[ENV][%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+    cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
     return 0;
 }
 
@@ -726,10 +726,10 @@ static void load_icode(struct env *e, uint8_t *binary)
 */
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp[ENVX(curenv->env_id)] ));
+    cprintf("K\n");
    // print_lru_inactive();
    // print_lru_active();
 
-    worked = 1;
     lock_env();
     lock_task();
 
@@ -745,7 +745,14 @@ void ktask(){
         }
         t = t->t_next;
     }
-    
+    if(!t){
+        unlock_task();
+        lock_kernel();
+
+        cprintf("[KTASK] No work to do\n");
+
+        sched_yield();
+    }
     cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
 
     cprintf("[KTASK] Calling tasklet's function...\n");
@@ -765,7 +772,6 @@ void ktask(){
 
     //Update the tasklet     
     t = t_list;
-    //cprintf("ktask  %x\n",t);
     //Update the tasklet     
     while(t){
         if(t->id == t_id){
@@ -786,12 +792,8 @@ void ktask(){
     
     // ktask round done, schedule:
     lock_kernel();
-    
-    //curenv->env_status = ENV_RUNNABLE;
-    
+        
     sched_yield();
-    // return;
-
 }
 
 static void load_kthread(struct env *e, void (*binary)()){

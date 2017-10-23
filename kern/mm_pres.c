@@ -141,7 +141,7 @@ int page_in(struct tasklet *t){
         
         // Update the PTE in requestor's pgdir
         /* !COW NB HERE! */
-        
+        t->pi->pp_ref++;
         pte_t * p = pgdir_walk(t->requestor_env->env_pgdir, t->fault_addr, 0);
         pte_t pre = *p;
 
@@ -185,6 +185,7 @@ int page_in(struct tasklet *t){
 		        	// If a match is found, update with new PA, flags:
 		        	found = seek_pte(&pre, &envs[i]);
 		        	if (found) {
+		            	t->pi->pp_ref++;
 		        		*found = *p;
 		        	}
 		        }
