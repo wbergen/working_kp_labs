@@ -38,14 +38,10 @@ uint64_t calulate_delta(uint64_t tick, uint64_t last_tick){
 int check_time_slice(){
 
         if( curenv->env_status == ENV_RUNNING && curenv->time_slice < TS_DEFAULT){            
-            if (SCHED_DEBUG)
-                cprintf("[SCHED] positive time slice %u, reschedule process\n",curenv->time_slice);
-
+            DBS(cprintf("[SCHED] positive time slice %u, reschedule process\n",curenv->time_slice));
             return 1;
         }else{
-            if (SCHED_DEBUG)
-                cprintf("[SCHED] negative time slice, reschedule  new process\n");
-
+            DBS(cprintf("[SCHED] negative time slice, reschedule  new process\n"));
             return 0;
         }
 }
@@ -129,17 +125,17 @@ void check_work(){
     int i, pgs2swap = 0;
     //if (SCHED_DEBUG)
 
-    cprintf("[SCHED] CHECK WORK \n");
+    DBS(cprintf("[SCHED] CHECK WORK \n"));
     if(lru_check > LRU_DEFAULT ){
-        cprintf("[LRU] Managing lists\n");
+        DBK(cprintf("[LRU] Managing lists\n"));
         lru_check = LRU_DEFAULT;
         lru_manager();
     }
     pgs2swap = (SWAP_TRESH - free_pages_count);
     if(pgs2swap > 0){
-        cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap);
+        DBK(cprintf("[LRU] Memory Pressure! Need to swap %d pages\n", pgs2swap));
         pgs2swap = reclaim_pgs(NULL, pgs2swap);
-        cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap);
+        DBK(cprintf("[LRU] Memory Pressure! Pages left to swap %d pages\n", pgs2swap));
     }else{
         resume_env();
     }
@@ -147,15 +143,15 @@ void check_work(){
     while(t){
         if(t->state == T_WORK){
             //if (SCHED_DEBUG)
-                cprintf("[SCHED] WORK FOUND!\n");
+                DBS(cprintf("[SCHED] WORK FOUND!\n"));
             for(i = 0; i < NKTHREADS; i++){
                 //if (SCHED_DEBUG)
-                cprintf("[SCHED] kthreads's status: %u on cpu: %d. curr cpu:%d\n", envs[i].env_status, envs[i].env_cpunum, cpunum() );
+                DBS(cprintf("[SCHED] kthreads's status: %u on cpu: %d. curr cpu:%d\n", envs[i].env_status, envs[i].env_cpunum, cpunum()));
                 if (envs[i].env_status == ENV_RUNNABLE || (envs[i].env_status == ENV_RUNNING && envs[i].env_cpunum == cpunum())){
                     //if (SCHED_DEBUG)
-                    cprintf("[SCHED] RUNNING KERN THREAD\n");
-                    print_lru_inactive();
-                    //print_lru_active();
+                    DBS(cprintf("[SCHED] RUNNING KERN THREAD\n"));
+                    DBK(print_lru_inactive();
+                        print_lru_active();)
                     envs[i].time_slice = TS_DEFAULT*2;
                     unlock_task();
                     env_run(&envs[i]);
@@ -173,8 +169,8 @@ void check_work(){
 void sched_yield(void)
 {
     static uint64_t last_tick;
-    if (SCHED_DEBUG)
-        cprintf("[SCHED] sched_yield() called!\n");
+
+    DBS(cprintf("[SCHED] sched_yield() called!\n"));
 
     /*
      * Implement simple round-robin scheduling.
@@ -196,17 +192,6 @@ void sched_yield(void)
      * LAB 5: Your code here.
      */
 
-    // DEBUG:
-    // int j = 0;
-    // cprintf("\nENVS:\n");
-    // for (j; j < NENV; ++j)
-    // {
-    //     if (envs[j].env_status != ENV_FREE){
-    //         cprintf("[0x%08x] (id: %08x status: %d) ts: %u\n", &envs[j], envs[j].env_id, envs[j].env_status, envs[j].time_slice);
-    //     }
-    // }
-    // cprintf("\n");
-
     /*
         need simple concept of cpu affinity
             - env property cpu, so that ktask is forced to schedule on same core
@@ -227,10 +212,6 @@ void sched_yield(void)
         
     */
 
-    // Need access to the t_list..
-    //cprintf("t_list @ 0x%08x\n", t_list);
-
-
     int i, last_idx;
     uint64_t tick = read_tsc();
     int e_run, order;
@@ -245,8 +226,8 @@ void sched_yield(void)
             panic("[SCHED] PROBLEM!\n");
         }
         //i = (int)curenv->env_id - ENV_IDX_MIN + 1;  // Convert id to index + 1
-        if (SCHED_DEBUG)
-            cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum());
+
+        DBS(cprintf("[SCHED] curenv id: %08x, i: %d nenvs %d CPU %d\n", curenv->env_id, i, NENV, cpunum()));
         if(curenv->env_status != ENV_SLEEPING){
             uint64_t delta = calulate_delta(tick, last_tick);
             //Update the current env time slice
@@ -266,8 +247,7 @@ void sched_yield(void)
 
     } else {
         // No curenv, set iteratior to 1:
-        if (SCHED_DEBUG)
-            cprintf("[SCHED] No curenv (first run?), setting env next index to 1.\n");
+        DBS(cprintf("[SCHED] No curenv (first run?), setting env next index to 1.\n"));
         i = NKTHREADS;
         //initialize last tick
         last_tick = read_tsc();
@@ -281,8 +261,7 @@ void sched_yield(void)
     //look for a runnable env
     e_run = runnable_env_lookup(i);
     if(e_run >= 0){
-        if (SCHED_DEBUG)
-            cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id);
+        DBS(cprintf("[SCHED] found a RUNNABLE env switching from %08x -> %08x\n", envs[last_idx].env_id, envs[e_run].env_id));
         envs[e_run].time_slice = TS_DEFAULT;
         env_run(&envs[e_run]);
     }else{
@@ -308,12 +287,12 @@ void sched_halt(void)
             break;
         }
     }
-    //if (SCHED_DEBUG)
-    if(curenv) cprintf("halting... cpu %d %x %x\n",cpunum(), t_list, curenv);
+
+    if(curenv) DBS(cprintf("[SCHED] No work: halting... cpu %d %x %x\n",cpunum(), t_list, curenv));
     check_work();
 
     if (i == NENV) {
-        cprintf("No runnable environments in the system!\n");
+        DBB(cprintf("No runnable environments in the system!\n"));
         while (1)
             monitor(NULL);
     }
@@ -342,9 +321,7 @@ void sched_halt(void)
         cprintf("Unlocking kernel halt.........\n");    
     #endif
     unlock_kernel();
-    if(curenv){
-            cprintf("hey hey %x\n", curenv->env_id, cpunum());
-    }
+
     /* Reset stack pointer, enable interrupts and then halt. */
     asm volatile (
         "movl $0, %%ebp\n"

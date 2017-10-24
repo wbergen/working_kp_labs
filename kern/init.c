@@ -59,10 +59,7 @@ void i386_init(void)
     /* Starting non-boot CPUs */
     boot_aps();
 
-    //lock_kernel();
-    //lock_env();
-    //cprintf(STRINGIFY(TEST)"\n");
-    cprintf("[%d] CPUS:  %d \n", cpunum(), ncpu);
+    DBB(cprintf("[%d] CPUS:  %d \n", cpunum(), ncpu));
     lock_pagealloc();
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][LOCK][PAGE]\n",cpunum());
@@ -79,10 +76,8 @@ void i386_init(void)
     ENV_CREATE(TEST, ENV_TYPE_USER);
 #else
     /* Touch all you want. */
-    // ENV_CREATE(user_divzero, ENV_TYPE_USER);
     ENV_CREATE(user_yield, ENV_TYPE_USER);
-    ENV_CREATE(user_yield, ENV_TYPE_USER);
-    ENV_CREATE(user_yield, ENV_TYPE_USER);
+
 #endif
     //create ncpu - 1 idle processes
     #ifdef BUSY_WAIT
@@ -91,17 +86,11 @@ void i386_init(void)
     }
     #endif
 
-    // create k envs:
-    // test ktask, only making 1
-    // ENV_CREATE(user_ktask, ENV_TYPE_KERNEL);
-
-
     #ifdef DEBUG_SPINLOCK
         cprintf("-----------------------------------[cpu:%d][UNLOCK][PAGE]\n",cpunum());
     #endif
     unlock_pagealloc();
 
-    //lock_env();
     /* Schedule and run the first user environment! */
     sched_yield();
 }
@@ -148,7 +137,7 @@ void mp_main(void)
 {
     /* We are in high EIP now, safe to switch to kern_pgdir */
     lcr3(PADDR(kern_pgdir));
-    cprintf("SMP: CPU %d starting\n", cpunum());
+    DBB(cprintf("SMP: CPU %d starting\n", cpunum()));
 
     lapic_init();
     env_init_percpu();

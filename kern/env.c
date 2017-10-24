@@ -32,6 +32,7 @@ pde_t *env_pgdir;
 
 int i;  // Index var
 
+int mempres = 0;
 /*
  * Global descriptor table.
  *
@@ -515,7 +516,7 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     env_free_list = e->env_link;
     *newenv_store = e;
 
-    cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+    DBT(cprintf("[%08x] new env %08x\n", curenv ? curenv->env_id : 0, e->env_id));
     return 0;
 }
 
@@ -648,28 +649,14 @@ static void load_icode(struct env *e, uint8_t *binary)
 
             // Get the address to map @, and the size:
             va = (void *) ROUNDDOWN(ph->p_va, PGSIZE);
-            // msize = (size_t) ROUNDUP( (ph->p_memsz + ((uint32_t *)ph->p_va - va)), PGSIZE);
 
-            // cprintf("\nva: %x msize: %u\n", va, msize);
-            // va = (void *) ph->p_va;
             msize = (size_t) ph->p_memsz + ((uint32_t *)ph->p_va - va);
-
-            // cprintf("\nva: %x msize: %u\n", va, msize);
-            // Map:
-            // region_alloc(e, va, msize);
 
             //set the flags:
             if(ph->p_flags & ELF_PROG_FLAG_WRITE){
                 
                 perm |= PTE_W;  
-            }
-            //if(i != 0){
-              //  perm |= PTE_W;
-            //}
-            // if ELF_PROG_FLAG_READ or LF_PROG_FLAG_EXEC do nothing
-            // VMA Map:
-            // int vma_new(struct env *e, void *va, size_t len, int perm, ...){
-            // 1 success, 0 failure, -1 other errors...      
+            }     
 
             mmcount += msize;  
             if (vma_new(e, va, msize, VMA_BINARY, ((char *)eh)+ph->p_offset, ph->p_filesz, (ph->p_va-(uint32_t)va), perm, NULL) < 1){
@@ -685,11 +672,11 @@ static void load_icode(struct env *e, uint8_t *binary)
     }
 
     // Now map one page for the program's initial stack at virtual address
-    // region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
     if (vma_new(e, (void*)USTACKTOP-PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    cprintf("load_icode(): Program stack at %x\n", (void*)USTACKTOP-PGSIZE);
+    DBT(cprintf("load_icode(): Program stack at %x\n", (void*)USTACKTOP-PGSIZE));
+
     // Set the enviorment's entry point (in the trapframe) to the elf's:
     e->env_tf.tf_eip = eh->e_entry;
 
@@ -705,16 +692,7 @@ static void load_icode(struct env *e, uint8_t *binary)
     if (vma_new(e, (void*)UTEMP + PGSIZE, PGSIZE, VMA_ANON, NULL, 0, 0, PTE_U | PTE_W, NULL) < 1){
         panic("load_icode(): vma stack creation failed!\n");
     }
-    // Attempt to debug the vma's we've allocated?
-    // struct env *temp;
-    // void * temp = e->free_vma_list->vma_link;
-    // while (temp){
-    //     cprintf("%x\n", e->free_vma_list);
-    //     temp = (struct vma *)e->free_vma_list->vma_link;
 
-    // }
-
-    // cprintf("load_icode(): returning...\n");
     if(mmcount >= (free_pages_count - 200) * PGSIZE){
         cprintf("[ERROR] Trying to allocate binary with too large memory footprint\n");
         env_destroy(e);
@@ -726,9 +704,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 */
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp[ENVX(curenv->env_id)] ));
-    cprintf("K\n");
-   // print_lru_inactive();
-   // print_lru_active();
+    DBK(cprintf("Magic Print\n"));
 
     lock_env();
     lock_task();
@@ -749,13 +725,13 @@ void ktask(){
         unlock_task();
         lock_kernel();
 
-        cprintf("[KTASK] No work to do\n");
+        DBK(cprintf("[KTASK] No work to do\n"));
 
         sched_yield();
     }
-    cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count);
+    DBK(cprintf("[KTASK] Tasklet To Run: [%08x, fptr: %08x, count: %u]\n", t->id, t->fptr, t->count));
 
-    cprintf("[KTASK] Calling tasklet's function...\n");
+    DBK(cprintf("[KTASK] Calling tasklet's function...\n"));
     lock_pagealloc();
     if(t->fptr == (uint32_t *)page_out){
         int (*f)();
@@ -766,20 +742,21 @@ void ktask(){
         f = (int (*)(struct tasklet *))t->fptr;
         status = f(t);
     } else {
-        cprintf("[KTASK] Unknown function called!\n");
+        DBK(cprintf("[KTASK] Unknown function called!\n"));
     }
     unlock_pagealloc();
 
     //Update the tasklet     
     t = t_list;
+
     //Update the tasklet     
     while(t){
         if(t->id == t_id){
             if(status){
-                cprintf("[KTASK] Work done, Free the task\n");
+                DBK(cprintf("[KTASK] Work done, Free the task\n"));
                 task_free(t->id);
             }else{
-                //cprintf("[KTASK] Work not done \n");
+                DBK(cprintf("[KTASK] Work not done \n"));
                 t->state = T_WORK;                    
             }
             t_id = t->id;
@@ -788,7 +765,7 @@ void ktask(){
         t = t->t_next;
     }
     unlock_task();
-    cprintf("[KTASK] Tasklet at end of ktask(): [%08x, fptr: %08x, count: %u] state: %u.\n", t->id, t->fptr, t->count, t->state);
+    DBK(cprintf("[KTASK] Tasklet at end of ktask(): [%08x, fptr: %08x, count: %u] state: %u.\n", t->id, t->fptr, t->count, t->state));
     
     // ktask round done, schedule:
     lock_kernel();
@@ -800,13 +777,13 @@ static void load_kthread(struct env *e, void (*binary)()){
 
     //  Allocating a page for the stack
     struct page_info * pp = page_alloc(ALLOC_ZERO);
+
     // set the entry point to the 
-    // cprintf("[MEMINIT] kt stack %x\n",pp);
     e->env_tf.tf_eip = (uintptr_t)binary;
 
     if(pp){
         kesp[ENVX(e->env_id)] = (uintptr_t)(page2kva(pp) + (PGSIZE - 1) );
-        cprintf("[MEMINIT] kt stack 0x%08x\n", kesp[ENVX(e->env_id)]);
+        DBB(cprintf("[MEMINIT] kt stack 0x%08x\n", kesp[ENVX(e->env_id)]));
 
         e->env_tf.tf_esp = kesp[ENVX(e->env_id)];
         kenv_cpy_tf(&e->env_tf,&ktf);
@@ -837,7 +814,7 @@ void env_create(uint8_t *binary, enum env_type type)
         panic("env_create: NO FREE ENV\n");
     }
 
-    cprintf("[ENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
+    DBB(cprintf("[ENV] creating %08x, of type %08x\n", e->env_id, e->env_type));
 
     load_icode(e,binary);
 
@@ -857,7 +834,7 @@ void kenv_create(void (*binary)(), enum env_type type)
         panic("env_create: NO FREE ENV\n");
     }
 
-    cprintf("[KENV] creating %08x, of type %08x\n", e->env_id, e->env_type);
+    DBB(cprintf("[KENV] creating %08x, of type %08x\n", e->env_id, e->env_type));
 
     load_kthread(e,binary);
 
@@ -889,7 +866,7 @@ void env_free(struct env *e)
         lcr3(PADDR(kern_pgdir));
 
     /* Note the environment's demise. */
-    cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id);
+    DBT(cprintf("[%08x] free env %08x\n", curenv ? curenv->env_id : 0, e->env_id));
 
     /* Flush all mapped pages in the user portion of the address space */
     static_assert(UTOP % PTSIZE == 0);
@@ -924,7 +901,6 @@ void env_free(struct env *e)
     page_decref(pa2page(pa));
 
     /* Free VMA list. */
-    // cprintf("e->env_vmas: %x\n", e->env_vmas);
     // I just changed this to be by ref.. and it fixed the multiprocessor issue, beware!
     pa = PADDR(&e->env_vmas);
     e->env_vmas = 0;
@@ -983,14 +959,7 @@ void env_pop_tf(struct trapframe *tf)
     #define GD_TSS0   0x28     Task segment selector for CPU 0
     */
 
-    // cprintf("tf's cs: 0x%08x\n", tf->tf_cs);
-    // cprintf("tf's ss: 0x%08x\n", tf->tf_ss);
-    // if (tf->tf_cs == GD_KT){
-    //     cprintf("tf: ss == GD_KT\n");
-    // }
-    // if (tf->tf_cs == GD_UT){
-    //     cprintf("tf: ss == GD_UT\n");
-    // }
+
     /* Record the CPU we are running on for user-space debugging */
     curenv->env_cpunum = cpunum();
 
@@ -1029,14 +998,8 @@ void env_run(struct env *e){
      *  and make sure you have set the relevant parts of
      *  e->env_tf to sensible values.
      */
-    //cprintf("[ENV] env_run type: %08x\n", e->env_type);
+    DBS(cprintf("[ENV] env_run type: %08x id: %08x \n", e->env_type, e->env_id));
     struct env * old_e = curenv;
-    // if (e->env_type == ENV_TYPE_KERNEL){
-    //     cprintf("[ENV] RUNNING KERNEL THREAD[%08x]\n", e->env_id);
-    //     cprintf("\t curenv: %08x\n", curenv);
-    // } else {
-    //     cprintf("[ENV] RUNNING USER THREAD[%08x]\n", e->env_id);
-    // }
 
     #ifdef USE_BIG_KERNEL_LOCK
         if(lock_kernel_holding()){
@@ -1064,7 +1027,7 @@ void env_run(struct env *e){
             }
             if(curenv->env_status == ENV_RUNNING){
                 curenv->env_status = ENV_RUNNABLE;
-                cprintf("[SCHED]should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status);
+                DBS(cprintf("[SCHED]should be now set to runnable... [%08x]'s status: %u\n", curenv->env_id, curenv->env_status));
 
             }
             //if the current env it's dying free it.
@@ -1088,11 +1051,10 @@ void env_run(struct env *e){
         //4. Update its 'env_runs' counter
         curenv->env_runs++;
         //5. Use lcr3() to switch to its address space.
-        // cprintf("[%08x] pgdir: 0x%08x, type: %u\n", curenv->env_id, curenv->env_pgdir, curenv->env_type);
-
         if(e->env_type != ENV_TYPE_KERNEL){       
             lcr3(PADDR(curenv->env_pgdir));
         }
+
     }
 
     #ifdef DEBUG_SPINLOCK
@@ -1104,7 +1066,7 @@ void env_run(struct env *e){
     unlock_kernel();
 
     if(old_e && old_e->env_type == ENV_TYPE_KERNEL ){
-        // cprintf("MOVING FROM KERNEL TO KERNEL. new esp: %x old esp: %x \n",e->env_tf.tf_esp,old_e->env_tf.tf_esp);
+        DBS(cprintf("[Sched] MOVING FROM KERNEL TO KERNEL.\n"));
         kenv_cpy_tf(&ktf,&old_e->env_tf);
     }
 

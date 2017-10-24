@@ -164,4 +164,36 @@ static inline void *page2kva(struct page_info *pp)
 
 pte_t *pgdir_walk(pde_t *pgdir, const void *va, int create);
 
+/* Debug Mode Definitions  */
+#define DEBUG_MODE
+
+#ifdef DEBUG_MODE 
+/*
+  MASK = 1 DBT
+  MASK = 2 DBS
+  MASK = 3 DBT and DBS
+  MASK = 4 DBK
+  MASK = 5 DBT and DBK
+  MASK = 6 DBS and DBK
+  MASK = 7 DBT and DBS and DBK
+  MASK = 8 DBG
+  ...
+  MASK = 15 ALL
+*/
+extern unsigned int MASK;
+
+#define DBG(A,B) { if( (A) & MASK ) { B;}}
+
+#else 
+
+#define DBG(A,B)
+
+#endif 
+
+#define DBT(a) DBG(1,a)
+#define DBS(a) DBG(2,a)
+#define DBK(a) DBG(4,a)
+#define DBB(a) DBG(8,a)
+
 #endif /* !JOS_KERN_PMAP_H */
+

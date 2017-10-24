@@ -71,16 +71,7 @@ void irq_handler2();
 void irq_handler3();
 void irq_handler4();
 void irq_handler5();
-// void irq_handler6();
-// void irq_handler7();
-// void irq_handler8();
-// void irq_handler9();
-// void irq_handler10();
-// void irq_handler11();
-// void irq_handler12();
-// void irq_handler13();
-// void irq_handler14();
-// void irq_handler15();
+
 
 
 
@@ -124,7 +115,6 @@ void trap_init(void)
     extern struct segdesc gdt[];
 
     /* LAB 3: Your code here. */
-    // #define SETGATE(gate, istrap, sel, off, dpl)
     SETGATE(idt[T_DIVIDE], 0, GD_KT, trap_handler0_de, 0);
     SETGATE(idt[T_DEBUG], 0, GD_KT, trap_handler1_db, 0);
     SETGATE(idt[T_NMI], 0, GD_KT, trap_handler2_nmi, 0);
@@ -148,18 +138,6 @@ void trap_init(void)
 
     SETGATE(idt[T_SYSCALL], 0, GD_KT, trap_handler48_sc, 3);
 
-    /*
-    IRQs:
-    define IRQ_OFFSET  32 // IRQ 0 corresponds to int IRQ_OFFSET
-
-    Hardware IRQ numbers. We receive these as (IRQ_OFFSET+IRQ_WHATEVER)
-    #define IRQ_TIMER        0
-    #define IRQ_KBD          1
-    #define IRQ_SERIAL       4
-    #define IRQ_SPURIOUS     7
-    #define IRQ_IDE         14
-    #define IRQ_ERROR       19
-    */
 
     SETGATE(idt[IRQ_OFFSET], 0, GD_KT, irq_handler0, 0);
     SETGATE(idt[32+IRQ_KBD], 0, GD_KT, irq_handler1, 0);
@@ -167,16 +145,6 @@ void trap_init(void)
     SETGATE(idt[32+IRQ_SPURIOUS], 0, GD_KT, irq_handler3, 0);
     SETGATE(idt[32+IRQ_IDE], 0, GD_KT, irq_handler4, 0);
     SETGATE(idt[32+IRQ_ERROR], 0, GD_KT, irq_handler5, 0);
-    // SETGATE(idt[T_IRQ_6], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_7], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_8], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_9], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_10], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_11], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_12], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_13], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_14], 0, GD_KT, irq_handler0, 0);
-    // SETGATE(idt[T_IRQ_15], 0, GD_KT, irq_handler0, 0);
 
     /* Per-CPU setup */
     trap_init_percpu();
@@ -278,43 +246,14 @@ static void trap_dispatch(struct trapframe *tf)
 
     /* LAB 4: Update to handle more interrupts and syscall */
 
-    // setup tasklet list if first trap
-   /* if (first_trap) {
-        first_trap = 0;
-        cprintf("setting up tasklet list...\n");
-        cprintf("t_list @ %08x\n", KERNBASE - PTSIZE);
-        // t_list = (struct tasklet *)KERNBASE-PTSIZE;
-
-        // Allocate a page in pys memory for our tasklet list:
-        // struct page_info * t;
-        t_list = (struct tasklet *)KADDR(page2pa(page_alloc(ALLOC_ZERO)));
-        // cprintf("page2pa(t): %08x\n",page2pa(t));
-        int i;
-        for (i = 0; i < 8; ++i)
-        {
-            t_list[i].id = i;
-            t_list[i].fptr = (uint32_t *)0xdeadbeef;
-            t_list[i].state = T_FREE;
-            t_list[i].count = 0;
-        }
-    }*/
-    // } else {
-    //     // debug, see if what we got..
-    //     int i;
-    //     for (i = 0; i < 8; ++i)
-    //     {
-    //         cprintf("tasklet @ 0x%08x [id: 0x%u, fptr: 0x%08x]\n", &t_list[i], t_list[i].id, t_list[i].fptr);
-    //     }
-    // }
-
     /*
      * Handle spurious interrupts
      * The hardware sometimes raises these because of noise on the
      * IRQ line or other reasons. We don't care.
     */
     if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
-        cprintf("Spurious interrupt on irq 7\n");
-        print_trapframe(tf);
+        DBB(cprintf("Spurious interrupt on irq 7\n"));
+        DBT(print_trapframe(tf));
         return;
     }
 
@@ -323,7 +262,7 @@ static void trap_dispatch(struct trapframe *tf)
 
     // Forward page faults to page_fault_handler:
     if (tf->tf_trapno == T_PGFLT){
-        print_trapframe(tf);
+        DBT(print_trapframe(tf));
         lock_env();
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][LOCK][ENV]\n",cpunum(),curenv->env_id);
@@ -338,7 +277,7 @@ static void trap_dispatch(struct trapframe *tf)
 
     // If breakpoint, call monitor:
     else if (tf->tf_trapno == T_BRKPT){
-        print_trapframe(tf);
+        DBT(print_trapframe(tf));
         monitor(tf);
     }
 
@@ -393,15 +332,15 @@ static void trap_dispatch(struct trapframe *tf)
 
     /* Unexpected trap: The user process or the kernel has a bug. */
     else if (tf->tf_cs == GD_KT) {
-        print_trapframe(tf);
+        DBT(print_trapframe(tf));
         // lock_env();
         // sched_yield();
         panic("unhandled trap in kernel");
-        cprintf("trap form kernel land!\n");
+        DBB(cprintf("trap form kernel land!\n"));
         // return;
     } else {
         // Make Grade Happy:
-        print_trapframe(tf);
+        DBT(print_trapframe(tf));
 
         lock_env();
         #ifdef DEBUG_SPINLOCK
@@ -429,7 +368,7 @@ void trap(struct trapframe *tf)
 	        cprintf("TRAP: UNLOCKED CPU:%d\n",cpunum());
 	    }
 	    if(lock_kernel_holding() && tf->tf_trapno == IRQ_OFFSET){
-	    	cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum());
+	    	DBB(cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum()));
 	    }else
         	lock_kernel();
 
@@ -458,7 +397,7 @@ void trap(struct trapframe *tf)
      * in the interrupt path. */
     assert(!(read_eflags() & FL_IF));
 
-    cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum());
+    DBT(cprintf("Incoming TRAP frame at %p cpu %d\n", tf, cpunum()));
 
     if ((tf->tf_cs & 3) == 3) {
         /* Trapped from user mode. */
@@ -466,7 +405,7 @@ void trap(struct trapframe *tf)
          * LAB 6: Your code here. */
         // if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
 	    if(lock_env_holding() && tf->tf_trapno == IRQ_OFFSET){
-	    	cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum());
+	    	DBB(cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum()));
 	    }else{
         	lock_env();
 	        #ifdef DEBUG_SPINLOCK
@@ -509,7 +448,7 @@ void trap(struct trapframe *tf)
      * some additional information. */
     last_tf = tf;
     if(lock_env_holding()){
-    	cprintf("HOLDING BEFORE TRAP DISP CPU:%d\n",cpunum());
+    	DBB(cprintf("[TRAP]HOLDING BEFORE TRAP DISP CPU:%d\n",cpunum()));
     }
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
@@ -577,8 +516,8 @@ static void region_alloc(void *va, size_t len, int perm)
 
 /* Destroy the environment that caused the fault. */
 void kill_env(uint32_t fault_va, struct trapframe *tf){
-    cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip);
-    print_trapframe(tf);
+    DBB(cprintf("[%08x] user fault va %08x ip %08x\n", curenv->env_id, fault_va, tf->tf_eip));
+    DBT(print_trapframe(tf));
     assert_lock_env();
     env_destroy(curenv);
 }
@@ -605,7 +544,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         // If it's a binary allocate the enough pages to span all vma and copy from file
         if(vma_el->type == VMA_BINARY){
 
-            cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va);
+            DBB(cprintf("[KERN] page_fault_handler(): [BINARY] vma exists @ %x!  Allocating \"on demand\" page...\n", vma_el->va));
 
             region_alloc(vma_el->va, vma_el->len, vma_el->perm | PTE_W);
 
@@ -653,7 +592,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             if(ret != 0){
 
                 // If Failure:
-                cprintf("[KERN] page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n");
+                DBB(cprintf("[KERN] page_fault_handler(): page_insert failed, impossible to insert the phy frame in the process page directory\n"));
                 
 		        #ifdef DEBUG_SPINLOCK
 		        	cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
@@ -665,7 +604,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
     } else {
 
         // No vma covering addr:
-        cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs! addr %x\n",fault_va);
+        DBB(cprintf("[KERN] page_fault_handler(): Faulting addr not allocated in env's VMAs! addr %x\n",fault_va));
 		#ifdef DEBUG_SPINLOCK
 		    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
 		#endif
@@ -753,15 +692,15 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
     // *pte |= PTE_AVAIL;
 
     // Get the sector index from addr section of PTE:
-    cprintf("[KERN_DEBUG] faulting va: 0x%08x\n", fault_va);
+    DBK(cprintf("[KERN_DEBUG] faulting va: 0x%08x\n", fault_va));
     uint32_t mask = 0 - 1 - 0xfff;      //0xfffff000
-    cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask);
-    cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte);
+    DBK(cprintf("[KERN_DEBUG] mask: 0x%08x\n", mask));
+    DBK(cprintf("[KERN_DEBUG] pte after mask: 0x%08x\n", mask & *pte));
         			
 
     uint32_t s_off = (uint32_t)((PTE_ADDR(*pte)) >> 12);
 
-    cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off);
+    DBK(cprintf("[KERN_DEBUG] sector index should be: %u\n", s_off));
     t->sector_start = s_off;
 
 
@@ -783,7 +722,7 @@ void swap_in(uint32_t * fault_va, pte_t * pte){
 
     // cprintf("[KTASK_PTE] PAGE IN QUEUED")
     // cprintf("[KTASK_PTE] PAGE IN QUEUED. PTE: 0x%08x -> 0x%08x\n", *pte, (uint32_t)((mask & *pte)));
-    cprintf("[KTASK DB] Paging in on task: %x page: %x\n", fault_va, t->pi);    
+    DBK(cprintf("[KTASK DB] Paging in on task: %x page: %x\n", fault_va, t->pi));    
     task_add_alloc(t);
 
     unlock_task();
@@ -824,14 +763,14 @@ void page_fault_handler(struct trapframe *tf)
 
     // We have a page fault on a swapped addr, NOT currently being swapped:
     if (pte && !(*pte & PTE_P) && (*pte & PTE_G) && !(*pte & PTE_AVAIL)){
-        cprintf("[KTASK DB] Paging in FAULT on task: %x\n", fault_va); 
-        cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT] page fault on swapped page, sleeping and swapping in...\n");
+        DBK(cprintf("[KTASK DB] Paging in FAULT on task: %x\n", fault_va)); 
+        DBK(cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT] page fault on swapped page, sleeping and swapping in...\n"));
     	swap_in( (uint32_t*) fault_va, pte);
 
     // We have a page fault on a swapped addr, that IS being currently swapped
     } else if (pte && !(*pte & PTE_P) && (*pte & PTE_G) && (*pte & PTE_AVAIL)){
         // Another process has already initiated a swap in of this page, so wait:
-        cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT & PTE_AVAIL] page fault page being currently swapped, sleeping...\n");
+        DBK(cprintf("[KERN_DEBUG] [GLOBAL & !PRESENT & PTE_AVAIL] page fault page being currently swapped, sleeping...\n"));
         curenv->env_status = ENV_SLEEPING;
         toggle_bit(drc_map, ENVX(curenv->env_id));
 
@@ -868,7 +807,7 @@ void page_fault_handler(struct trapframe *tf)
     			    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
     			#endif
                 if(!page_dedup(curenv, (void *)fault_va)){
-                    cprintf("[KERN]page_fault_handler: page dedup failed\n");
+                    DBB(cprintf("[KERN]page_fault_handler: page dedup failed\n"));
                 }
     			#ifdef DEBUG_SPINLOCK
     			    cprintf("-----------------------------------[cpu:%d][%x][UNLOCK][PAGE]\n",cpunum(),curenv->env_id);
@@ -876,7 +815,7 @@ void page_fault_handler(struct trapframe *tf)
                 unlock_pagealloc();
                 //alloc_page_after_fault(fault_va, tf);
             }else{
-                cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va);
+                DBB(cprintf("[KERN] page_fault_handler(): write protection fault, killing env! addr: %08x\n", (void *)fault_va));
                 kill_env(fault_va, tf);
             }
         }

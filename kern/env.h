@@ -12,6 +12,8 @@ struct tasklet *t_list;
 #define curenv (thiscpu->cpu_env)   /* Current environment */
 extern struct segdesc gdt[];
 extern struct trapframe ktf;
+
+extern int mempress;
 /*
     Kernel Thread code
 */

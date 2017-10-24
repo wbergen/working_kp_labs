@@ -36,6 +36,7 @@ uint32_t lru_inactive_count = 0;
 
 char drc_map[ARRAY_SIZE(NENV)] = {0};
 
+unsigned int MASK = 0;
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/
@@ -61,10 +62,10 @@ static void i386_detect_memory(void)
     else
         npages = npages_basemem;
 
-    cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
+    DBB(cprintf("Physical memory: %uK available, base = %uK, extended = %uK\n",
         npages * PGSIZE / 1024,
         npages_basemem * PGSIZE / 1024,
-        npages_extmem * PGSIZE / 1024);
+        npages_extmem * PGSIZE / 1024));
 }
 
 
@@ -189,12 +190,7 @@ void mem_init(void)
      * LAB 3: Your code here.
      */
 
-
-    envs = boot_alloc(sizeof(struct env) * NENV);
-
-    // t_list = boot_alloc(sizeof(struct tasklet) * 16);
-   
-
+    envs = boot_alloc(sizeof(struct env) * NENV);   
 
     /*********************************************************************
      * Now that we've allocated the initial kernel data structures, we set
@@ -221,15 +217,10 @@ void mem_init(void)
      */
 
     /* This is set up already by the identity mapping below. */
-    /*
-    boot_map_region(kern_pgdir, (uintptr_t)pages,
-            ROUNDUP(sizeof(struct page_info) * npages), PADDR(pages), PTE_W);
-    */
     boot_map_region(kern_pgdir, UPAGES,
             ROUNDUP(sizeof(struct page_info) * npages, PGSIZE),
             PADDR(pages), PTE_U);
 
-//boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U );
 
     /*********************************************************************
      * Map the 'envs' array read-only by the user at linear address UENVS
@@ -288,16 +279,6 @@ void mem_init(void)
     // boot_map_region(kern_pgdir, KERNBASE - PGSIZE, ROUNDUP(sizeof(struct tasklet) * 2, PGSIZE), PADDR(t_list), 0);
 
     // Need some knowledge of the kernel pgdir at this point:
-    // int i;
-    // uint32_t * va;
-    // for (i = 0; i < PGSIZE; ++i)
-    // {
-    //     // Get the pte:
-    //     // uint32_t * va;
-    //     va = (uint32_t *)(PGSIZE * i);
-    //     cprintf("[0x%08x] kern_pgdir entry: 0x%08x\n", va, (pde_t *)kern_pgdir[i]);
-    //     // *va += (PGSIZE * 1024);
-    // }
 
         /*
             we need a pageish for a tasklet list
@@ -309,14 +290,6 @@ void mem_init(void)
              - alloc a page in kern_pgdir if a specific va isn't present @ t_list
              - still need to choose empty addr in entry.S...
         */
-
-    // allocate tasklets:
-    // int k;
-    // for (k = 0; k < 16; ++k)
-    // {
-    //     t_list[k].id = k;
-    //     t_list[k].fptr = (uint32_t *)0xdeadbeef;
-    // }
 
     /* Enable Page Size Extensions for huge page support */
     lcr4(rcr4() | CR4_PSE);
@@ -362,9 +335,7 @@ int is_allocated_init(struct page_info *pp){
     physaddr_t page_a;
     
     page_a = page2pa(pp);
-        //cprintf("IT'S ME MARIO!%x %x\n",page2kva(pp),  pp);
 
-    //cprintf("[INIT] pa: %x\n",npages_basemem);
     if(page_a < npages_basemem * PGSIZE){
         return 0;
     }
@@ -372,23 +343,13 @@ int is_allocated_init(struct page_info *pp){
         return 1;
     }
     if(page_a >= EXTPHYSMEM && page_a < PADDR(boot_alloc(0))){
-        //if((void *)0xf02a5000 == page2kva(pp)){
-            //cprintf("IT'S ME BROWSER !\n");
-        //}
-        //cprintf("IT'S ME MARIO 3!\n");
+
         return 1;
     }
     if( page_a == MPENTRY_PADDR){
         return 0;
     }
-    // Don't break the magic 
-    //if(page2kva(pp) == (void *)f02a5000){
-    //    cprintf("IT'S ME MARIO!%x %x\n",page2kva(pp),  pp);
-    //}
-    /*if(pp >= (struct page_info *)0xf02a5000){
-        return 1;
-    }*/
-    //cprintf("%d\n",(((int)0xffff -(int) 0x5c00) / sizeof(struct page_info))) ;
+    
     return 0;
 }
 
@@ -403,16 +364,7 @@ struct page_info * remove_head_pfl(){
 
 
     if(pp->pp_ref != 0){
-      /*  p = page_free_list;
-        while(p){
-            if(p->page_flags & ALLOC){
-                cprintf("%x PAGE MARKED AS ALLOC ref: %d\n",page2pa(pp),p->pp_ref);
-            }
-            p = p->pp_link;
-        }
-        find_pte(pp);*/
         panic("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
-        //cprintf("[KERN]remove_head_pfl(): PP ref it's not 0! it's %d\n",pp->pp_ref);
     }
 
     page_free_list = pp->pp_link;
@@ -556,7 +508,7 @@ pte_t * find_pte(struct page_info * p){
 
                     for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff)));
+                            DBK(cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff))));
                             return (pte_entry + k);
                         }
                     }                   
@@ -594,7 +546,7 @@ pte_t * find_pte_all(struct page_info * p, struct env ** e, uint32_t * fault_add
 
                     for(k = 0; k < NPTENTRIES; k++){
                         if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff)));
+                            DBK(cprintf("[KTASK DB] find_pte() pte found in env %x, pa:%x Apa:%x va:%x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)), ((j << 22) | (k << 12) | (pa & 0xfff))));
                             *fault_addr = ((j << 22) | (k << 12) | (pa & 0xfff));
                             *e = &envs[i];
                             return (pte_entry + k);
@@ -633,40 +585,6 @@ pte_t * seek_pte(pte_t * to_find, struct env * e){
     return NULL;
 }
 
-
-
-uint32_t find_addr(struct page_info * p){
-
-    int i,j,k;
-    uint32_t pa = page2pa(p);
-    pde_t * pde_entry = NULL;
-    pte_t * pte_entry = NULL;
-    uint32_t fault_addr = 0;
-    for(i = NKTHREADS; i < NENV ; i++){
-
-        if(envs[i].env_status == ENV_RUNNING || envs[i].env_status == ENV_RUNNABLE || envs[i].env_status == ENV_SLEEPING){
-            pde_entry = envs[i].env_pgdir;
-
-            for(j = 0; j < NPDENTRIES; j++){
-
-                if(*(pde_entry + j) & PTE_P){
-
-                    pte_entry = KADDR(PTE_ADDR(*(pde_entry + j)));
-
-                    for(k = 0; k < NPTENTRIES; k++){
-                        if(*(pte_entry + k) & PTE_P && PTE_ADDR(*(pte_entry + k)) == pa){
-                            cprintf("[KTASK DB] find_pte() pte found in env %x, %x %x\n", envs[i].env_id, pa, PTE_ADDR(*(pte_entry + k)));
-                            fault_addr = (j << 22) | (k << 12) | (pa & 0xfff);
-                            return fault_addr;
-                        }
-                    }                   
-                }
-    
-            }
-        }
-    }   
-    return 0;
-}
 /*
     add a task to the free list
 */
@@ -692,7 +610,7 @@ void task_add(struct tasklet *t, struct tasklet **list, int free){
             t_s = t_s->t_next;
         }
 
-        cprintf("[KTASK DB] adding task %d\n",t->id);
+        DBK(cprintf("[KTASK DB] adding task %d\n",t->id));
 
 }
 
@@ -704,7 +622,7 @@ struct tasklet * task_get(struct tasklet ** list){
         struct tasklet *t_s = *list;
         if(*list){
             *list = t_s->t_next;
-            cprintf("[KTASK DB] Getting task %d\n",t_s->id);
+            DBK(cprintf("[KTASK DB] Getting task %d\n",t_s->id));
             return t_s;
         }
         return NULL;
@@ -731,11 +649,11 @@ int task_free(int id){
         ts = ts->t_next;
     }
     if(ts){
-        cprintf("[KTASK DB] Freeing task %d\n",ts->id);
+        DBK(cprintf("[KTASK DB] Freeing task %d\n",ts->id));
         task_add(ts, &t_flist, 1);
         return 1;
     }else{
-        cprintf("[KTASK DB] FAILURE Freeing task \n");
+        DBK(cprintf("[KTASK DB] FAILURE Freeing task \n"));
 
         return 0;
     }
@@ -747,7 +665,7 @@ struct tasklet * task_get_free(){
 }
 
 void task_add_alloc(struct tasklet * ts){
-    cprintf("[KTASK DB] Adding alloc task %d\n",ts->id);
+    DBK(cprintf("[KTASK DB] Adding alloc task %d\n",ts->id));
 
     task_add(ts,&t_list,0);
 }
@@ -761,10 +679,8 @@ void print_lru_list(int acount, struct page_info * head, struct page_info * tail
 
     p = head;
     while(p){
-        //cprintf(" p: %x PLINKADDR %x PLINK %x\n ",p, &(p->lru_link), p->lru_link);
         count ++;
         if(!p->lru_link){
-            //pte_t * pte = find_pte(p);
             cprintf("Last lru_link %x ref: %d\n", p->lru_link, p->pp_ref);
             break;            
         }
@@ -792,7 +708,6 @@ void print_lru_inactive(){
 /*  Insert an element in the head of a lru list, set the tail if the list is empty  */
 void lru_insert_head(struct page_info * pp, struct page_info **head, struct page_info **tail){
 
-    // cprintf("LRU INSERT HEAD\n");
     if(!pp || !head || !tail){
         return;
     }
@@ -805,30 +720,25 @@ void lru_insert_head(struct page_info * pp, struct page_info **head, struct page
     *head = pp;
 
 }
+
 /*  Specific lists - head insert- wrappers */
 void lru_ha_insert(struct page_info * pp){
-    //if(lru_active_count < 4000){
         lru_insert_head(pp, &lru_lists.h_active, &lru_lists.t_active);
         lru_active_count++;
-    //}
 }
 void lru_hi_insert(struct page_info * pp){
-
     lru_insert_head(pp, &lru_lists.h_inactive, &lru_lists.t_inactive);
     lru_inactive_count++;       
-
 }
 
 
 /*  Insert an element in the tail of a lru list  */
 
 void lru_insert_tail(struct page_info * pp, struct page_info **head, struct page_info **tail){
-    //cprintf("LRU INSERT TAIL\n");
 
     if(!pp || !tail){
         return;
     }
-    //cprintf(" pp: %x value %x %d\n",pp,pp->lru_link, pp->pp_ref);
 
     if(!*tail){
         *head = *tail = pp;
@@ -857,7 +767,6 @@ void lru_ti_insert(struct page_info * pp){
 
 /*  remove an element in the head of a lru list  */
 void lru_remove_head(struct page_info **pp, struct page_info **head, struct page_info **tail){
-    //cprintf("LRU REMOVE HEAD\n");
 
     struct page_info * p;
     if(pp){
@@ -870,7 +779,7 @@ void lru_remove_head(struct page_info **pp, struct page_info **head, struct page
         *tail = NULL;
     }
     p = *head;
-    //cprintf("HEAD %x\n", *head);
+
     *head = p->lru_link;
     if(pp){
         *pp = p;
@@ -892,8 +801,6 @@ void lru_hi_remove(struct page_info **pp){
 
 void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page_info **tail){
     struct page_info * p, *old_p;
-    //cprintf("[LRU]H %x *tail: %x *head %x\n", *tail, *head);
-    //cprintf("LRU REMOVE TAIL\n");
 
     if(pp){
         *pp = NULL;
@@ -923,7 +830,6 @@ void lru_remove_tail(struct page_info **pp, struct page_info **head, struct page
         old_p = p;
         p = p->lru_link;
     }
-    //cprintf("[REMOVE TAIL COUNT]%d\n",count);
     *tail = old_p;
 }
 /*  Specific lists - tail remove - wrappers */
@@ -937,7 +843,6 @@ void lru_ti_remove(struct page_info ** pp){
 }
 
 int lru_remove_el(struct page_info *pp, struct page_info **head, struct page_info **tail){
-    //cprintf("LRU REMOVE EL\n");
 
     struct page_info * p, * old_p;
     if(!pp || !head || !tail){
@@ -988,7 +893,7 @@ void task_init(struct page_info * pp){
 
     struct tasklet *t;
 
-    cprintf("[INIT] Task list init \n");
+    DBB(cprintf("[INIT] Task list init \n"));
     t_flist = page2kva(pp);
     t_list = NULL;
 
@@ -1029,21 +934,7 @@ void task_init(struct page_info * pp){
         }
     }
 
-    // Setup a dummy tasklet for debugging:
-    // t = task_get(&t_flist);
-    // if(t){
-    //     t->state = T_WORK;
-
-    //     t->sector_start = 1;
-    //     t->pi = NULL;
-
-    //     // Setup Function Pointer:
-    //     t->fptr=(uint32_t *)page_out;
-
-    //     task_add(t, &t_list, 0);
-    //     cprintf("[PMAP] setting up a tasklet w/ fptr: 0x%08x\n", t->fptr);
-    // }
-    cprintf("[INIT] Task list initialized t_list: %x\n", t_list);
+    DBB(cprintf("[INIT] Task list initialized t_list: %x\n", t_list));
 }
 
 void lru_init(){
@@ -1094,9 +985,9 @@ void page_init(void)
 
     /* LAB 6: Change your code to mark the physical page at MPENTRY_PADDR as
      *       in-use. */
-    cprintf("[MEMINIT] page 0:%x page 1:%x page n: %x\n", &pages[0], &pages[1], &pages[npages-1]);
-    cprintf("[MEMINIT] envs 0:%x envs n:%x\n", &envs[0], &pages[NENV-1]);
-    cprintf("[MEMINIT] tasklist size:%d \n", NTASKS*sizeof(struct tasklet));
+    DBB(cprintf("[MEMINIT] page 0:%x page 1:%x page n: %x\n", &pages[0], &pages[1], &pages[npages-1]));
+    DBB(cprintf("[MEMINIT] envs 0:%x envs n:%x\n", &envs[0], &pages[NENV-1]));
+    DBB(cprintf("[MEMINIT] tasklist size:%d \n", NTASKS*sizeof(struct tasklet)));
 
     size_t i;
     struct tasklet *t;
@@ -1255,12 +1146,10 @@ struct page_info *page_alloc(int alloc_flags)
     pg0->page_flags |= ALLOC;
 
     // ALLOC_ZERO support
-    //cprintf("page_alloc: ph:%08x va:%08x \n",pg0, page2kva(pg0));
     if((alloc_flags & ALLOC_ZERO) ){
         
         memset( page2kva(pg0) ,'\0', PGSIZE );          
     }
-    //cprintf("page_alloc success\n");
     return pg0;
 }
 
@@ -1588,8 +1477,8 @@ int page_dedup(struct env * e, void * va){
     // Look up the pte
     pte_t * pte = pgdir_walk(e->env_pgdir, va, 1);
 
-    cprintf("[KERN] page_dedup() called \n");
-    cprintf("[KERN]page_dedup before: faulting va: %08x ,pte %08x, pte content %08x\n", va, pte, *pte);
+    DBK(cprintf("[KERN] page_dedup() called \n"));
+    DBK(cprintf("[KERN]page_dedup before: faulting va: %08x ,pte %08x, pte content %08x\n", va, pte, *pte));
 
     if(!pte){
         cprintf("[KERN]page_dedup: No pte found\n");
@@ -1604,7 +1493,7 @@ int page_dedup(struct env * e, void * va){
 
         //decrement ref count
         pg->pp_ref--;
-        cprintf("[KERN]page_dedup: old pte ref: %d va: %08x\n", pg->pp_ref, va);
+        DBK(cprintf("[KERN]page_dedup: old pte ref: %d va: %08x\n", pg->pp_ref, va));
         //If it's a huge page alloc a huge page,
         if(*pte & PTE_PS){
             pgn = page_alloc(CREATE_HUGE);
@@ -1625,7 +1514,7 @@ int page_dedup(struct env * e, void * va){
         pgn->pp_ref++;
         
         //set the new page phy address with the old flags     
-        cprintf("[KERN]page_dedup after: pte: %08x, pte content: %08x\n",pte, *pte);
+        DBK(cprintf("[KERN]page_dedup after: pte: %08x, pte content: %08x\n",pte, *pte));
     }else{
         panic("[KERN PANIC]page_dedup: page info ref is 0 or less!\n");
     }
@@ -1819,25 +1708,25 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
 
         // Check that an entry exists:
         if (!p){
-            cprintf("Check that an entry exists\n");
+            cprintf("The entry does not exist\n");
             goto FAILURE;
         }
 
         // Page is marked present:
         if (!(*p & PTE_P)){
-            cprintf("Page is marked present\n");
+            cprintf("Page is not marked present\n");
             goto FAILURE;
         }
 
         // PTE permissions -eq requested permissions:
         if ((*p & perm) != perm){
-            cprintf(" PTE permissions -eq requested permissions\n");
+            cprintf(" PTE permissions not equal to requested permissions\n");
             goto FAILURE;
         }
         
         // Address is below ULIM (safe user space):
         if ((low+(PGSIZE*1)) > ULIM){
-            cprintf(" PTE permissions -eq requested permissions\n");
+            cprintf(" Address ABOVE ULIM\n");
 
             goto FAILURE;
         }
@@ -1847,7 +1736,6 @@ int user_mem_check(struct env *env, const void *va, size_t len, int perm)
     return 0;
 
 FAILURE:
-    // cprintf("va: %x\n", va);
     // If first page, return the va, else page-aligned address:
     if ((uint32_t)va > (low + (i*PGSIZE))){
         user_mem_check_addr = (uintptr_t) va+(PGSIZE*i);
@@ -2021,7 +1909,7 @@ static void check_page_alloc(void)
         --nfree;
     assert(nfree == 0);
 
-    cprintf("[4K] check_page_alloc() succeeded!\n");
+    DBT(cprintf("[4K] check_page_alloc() succeeded!\n"));
    
     /* test allocation of huge page */
     pp0 = pp1 = php0 = 0;
@@ -2061,7 +1949,7 @@ static void check_page_alloc(void)
         --nfree;
     assert(nfree == 0);
 
-    cprintf("[4M] check_page_alloc() succeeded!\n");
+    DBT(cprintf("[4M] check_page_alloc() succeeded!\n"));
 }
 
 /*
@@ -2122,7 +2010,7 @@ static void check_kern_pgdir(void)
             break;
         }
     }
-    cprintf("check_kern_pgdir() succeeded!\n");
+    DBT(cprintf("check_kern_pgdir() succeeded!\n"));
 }
 
 /*
@@ -2323,7 +2211,7 @@ static void check_page(void)
     *pgdir_walk(kern_pgdir, (void*) mm1 + PGSIZE, 0) = 0;
     *pgdir_walk(kern_pgdir, (void*) mm2, 0) = 0;
 
-    cprintf("check_page() succeeded!\n");
+    DBT(cprintf("check_page() succeeded!\n"));
 }
 
 /* Check page_insert, page_remove, &c, with an installed kern_pgdir */
@@ -2364,7 +2252,7 @@ static void check_page_installed_pgdir(void)
     /* free the pages we took */
     page_free(pp0);
 
-    cprintf("check_page_installed_pgdir() succeeded!\n");
+    DBT(cprintf("check_page_installed_pgdir() succeeded!\n"));
 }
 
 /* Check pgdir_walk() for huge page support */
@@ -2413,5 +2301,5 @@ static void check_page_hugepages(void)
     page_remove(kern_pgdir, (void*) (2*1024*PGSIZE));
     assert(php0->pp_ref == 0);
 
-    cprintf("check_page_hugepages() succeeded!\n");
+    DBT(cprintf("check_page_hugepages() succeeded!\n"));
 }
