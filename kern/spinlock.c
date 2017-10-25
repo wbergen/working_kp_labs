@@ -79,8 +79,12 @@ void __spin_initlock(struct spinlock *lk, char *name)
 
 int holding_l(struct spinlock *lock)
 {
+#ifdef DEBUG_SPINLOCK_1
     return lock->locked && lock->cpu == thiscpu;
+#endif
+    return 0;
 }
+
 /*
  * Acquire the lock.
  * Loops (spins) until the lock is acquired.

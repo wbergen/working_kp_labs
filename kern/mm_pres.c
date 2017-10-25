@@ -37,7 +37,7 @@ int oom_kill(struct env *e, int pgs_r){
 
 	struct env * kill = NULL;
 	int i, theworst = 0;
-
+	assert_lock_env();
 	//initialize badness scores to 0
 	for(i=0; i<NENV; i++){
 		bad[i] = 0;
@@ -46,6 +46,9 @@ int oom_kill(struct env *e, int pgs_r){
 	/*
 		b_score == (env_page_alloc/tot_pages)*100	+ (env_vma/tot_user_vma)*100 
 		if env type is kernel score == 0
+
+		(In the implementation the virtual memory is still not considered for the
+		badness calculation)
 	*/
 	for(i=0; i<NENV; i++){
 		if( envs[i].env_type != ENV_TYPE_USER){
@@ -65,9 +68,7 @@ int oom_kill(struct env *e, int pgs_r){
 	/*	Decide Who to kill*/
 	if(kill && kill != e){
 		/* The kernel god wants blood	*/
-		lock_env();
 		env_destroy(kill);
-		unlock_env();
 		return 1;
 	}else{
 		/* Killed nobody */
@@ -388,8 +389,8 @@ int reclaim_pgs(struct env *e, int pg_n){
 
 	            task_add_alloc(t);
 	            pg_c--;
-
 		    }else{
+		    	lru_hi_insert(pp);
 		    	break;
 		    }
 		}

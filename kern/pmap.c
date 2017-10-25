@@ -36,7 +36,7 @@ uint32_t lru_inactive_count = 0;
 
 char drc_map[ARRAY_SIZE(NENV)] = {0};
 
-unsigned int MASK = 0;
+unsigned int MASK = (uint32_t)(4 | 8);
 /***************************************************************
  * Detect machine's physical memory setup.
  ***************************************************************/

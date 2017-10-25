@@ -360,7 +360,12 @@ static void trap_dispatch(struct trapframe *tf)
 
 void trap(struct trapframe *tf)
 {
-    // print_trapframe(tf);
+    if(lock_env_holding()){
+        print_trapframe(tf);
+        panic("OMG\n");
+        //print_trapframe(tf);
+        //DBB(panic("[TRAP]HOLDING BEFORE TRAP DISP CPU:%d\n",cpunum()));
+    }
 	#ifdef USE_BIG_KERNEL_LOCK
 	    if(lock_kernel_holding() ){
 	        cprintf("TRAP: LOCKED CPU:%d\n",cpunum());
@@ -373,9 +378,6 @@ void trap(struct trapframe *tf)
         	lock_kernel();
 
 	#endif
-
-    // cprintf("[KERN_DEBUG] Trap #%u\n", num_traps);
-    // ++num_traps;
 
     /* The environment may have set DF and some versions of GCC rely on DF being
      * clear. */
@@ -403,7 +405,6 @@ void trap(struct trapframe *tf)
         /* Trapped from user mode. */
         /* Acquire the big kernel lock before doing any serious kernel work.
          * LAB 6: Your code here. */
-        // if ( !lock_env_holding() && tf->tf_trapno == IRQ_OFFSET)
 	    if(lock_env_holding() && tf->tf_trapno == IRQ_OFFSET){
 	    	DBB(cprintf("TRAP: Timer interrupt, already holding lock:%d\n",cpunum()));
 	    }else{
@@ -416,7 +417,6 @@ void trap(struct trapframe *tf)
 
         /* Garbage collect if current enviroment is a zombie. */
         if (curenv->env_status == ENV_DYING) {
-            //if (!lock_pagealloc_holding())
                 lock_pagealloc();
 				#ifdef DEBUG_SPINLOCK
 				    cprintf("-----------------------------------[cpu:%d][%x][LOCK][PAGE]\n",cpunum(),curenv->env_id);
@@ -428,7 +428,6 @@ void trap(struct trapframe *tf)
 			#endif
             unlock_pagealloc();
             curenv = NULL;
-            //unlock_env();
             sched_yield();
         }
 
@@ -447,9 +446,7 @@ void trap(struct trapframe *tf)
     /* Record that tf is the last real trapframe so print_trapframe can print
      * some additional information. */
     last_tf = tf;
-    if(lock_env_holding()){
-    	DBB(cprintf("[TRAP]HOLDING BEFORE TRAP DISP CPU:%d\n",cpunum()));
-    }
+
     /* Dispatch based on what type of trap occurred */
     trap_dispatch(tf);
 
@@ -560,7 +557,7 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
         } else {
 
             // VMA exists, so page a page for the env:
-            // cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count);
+            DBB(cprintf("[KERN] page_fault_handler(): [ANON] vma exists @ %x!  Allocating \"on demand\" page... left: %d\n", vma_el->va, free_pages_count));
 
             // Allocate a physical frame, huge or not
             struct page_info * demand_page;
@@ -572,7 +569,6 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             	if(demand_page){
             		void * addr = (void *)ROUNDDOWN(fault_va,PGSIZE);
                 	// Insert the page to the lru and increase the alloc pages
-                	//cprintf("Inserting new page in lru\n");
 
                 	//Let's not add the stack to the swapping lists
                 	if(addr != (void*)USTACKTOP-PGSIZE){
@@ -585,7 +581,6 @@ void alloc_page_after_fault(uint32_t fault_va, struct trapframe *tf){
             if(!demand_page){
                 curenv->env_status = ENV_SLEEPING;
                 toggle_bit(drc_map, ENVX(curenv->env_id));
-                panic("[KERN] page_fault_handler: WE ARE OUT OUT OF MEMORY\n");
             }
             //Insert the physical frame in the page directory
             int ret = page_insert(curenv->env_pgdir, demand_page, (void *)fault_va, vma_el->perm);

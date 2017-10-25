@@ -491,7 +491,6 @@ int env_alloc(struct env **newenv_store, envid_t parent_id, int type)
     */
 
     if (e->env_type == ENV_TYPE_KERNEL) {
-        // cprintf("ktask setup\n");
         e->env_tf.tf_ds = GD_KD;
         e->env_tf.tf_es = GD_KD;
         e->env_tf.tf_ss = GD_KD;
@@ -704,7 +703,7 @@ static void load_icode(struct env *e, uint8_t *binary)
 */
 void ktask(){
     asm ("movl %%esp, %0;" : "=r" ( kesp[ENVX(curenv->env_id)] ));
-    DBK(cprintf("Magic Print\n"));
+    //DBK(cprintf("Magic Print\n"));
 
     lock_env();
     lock_task();
